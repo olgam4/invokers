@@ -2,6 +2,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/doeixd/invokers?style=social)](https://github.com/doeixd/invokers)
 
+<img src="assets/logo.png"  width="150px" height="150px" style="margin: 0 auto" />
+
 # Invokers ✨
 
 **Invokers is a tiny, modern JavaScript library that brings your HTML to life.** It empowers you to create rich, server-interactive user interfaces using the declarative power of standard HTML and ARIA attributes, with little to no custom JavaScript.
