@@ -1,6 +1,6 @@
 {
   "name": "invokers",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A powerful, platform-first JavaScript library for creating modern user interfaces with declarative HTML. Use the native `command` attribute with ARIA properties like `aria-controls` to build accessible tabs, accordions, and menus with little to no custom JS. Includes View Transition API support.",
   "author": "Patrick Glenn",
   "license": "MIT",
