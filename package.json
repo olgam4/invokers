@@ -60,6 +60,7 @@
     }
   },
   "scripts": {
+    "release": "standard-version && git push --follow-tags origin main",
     "prepublishOnly": "pridepack clean && pridepack build",
     "build": "pridepack build",
     "type-check": "pridepack check",
