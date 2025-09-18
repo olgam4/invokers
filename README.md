@@ -229,7 +229,123 @@ Simply remove an element from the page. Perfect for dismissible alerts.
 ```
 > A full suite of commands for media (`--media:play`), forms (`--form:reset`), clipboard (`--clipboard:copy`), carousels, and more is included! Check the `src/invoker-commands.ts` file for the complete list.
 
+
+### How to Use This
+
+1.  Open your `README.md` file.
+2.  Navigate to a suitable location. A good spot would be **after the `Core Library Commands` section and before `The Commands Module` section**, as these are general-purpose utilities that feel more fundamental than complex ones like `fetch`.
+3.  Copy the entire Markdown block below and paste it in.
+
 ---
+
+###  Fine-Grained DOM Control
+
+Beyond showing and hiding elements, `invokers` provides a suite of commands for direct manipulation of attributes and text content, giving you precise control over your UI's state directly from your HTML.
+
+> **Note:** These commands are part of the optional `invokers/commands` module. Ensure you have imported and run `registerAll()` to use them.
+
+<details>
+<summary><strong><code>--attr:set</code></strong> (to set or change an attribute)</summary>
+
+Sets an attribute on the target element. The attribute name and its new value are specified using `data-attr-name` and `data-attr-value` on the invoker button. This is perfect for dynamically changing states like `disabled`, `aria-*` attributes, or even `src`.
+
+```html
+<!-- This button will set aria-invalid="true" on the input field -->
+<button type="button"
+  command="--attr:set"
+  commandfor="email-input"
+  data-attr-name="aria-invalid"
+  data-attr-value="true">
+  Mark as Invalid
+</button>
+
+<input type="email" id="email-input" placeholder="user@example.com">
+```
+</details>
+
+<details>
+<summary><strong><code>--attr:remove</code></strong> (to remove an attribute)</summary>
+
+Completely removes an attribute from the target element. The attribute to remove is specified in `data-attr-name`.
+
+```html
+<!-- This button will remove the `disabled` attribute from the fieldset -->
+<button type="button"
+  command="--attr:remove"
+  commandfor="user-fieldset"
+  data-attr-name="disabled">
+  Enable Form Fields
+</button>
+
+<fieldset id="user-fieldset" disabled>
+  <legend>User Info</legend>
+  <!-- ... form inputs ... -->
+</fieldset>
+```
+</details>
+
+<details>
+<summary><strong><code>--attr:toggle</code></strong> (to toggle a boolean attribute)</summary>
+
+Toggles the presence of a boolean attribute (like `contenteditable`, `checked`, or `hidden`). The attribute name is specified in `data-attr-name`.
+
+```html
+<!-- This button will toggle the `contenteditable` attribute on the paragraph -->
+<button type="button"
+  command="--attr:toggle"
+  commandfor="editable-p"
+  data-attr-name="contenteditable">
+  Toggle Editing
+</button>
+
+<p id="editable-p" class="editable-area">Click the button to make this text editable.</p>
+```
+</details>
+
+<details>
+<summary><strong><code>--text:set</code></strong> (to update text content)</summary>
+
+Safely sets the `textContent` of the target element, replacing any existing content. The new text is provided in the `data-text-value` attribute. This is ideal for updating status messages, labels, or counters.
+
+```html
+<button type="button"
+  command="--text:set"
+  commandfor="status-message"
+  data-text-value="Profile saved successfully!">
+  Show Success Message
+</button>
+
+<button type="button"
+  command="--text:set"
+  commandfor="status-message"
+  data-text-value="Error: Please check your input.">
+  Show Error Message
+</button>
+
+<div id="status-message" role="status" class="status-box"></div>
+```
+</details>
+
+<details>
+<summary><strong><code>--text:copy</code></strong> (to copy text between elements)</summary>
+
+Copies text from a source element to the target element. The source is defined by a CSS selector in `data-copy-from`. If `data-copy-from` is omitted, it copies the text from the invoker button itself.
+
+```html
+<!-- This button copies text from the #source-text element -->
+<button type="button"
+  command="--text:copy"
+  commandfor="destination"
+  data-copy-from="#source-text">
+  Copy Quote to Destination
+</button>
+
+<blockquote id="source-text">The future is already here – it's just not evenly distributed.</blockquote>
+<p><b>Destination:</b> <span id="destination">...</span></p>
+```
+</details>
+
+
 
 ### ✨ Advanced Patterns
 
