@@ -317,12 +317,36 @@
   <!-- =================================================================== -->
   <!-- SCRIPT SETUP (MUST be at the end of the body) -->
   <!-- =================================================================== -->
+  <script>
+    document.addEventListener('click', (event) => {
+      // Find the closest button with a `command` attribute from the click target
+      const invokerButton = event.target.closest('button[command]');
+
+      if (invokerButton) {
+        event.preventDefault(); // Prevent default button actions
+        const command = invokerButton.getAttribute('command');
+
+        // Create a custom 'command' event that the library is listening for
+        const commandEvent = new CustomEvent('command', {
+          bubbles: true,
+          cancelable: true,
+        });
+
+        // Attach the necessary properties to the event object
+        commandEvent.command = command;
+        commandEvent.invokerElement = invokerButton;
+
+        // Dispatch the event from the button itself
+        invokerButton.dispatchEvent(commandEvent);
+      }
+    });
+  </script>
   <script type="module">
     // 1. Import the core library. This sets up the main listener.
-    import 'https://esm.sh/invokers';
+    import 'https://esm.sh/invokers@0.0.3/dist/esm/production/0';
 
     // 2. Import the `registerAll` function from the optional commands module.
-    import { registerAll } from 'https://esm.sh/invokers/commands';
+    import { registerAll } from 'https://esm.sh/invokers@0.0.3/dist/esm/production/1';
 
     // 3. Register all the extra commands to make them available.
     registerAll();

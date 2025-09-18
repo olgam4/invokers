@@ -1,6 +1,6 @@
 {
   "name": "invokers",
-  "version": "0.0.3",
+  "version": "0.0.2",
   "description": "A powerful, platform-first JavaScript library for creating modern user interfaces with declarative HTML. Use the native `command` attribute with ARIA properties like `aria-controls` to build accessible tabs, accordions, and menus with little to no custom JS. Includes View Transition API support.",
   "author": "Patrick Glenn",
   "license": "MIT",
@@ -44,24 +44,27 @@
     "dist",
     "src"
   ],
+  "main": "./dist/cjs/production/index.js",
+  "module": "./dist/esm/production/index.js",
+  "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
       "development": {
-        "require": "./dist/cjs/development/0.js",
-        "import": "./dist/esm/development/0.js"
+        "require": "./dist/cjs/development/index.js",
+        "import": "./dist/esm/development/index.js"
       },
-      "require": "./dist/cjs/production/0.js",
-      "import": "./dist/esm/production/0.js"
+      "require": "./dist/cjs/production/index.js",
+      "import": "./dist/esm/production/index.js"
     },
     "./commands": {
       "types": "./dist/types/invoker-commands.d.ts",
       "development": {
-        "require": "./dist/cjs/development/1.js",
-        "import": "./dist/esm/development/1.js"
+        "require": "./dist/cjs/development/commands.js",
+        "import": "./dist/esm/development/commands.js"
       },
-      "require": "./dist/cjs/production/1.js",
-      "import": "./dist/esm/production/1.js"
+      "require": "./dist/cjs/production/commands.js",
+      "import": "./dist/esm/production/commands.js"
     }
   },
   "scripts": {
@@ -88,10 +91,7 @@
   },
   "typesVersions": {
     "*": {
-      "0": [
-        "./dist/types/index.d.ts"
-      ],
-      "1": [
+      "commands": [
         "./dist/types/invoker-commands.d.ts"
       ]
     }
