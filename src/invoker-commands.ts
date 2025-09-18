@@ -533,6 +533,166 @@ export const commands: CommandRegistry = {
       window.location.href = url;
     }
   },
+/**
+ * `--attr:set`: Sets an attribute on the target element. The attribute name and value
+ * are specified in `data-attr-name` and `data-attr-value` on the invoker button.
+ *
+ * @example
+ * ```html
+ * <!-- This button will set `aria-disabled="true"` on the input field -->
+ * <button type="button"
+ *   command="--attr:set"
+ *   commandfor="my-input"
+ *   data-attr-name="aria-disabled"
+ *   data-attr-value="true">
+ *   Disable Input
+ * </button>
+ * <input id="my-input" type="text" placeholder="I can be disabled">
+ * ```
+ */
+"--attr:set": (context: CommandContext) => {
+    const { invoker, targetElement } = context;
+    const { attrName, attrValue } = invoker.dataset;
+    if (!attrName || typeof attrValue === 'undefined') {
+        console.warn('Invokers: `--attr:set` requires `data-attr-name` and `data-attr-value` attributes on the invoker.', invoker);
+        return;
+    }
+    targetElement.setAttribute(attrName, attrValue);
+},
+
+/**
+ * `--attr:remove`: Removes an attribute from the target element. The attribute name
+ * is specified in the `data-attr-name` attribute on the invoker button.
+ *
+ * @example
+ * ```html
+ * <!-- This button will remove the `disabled` attribute from the fieldset -->
+ * <button type="button"
+ *   command="--attr:remove"
+ *   commandfor="user-fieldset"
+ *   data-attr-name="disabled">
+ *   Enable Fields
+ * </button>
+ * <fieldset id="user-fieldset" disabled>...</fieldset>
+ * ```
+ */
+"--attr:remove": (context: CommandContext) => {
+    const { invoker, targetElement } = context;
+    const { attrName } = invoker.dataset;
+    if (!attrName) {
+        console.warn('Invokers: `--attr:remove` requires a `data-attr-name` attribute on the invoker.', invoker);
+        return;
+    }
+    targetElement.removeAttribute(attrName);
+},
+
+/**
+ * `--attr:toggle`: Toggles a boolean attribute on the target element. A boolean attribute
+ * is one where its presence means `true`. The attribute name is specified in `data-attr-name`.
+ *
+ * @example
+ * ```html
+ * <!-- This button will toggle the `contenteditable` attribute on the paragraph -->
+ * <button type="button"
+ *   command="--attr:toggle"
+ *   commandfor="editable-p"
+ *   data-attr-name="contenteditable">
+ *   Toggle Editing
+ * </button>
+ * <p id="editable-p">Click the button to make this text editable.</p>
+ * ```
+ */
+"--attr:toggle": (context: CommandContext) => {
+    const { invoker, targetElement } = context;
+    const { attrName } = invoker.dataset;
+    if (!attrName) {
+        console.warn('Invokers: `--attr:toggle` requires a `data-attr-name` attribute on the invoker.', invoker);
+        return;
+    }
+    // `toggleAttribute` returns true if the attribute is now present, false if removed.
+    const isSet = targetElement.toggleAttribute(attrName);
+    // For ARIA attributes that use "true"/"false" strings, we should also update them.
+    if (attrName.startsWith('aria-')) {
+        targetElement.setAttribute(attrName, String(isSet));
+    }
+},
+
+
+// --- Text Content Manipulation Commands ---
+
+/**
+ * `--text:set`: Sets the `textContent` of the target element, replacing all its children
+ * with a single text node. The text is specified in the `data-text-value` attribute on the invoker.
+ * This is a safe way to update text as it does not parse HTML.
+ *
+ * @example
+ * ```html
+ * <button type="button"
+ *   command="--text:set"
+ *   commandfor="status-message"
+ *   data-text-value="Profile saved successfully!">
+ *   Show Success Message
+ * </button>
+ * <div id="status-message" role="status"></div>
+ * ```
+ */
+"--text:set": (context: CommandContext) => {
+    const { invoker, targetElement } = context;
+    const { textValue } = invoker.dataset;
+    if (typeof textValue === 'undefined') {
+        console.warn('Invokers: `--text:set` requires a `data-text-value` attribute on the invoker.', invoker);
+        return;
+    }
+    targetElement.textContent = textValue;
+},
+
+/**
+ * `--text:copy`: Copies the `textContent` from one element to another.
+ * The source element is specified via a CSS selector in `data-copy-from` on the invoker.
+ * If `data-copy-from` is omitted, it copies the invoker's own `textContent`.
+ *
+ * @example
+ * ```html
+ * <!-- This button copies text from the #source-text element to the #destination element -->
+ * <button type="button"
+ *   command="--text:copy"
+ *   commandfor="destination"
+ *   data-copy-from="#source-text">
+ *   Copy Quote
+ * </button>
+ *
+ * <p id="source-text">This is the text to be copied.</p>
+ * <p id="destination">...waiting for text...</p>
+ * ```
+ */
+"--text:copy": (context: CommandContext) => {
+    const { invoker, targetElement } = context;
+    const sourceSelector = invoker.dataset.copyFrom;
+    let sourceElement: HTMLElement | null = null;
+    let textToCopy = '';
+
+    if (sourceSelector) {
+        sourceElement = document.querySelector(sourceSelector);
+        if (!sourceElement) {
+            console.warn('Invokers: `--text:copy` could not find a source element with the selector: "' + sourceSelector + '".', invoker);
+            return;
+        }
+    } else {
+        // If no source is specified, use the invoker button itself.
+        sourceElement = invoker;
+    }
+
+    // Handle inputs and textareas which use .value, otherwise use .textContent
+    if (sourceElement instanceof HTMLInputElement || sourceElement instanceof HTMLTextAreaElement) {
+        textToCopy = sourceElement.value;
+    } else {
+        textToCopy = sourceElement.textContent || '';
+    }
+
+    targetElement.textContent = textToCopy;
+},
+
+
 };
 
 /**
