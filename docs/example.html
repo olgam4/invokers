@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invokers.js - Comprehensive Feature Demo</title>
+  <style>
+    /* --- Basic Setup & Typography --- */
+    :root {
+      --primary-color: #6a0dad;
+      --secondary-color: #4CAF50;
+      --border-color: #ddd;
+      --background-color: #fff;
+      --text-color: #333;
+      --surface-color: #f9f9f9;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: var(--background-color);
+      margin: 0;
+      padding: 1.5rem;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1, h2, h3 {
+      color: var(--primary-color);
+      line-height: 1.2;
+    }
+
+    h1 { font-size: 2.5rem; text-align: center; margin-bottom: 0.5rem; }
+    h2 { border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 3rem; }
+    h3 { margin-top: 2rem; }
+
+    p, li { color: #555; }
+    code {
+      background: #eee;
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    pre { background: #eee; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    button {
+      font-size: 1rem;
+      padding: 0.5em 1em;
+      border-radius: 6px;
+      border: 1px solid var(--primary-color);
+      background-color: var(--primary-color);
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.2s;
+    }
+    button:hover { background-color: #580a94; }
+    button:active { transform: scale(0.98); }
+    button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
+
+    /* --- Utility & Demo Styles --- */
+    .hidden, [hidden] { display: none !important; }
+    .demo-box {
+      border: 1px solid var(--border-color);
+      padding: 1rem;
+      border-radius: 8px;
+      background: var(--surface-color);
+      margin-top: 1rem;
+      min-height: 50px;
+    }
+    .is-active {
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+    }
+    .dark-mode {
+      --background-color: #222;
+      --text-color: #eee;
+      --surface-color: #333;
+      --border-color: #444;
+    }
+    .loaded {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tab styles */
+    [role="tablist"] button {
+      background: #eee;
+      border-color: #ccc;
+      color: #555;
+    }
+    [role="tablist"] button[aria-expanded="true"] {
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    /* Carousel styles */
+    .carousel-container {
+      position: relative;
+      overflow: hidden;
+    }
+    .carousel-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      background: rgba(0,0,0,0.4);
+      color: white;
+      border: none;
+    }
+    .carousel-prev { left: 10px; }
+    .carousel-next { right: 10px; }
+
+    /* --- View Transition API Support --- */
+    /* This makes UI changes from Invokers (like toggle, show, fetch) animate smoothly */
+    @keyframes fade-in { from { opacity: 0; } }
+    @keyframes fade-out { to { opacity: 0; } }
+    @keyframes slide-from-right { from { transform: translateX(30px); opacity: 0; } }
+    @keyframes slide-to-left { to { transform: translateX(-30px); opacity: 0; } }
+
+    ::view-transition-old(root) {
+      animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both fade-out;
+    }
+    ::view-transition-new(root) {
+      animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both fade-in;
+    }
+    /* Specific animation for carousel slides */
+    [data-carousel-slide]::view-transition-old(root) { animation-name: slide-to-left; }
+    [data-carousel-slide]::view-transition-new(root) { animation-name: slide-from-right; }
+  </style>
+</head>
+<body>
+
+  <main>
+    <h1>Invokers.js Feature Showcase</h1>
+    <p style="text-align: center;">This page demonstrates all features of the Invokers library in a single file. Open your browser's developer console to see log messages from custom commands!</p>
+
+    <!-- =================================================================== -->
+    <h2>Core Commands (Built-in)</h2>
+    <!-- =================================================================== -->
+
+    <h3><code>toggle</code> for Accordions/Disclosures</h3>
+    <button command="toggle" aria-controls="faq-1" aria-expanded="false">
+      What does the 'toggle' command do?
+    </button>
+    <div id="faq-1" class="demo-box" hidden>
+      <p>It toggles the <code>hidden</code> attribute on the element specified by <code>aria-controls</code>. It also automatically syncs the <code>aria-expanded</code> attribute on the button!</p>
+    </div>
+
+    <h3><code>show</code> for Accessible Tabs</h3>
+    <div role="tablist" aria-label="Feature Tabs">
+      <button role="tab" command="show" aria-controls="panel-1" aria-expanded="true">Tab 1</button>
+      <button role="tab" command="show" aria-controls="panel-2" aria-expanded="false">Tab 2</button>
+      <button role="tab" command="show" aria-controls="panel-3" aria-expanded="false">Tab 3</button>
+    </div>
+    <div class="demo-box">
+      <div role="tabpanel" id="panel-1">Content for the first tab panel.</div>
+      <div role="tabpanel" id="panel-2" hidden>Content for the second tab panel.</div>
+      <div role="tabpanel" id="panel-3" hidden>Content for the third tab panel.</div>
+    </div>
+
+    <h3><code>hide</code> for Dismissible Elements</h3>
+    <div id="alert-1" class="demo-box" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>This is an important alert.</span>
+      <button command="hide" aria-controls="alert-1" aria-label="Close" style="background: tomato; border-color: tomato;">&times;</button>
+    </div>
+
+    <h3><code>class:&lt;action&gt;:&lt;className&gt;</code> for CSS Classes</h3>
+    <div class="demo-box" id="class-target">This box will change.</div>
+    <p>
+      <button command="class:toggle:is-active" data-target="#class-target">Toggle 'is-active' Class</button>
+      <button command="class:add:dark-mode" data-target="body">Add 'dark-mode' to Body</button>
+      <button command="class:remove:dark-mode" data-target="body">Remove 'dark-mode' from Body</button>
+      <button command="class:add:md\\:grid" data-target="#class-target">Add Escaped Class (see console)</button>
+    </p>
+
+    <!-- =================================================================== -->
+    <h2>Commands Module Features</h2>
+    <!-- =================================================================== -->
+
+    <h3>Server Interaction (Fetch)</h3>
+    <p><strong>Note:</strong> These are for demonstration. The URLs are placeholders and will fail, showing the error state.</p>
+    <div id="fetch-content-area" class="demo-box">Click the button to load content.</div>
+    <button
+      command="fetch:get"
+      data-url="/api/some-content"
+      aria-controls="fetch-content-area"
+      data-loading-template="spinner-template"
+      data-error-template="error-template"
+      data-then-command="class:add:loaded"
+    >
+      Fetch Content (GET) & Chain Command
+    </button>
+
+    <form id="my-form" action="/api/submit" method="post" class="demo-box" style="margin-top: 1.5rem;">
+      <h4>Form Submission (<code>fetch:send</code>)</h4>
+      <input type="text" name="username" placeholder="Username" style="margin-right: 1rem; padding: 0.4rem;">
+      <div id="form-response-area" style="margin-top: 1rem; color: var(--secondary-color);"></div>
+    </form>
+    <button
+      command="fetch:send"
+      aria-controls="my-form"
+      data-response-target="#form-response-area"
+      data-loading-template="spinner-template"
+    >
+      Submit Form via Fetch (POST)
+    </button>
+
+
+    <h3>DOM Manipulation</h3>
+    <ul id="item-list" class="demo-box">
+      <li>First item</li>
+      <li id="item-to-remove">Second item <button command="dom:remove" aria-controls="item-to-remove" style="font-size: 0.8em; padding: 0.2em 0.5em;">&times;</button></li>
+      <li>Third item</li>
+    </ul>
+    <p>
+      <button command="dom:append" aria-controls="item-list" data-template-id="new-item-template">Append Item</button>
+      <button command="dom:prepend" aria-controls="item-list" data-template-id="new-item-template">Prepend Item</button>
+    </p>
+    <div id="swap-container" class="demo-box">This is the original inner content.</div>
+    <button command="dom:swap" aria-controls="swap-container" data-template-id="swapped-content-template">Swap Inner Content</button>
+    <div id="replace-container" class="demo-box">This entire box will be replaced.</div>
+    <button command="dom:replace" aria-controls="replace-container" data-template-id="replaced-content-template">Replace Entire Element</button>
+
+    <h3>Media Controls</h3>
+    <p>You'll need to provide a valid video source for this to work.</p>
+    <video id="my-video" class="demo-box" width="100%" poster="https://via.placeholder.com/800x450.png?text=Provide+a+video+src" controls>
+      <!-- <source src="my-video.mp4" type="video/mp4"> -->
+    </video>
+    <p>
+      <button command="media:toggle" aria-controls="my-video" data-play-text="Pause" data-pause-text="Play">Play</button>
+      <button command="media:seek" aria-controls="my-video" data-seek="-10">Rewind 10s</button>
+      <button command="media:seek" aria-controls="my-video" data-seek="10">Forward 10s</button>
+      <button command="media:mute" aria-controls="my-video" aria-pressed="false">Mute</button>
+    </p>
+
+    <h3>Carousel</h3>
+    <div id="my-carousel" class="demo-box carousel-container">
+      <div data-carousel-slide>Slide 1 of 3</div>
+      <div data-carousel-slide hidden>Slide 2 of 3</div>
+      <div data-carousel-slide hidden>Slide 3 of 3</div>
+      <button class="carousel-nav carousel-prev" command="carousel:nav" aria-controls="my-carousel" data-direction="prev">‹</button>
+      <button class="carousel-nav carousel-next" command="carousel:nav" aria-controls="my-carousel" data-direction="next">›</button>
+    </div>
+
+    <h3>Forms, Inputs & Clipboard</h3>
+    <div class="demo-box">
+      Quantity:
+      <button command="input:step" aria-controls="quantity" data-step="-1">-</button>
+      <input type="number" id="quantity" value="1" step="1" min="0" max="10">
+      <button command="input:step" aria-controls="quantity" data-step="1">+</button>
+    </div>
+    <p>These buttons control the form from the Fetch example above:</p>
+    <p>
+      <button command="form:submit" aria-controls="my-form">Submit Form (Native)</button>
+      <button command="form:reset" aria-controls="my-form">Reset Form</button>
+    </p>
+    <pre id="code-snippet">npm install invokers</pre>
+    <button command="clipboard:copy" aria-controls="code-snippet" data-feedback-text="Copied!">Copy to Clipboard</button>
+
+    <h3>Navigation and Scroll</h3>
+    <p>This button will update your browser's URL without a page reload. This is for SPAs and client-side routers.</p>
+    <button command="navigate:to" data-url="#navigation-test">Navigate to #navigation-test</button>
+    <div style="height: 100vh; background: #fafafa; margin: 2rem 0; padding: 1rem; border-radius: 8px;">
+      This is a tall spacer block to ensure the page is scrollable.
+    </div>
+    <h3 id="scroll-target">Scroll Target Section</h3>
+    <p>This is the section you can scroll to.</p>
+    <button command="scroll:to" aria-controls="top-header">Scroll back to Top</button>
+
+
+    <!-- =================================================================== -->
+    <h2>Advanced: Custom Commands</h2>
+    <!-- =================================================================== -->
+    <p>This button uses a custom command registered in the script block at the bottom of this file. Check your browser console after clicking!</p>
+    <button command="log:info:Hello from a custom command!">Run Custom 'log' Command</button>
+
+  </main>
+
+  <h1 id="top-header" style="opacity:0; height: 0; margin: 0; padding:0;"></h1>
+
+  <!-- =================================================================== -->
+  <!-- TEMPLATES (used by DOM and Fetch commands) -->
+  <!-- =================================================================== -->
+  <template id="new-item-template">
+    <li>A newly added item! <button command="dom:remove" aria-controls="this" style="font-size: 0.8em; padding: 0.2em 0.5em;">&times;</button></li>
+  </template>
+
+  <template id="swapped-content-template">
+    <p style="color: var(--secondary-color); font-weight: bold;">The inner content has been swapped!</p>
+  </template>
+
+  <template id="replaced-content-template">
+    <div class="demo-box" style="border-color: var(--primary-color);">
+      <p style="color: var(--primary-color); font-weight: bold;">The entire element was replaced by this one.</p>
+    </div>
+  </template>
+
+  <template id="spinner-template">
+    <div style="display: flex; align-items: center; justify-content: center; color: #888;">
+      <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="margin-right: 0.5rem;"><path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25"/><path d="M12,4a8,8,0,0,1,7.89,6.7A1.53,1.53,0,0,0,21.38,12h0a1.5,1.5,0,0,0,1.48-1.75,11,11,0,0,0-21.72,0A1.5,1.5,0,0,0,2.62,12h0a1.53,1.53,0,0,0,1.49-1.3A8,8,0,0,1,12,4Z" fill="currentColor"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></path></svg>
+      Loading...
+    </div>
+  </template>
+
+  <template id="error-template">
+    <p style="color: tomato; font-weight: bold;">Oops! Something went wrong. (This is the expected result for the demo).</p>
+  </template>
+
+  <!-- =================================================================== -->
+  <!-- SCRIPT SETUP (MUST be at the end of the body) -->
+  <!-- =================================================================== -->
+  <script type="module">
+    // 1. Import the core library. This sets up the main listener.
+    import 'https://esm.sh/invokers';
+
+    // 2. Import the `registerAll` function from the optional commands module.
+    import { registerAll } from 'https://esm.sh/invokers/commands';
+
+    // 3. Register all the extra commands to make them available.
+    registerAll();
+
+    // 4. (Advanced) Register a custom command.
+    if (window.Invoker) {
+      /**
+       * A custom command to log messages to the console.
+       * It handles commands like "log:info:My message" or "log:warn:Careful!".
+       * @param {import('invokers').CommandContext} context
+       */
+      const customLogger = ({ invoker, params }) => {
+        const level = params[0] === 'warn' || params[0] === 'error' ? params[0] : 'info';
+        const message = params.slice(1).join(' ') || 'Invoker was triggered!';
+
+        console[level](`[Custom Invoker Command] ${message}`, {
+          triggeredBy: invoker,
+        });
+      };
+
+      // Make the `log` command and its sub-commands available in HTML.
+      window.Invoker.register('log', customLogger);
+      console.log("✅ Custom 'log' command registered successfully!");
+    }
+  </script>
+
+</body>
+</html>
