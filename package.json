@@ -1,0 +1,83 @@
+{
+  "name": "invokers",
+  "version": "0.0.0",
+  "description": "A powerful, platform-first JavaScript library for creating modern user interfaces with declarative HTML. Use the native `command` attribute with ARIA properties like `aria-controls` to build accessible tabs, accordions, and menus with little to no custom JS. Includes View Transition API support.",
+  "author": "Patrick Glenn",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doeixd/invokers.git"
+  },
+  "homepage": "https://github.com/doeixd/invokers#readme",
+  "bugs": {
+    "url": "https://github.com/doeixd/invokers/issues"
+  },
+  "keywords": [
+    "invoker",
+    "command",
+    "declarative",
+    "html",
+    "ui",
+    "ux",
+    "vanilla-js",
+    "zero-dependency",
+    "lightweight",
+    "accessibility",
+    "a11y",
+    "aria",
+    "aria-controls",
+    "view-transition",
+    "tabs",
+    "accordion",
+    "toggle",
+    "front-end",
+    "web-components",
+    "progressive-enhancement",
+    "unobtrusive-javascript",
+    "micro-library"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "dist/invoker.js",
+  "module": "dist/invoker.mjs",
+  "types": "dist/invoker.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/invoker.d.ts",
+      "import": "./dist/invoker.mjs",
+      "require": "./dist/invoker.js"
+    },
+    "./commands": {
+      "types": "./dist/invoker-commands.d.ts",
+      "import": "./dist/invoker-commands.mjs",
+      "require": "./dist/invoker-commands.js"
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "pridepack clean && pridepack build",
+    "build": "pridepack build",
+    "type-check": "pridepack check",
+    "clean": "pridepack clean",
+    "watch": "pridepack watch",
+    "start": "pridepack start",
+    "dev": "pridepack dev",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "pridepack": "2.6.4",
+    "standard-version": "^9.5.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
