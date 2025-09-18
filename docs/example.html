@@ -123,6 +123,98 @@
     <div class="note">
       <p><strong>Upgrading from v0.x?</strong> The old pattern <code>&lt;button command="toggle" aria-controls="menu"&gt;</code> should be updated to the new, standard pattern: <code>&lt;button type="button" command="--toggle" commandfor="menu"&gt;</code>. The library will try to handle old markup and warn you in the console, but updating is highly recommended!</p>
     </div>
+
+    <!-- =================================================================== -->
+    <h2 id="dom-control">Part 3: Fine-Grained DOM Control</h2>
+    <!-- =================================================================== -->
+    <p>Go beyond showing and hiding. These commands give you precise, declarative control over attributes and text content.</p>
+
+    <h3><code>--attr</code>: Manipulating Attributes</h3>
+    <div class="demo-box">
+      <fieldset id="user-fieldset" disabled>
+        <legend>User Profile</legend>
+        <label for="username">Username:</label>
+        <input id="username" type="text" value="prefilled-username" aria-invalid="false">
+      </fieldset>
+
+      <p style="margin-top: 1rem;">
+        <!-- The `--attr:remove` command -->
+        <button type="button"
+          command="--attr:remove"
+          commandfor="user-fieldset"
+          data-attr-name="disabled">
+          Enable Fields
+        </button>
+
+        <!-- The `--attr:set` command -->
+        <button type="button"
+          command="--attr:set"
+          commandfor="username"
+          data-attr-name="aria-invalid"
+          data-attr-value="true">
+          Mark Username as Invalid
+        </button>
+
+        <!-- A button to reset the state for the demo -->
+        <button type="button"
+          command="--attr:set"
+          commandfor="user-fieldset"
+          data-attr-name="disabled"
+          data-attr-value=""> <!-- Setting an empty value is the same as presence -->
+          Reset (Disable)
+        </button>
+      </p>
+
+      <style>
+        /* Style for the --attr:set example */
+        #username[aria-invalid="true"] {
+          border-color: tomato;
+          box-shadow: 0 0 5px rgba(255, 99, 71, 0.5);
+        }
+      </style>
+    </div>
+
+    <h3><code>--text</code>: Updating Text Content</h3>
+    <div class="demo-box">
+      <div id="status-message" role="status" style="padding: 1rem; border: 1px solid var(--border-color); border-radius: 4px; min-height: 2.5rem; text-align: center; transition: background-color 0.3s;">
+        <!-- This is the target for text updates -->
+      </div>
+
+      <p style="margin-top: 1rem;">
+        <!-- The `--text:set` command -->
+        <button type="button"
+          command="--text:set"
+          commandfor="status-message"
+          data-text-value="✅ Profile saved successfully!">
+          Show Success Message
+        </button>
+
+        <!-- The `--text:set` command with a different value -->
+        <button type="button"
+          command="--text:set"
+          commandfor="status-message"
+          data-text-value="❌ Error: Please check your input.">
+          Show Error Message
+        </button>
+      </p>
+
+      <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+
+      <h4>Copying Text Between Elements</h4>
+      <blockquote id="source-quote" style="border-left: 3px solid var(--brand-secondary); padding-left: 1rem; margin-left: 0; font-style: italic;">
+        The future is already here – it's just not evenly distributed.
+      </blockquote>
+      <p><b>Destination:</b> <span id="destination-quote">...</span></p>
+
+      <!-- The `--text:copy` command -->
+      <button type="button"
+        command="--text:copy"
+        commandfor="destination-quote"
+        data-copy-from="#source-quote">
+        Copy Quote to Destination
+      </button>
+    </div>
+
   </main>
 
   <!-- =================================================================== -->
