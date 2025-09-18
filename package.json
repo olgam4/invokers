@@ -44,19 +44,24 @@
     "dist",
     "src"
   ],
-  "main": "dist/invoker.js",
-  "module": "dist/invoker.mjs",
-  "types": "dist/invoker.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/invoker.d.ts",
-      "import": "./dist/invoker.mjs",
-      "require": "./dist/invoker.js"
+      "types": "./dist/types/index.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/0.js",
+        "import": "./dist/esm/development/0.js"
+      },
+      "require": "./dist/cjs/production/0.js",
+      "import": "./dist/esm/production/0.js"
     },
     "./commands": {
-      "types": "./dist/invoker-commands.d.ts",
-      "import": "./dist/invoker-commands.mjs",
-      "require": "./dist/invoker-commands.js"
+      "types": "./dist/types/invoker-commands.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/1.js",
+        "import": "./dist/esm/development/1.js"
+      },
+      "require": "./dist/cjs/production/1.js",
+      "import": "./dist/esm/production/1.js"
     }
   },
   "scripts": {
@@ -80,5 +85,15 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "typesVersions": {
+    "*": {
+      "0": [
+        "./dist/types/index.d.ts"
+      ],
+      "1": [
+        "./dist/types/invoker-commands.d.ts"
+      ]
+    }
   }
 }
