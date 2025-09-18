@@ -4,7 +4,7 @@
 
 <img src="assets/logo.png"  width="150px" height="150px" style="margin: 0 auto" />
 
-# Invokers ✨
+# ✨ Invokers 
 
 **Invokers is a tiny, modern JavaScript library that brings your HTML to life.** It empowers you to create rich, server-interactive user interfaces using the declarative power of standard HTML and ARIA attributes, with little to no custom JavaScript.
 
