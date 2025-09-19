@@ -6,7 +6,7 @@
   <img src="https://raw.githubusercontent.com/doeixd/invokers/main/assets/logo.png" width="150" alt="Invokers Logo: A cute, friendly HTML tag character with a green arrow, signifying action.">
 </p>
 
-# ✨ Invokers: Use the Future of HTML, Today.
+# ✨ Invokers
 
 **Invokers is a lightweight polyfill and powerful superset for the upcoming native HTML Invoker Commands API.** It empowers you to write modern, accessible, and highly interactive user interfaces using the declarative patterns that are becoming a web standard.
 
