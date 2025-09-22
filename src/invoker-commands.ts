@@ -87,23 +87,27 @@ export const commands: CommandRegistry = {
         invoker.setAttribute("aria-pressed", "false");
       }
     } catch (error) {
-      throw createInvokerError(
-        'Failed to toggle media playback',
-        ErrorSeverity.ERROR,
-        {
-          command: '--media:toggle',
-          element: invoker,
-          cause: error as Error,
-          context: { 
-            mediaSrc: media.src,
-            mediaState: media.paused ? 'paused' : 'playing',
-            mediaReadyState: media.readyState
-          },
+      if (error instanceof Error) {
+        throw createInvokerError(
+          'Failed to toggle media playback',
+          ErrorSeverity.ERROR,
+          {
+            command: '--media:toggle',
+            element: invoker,
+            cause: error as Error,
+            context: { 
+              mediaSrc: media.src,
+              mediaState: media.paused ? 'paused' : 'playing',
+              mediaReadyState: media.readyState
+            },
           recovery: error.name === 'NotAllowedError' 
             ? 'Media autoplay blocked by browser. User interaction may be required.'
             : 'Check that the media element has a valid source and is ready to play'
         }
       );
+    } else {
+      throw error
+    }
     }
   },
 
@@ -549,6 +553,12 @@ export const commands: CommandRegistry = {
       await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
       
     } catch (error) {
+      if (error instanceof Error) {
+        console.error('Invokers: Fetch GET command failed:', error.message, invoker);
+      } else {
+        console.error('Invokers: Fetch GET command failed with unknown error:', error, invoker);
+        throw error
+      }
       showFeedbackState(invoker, targetElement, "data-error-template");
       
       if (error.name === 'AbortError') {
