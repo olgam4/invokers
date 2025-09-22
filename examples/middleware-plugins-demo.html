@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invokers Middleware & Plugins Demo</title>
+    <script type="module" src="https://esm.sh/invokers"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .demo-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .demo-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #005aa3;
+        }
+
+        .log-output {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.9em;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+        .plugin-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Invokers Middleware & Plugins Demo</h1>
+
+    <div class="demo-section">
+        <h3>📊 Analytics Plugin</h3>
+        <p>Tracks command usage and performance metrics.</p>
+
+        <div class="plugin-controls">
+            <button onclick="toggleAnalyticsPlugin()">Toggle Analytics Plugin</button>
+            <button onclick="clearAnalytics()">Clear Analytics</button>
+        </div>
+
+        <div id="analytics-output" class="log-output">Analytics events will appear here...</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>🔒 Security Plugin</h3>
+        <p>Adds security checks and rate limiting.</p>
+
+        <div class="plugin-controls">
+            <button onclick="toggleSecurityPlugin()">Toggle Security Plugin</button>
+        </div>
+
+        <div id="security-status" class="status info">Security plugin is disabled</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>🎨 UI Enhancement Plugin</h3>
+        <p>Adds loading states and animations.</p>
+
+        <div class="plugin-controls">
+            <button onclick="toggleUIPlugin()">Toggle UI Plugin</button>
+        </div>
+
+        <div id="ui-status" class="status info">UI enhancement plugin is disabled</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>🧪 Test Commands</h3>
+        <p>Use these buttons to test the middleware system:</p>
+
+        <button type="button" command="--toggle" commandfor="test-panel" aria-expanded="false">
+            Toggle Panel
+        </button>
+
+        <button type="button" command="--text:set:Hello from middleware!" commandfor="test-output">
+            Set Text
+        </button>
+
+        <button type="button" command="--class:toggle:test-class" commandfor="test-panel">
+            Toggle Class
+        </button>
+
+        <button type="button" command="--fetch:get" data-url="https://httpbin.org/delay/1" commandfor="test-output" data-loading-template="loading">
+            Fetch Data (with delay)
+        </button>
+
+        <div id="test-panel" hidden style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+            <p>This panel can be toggled!</p>
+        </div>
+
+        <div id="test-output">Test output will appear here...</div>
+
+        <template id="loading">
+            <div>Loading...</div>
+        </template>
+    </div>
+
+    <script>
+        // Wait for Invokers to load
+        window.addEventListener('load', () => {
+            initializePlugins();
+        });
+
+        let analyticsPlugin = null;
+        let securityPlugin = null;
+        let uiPlugin = null;
+
+        function initializePlugins() {
+            // Analytics Plugin
+            analyticsPlugin = {
+                name: 'analytics',
+                version: '1.0.0',
+                description: 'Tracks command usage and performance',
+
+                middleware: {
+                    [window.Invoker.HookPoint.BEFORE_COMMAND]: (context) => {
+                        logAnalytics(`Command started: ${context.fullCommand}`);
+                    },
+                    [window.Invoker.HookPoint.ON_SUCCESS]: (context) => {
+                        logAnalytics(`Command succeeded: ${context.fullCommand}`);
+                    },
+                    [window.Invoker.HookPoint.ON_ERROR]: (context) => {
+                        logAnalytics(`Command failed: ${context.fullCommand} - ${context.result?.error?.message}`);
+                    },
+                    [window.Invoker.HookPoint.ON_COMPLETE]: (context) => {
+                        logAnalytics(`Command completed: ${context.fullCommand}`);
+                    }
+                }
+            };
+
+            // Security Plugin
+            securityPlugin = {
+                name: 'security',
+                version: '1.0.0',
+                description: 'Adds security checks and rate limiting',
+
+                middleware: {
+                    [window.Invoker.HookPoint.BEFORE_COMMAND]: (context) => {
+                        // Rate limiting check
+                        const now = Date.now();
+                        const lastExecution = context.invoker.dataset.lastExecution || 0;
+
+                        if (now - lastExecution < 1000) { // 1 second cooldown
+                            throw new Error('Rate limit exceeded. Please wait before executing another command.');
+                        }
+
+                        context.invoker.dataset.lastExecution = now;
+
+                        // Security check - prevent dangerous commands
+                        if (context.fullCommand.includes('dangerous') || context.fullCommand.includes('delete')) {
+                            throw new Error('Security policy violation: Dangerous command blocked.');
+                        }
+
+                        updateSecurityStatus('✅ Security check passed');
+                    }
+                }
+            };
+
+            // UI Enhancement Plugin
+            uiPlugin = {
+                name: 'ui-enhancement',
+                version: '1.0.0',
+                description: 'Adds loading states and animations',
+
+                middleware: {
+                    [window.Invoker.HookPoint.BEFORE_COMMAND]: async (context) => {
+                        // Add loading state to invoker
+                        if (context.invoker) {
+                            context.invoker.disabled = true;
+                            context.invoker.textContent = '⏳ ' + (context.invoker.dataset.loadingText || 'Loading...');
+                            context.invoker.dataset.originalText = context.invoker.textContent;
+                        }
+
+                        updateUIStatus('🎨 Added loading state');
+                    },
+                    [window.Invoker.HookPoint.ON_COMPLETE]: (context) => {
+                        // Remove loading state
+                        if (context.invoker) {
+                            context.invoker.disabled = false;
+                            const originalText = context.invoker.dataset.originalText || context.invoker.textContent.replace('⏳ ', '');
+                            context.invoker.textContent = originalText.replace('⏳ ', '');
+                        }
+
+                        updateUIStatus('✅ Removed loading state');
+                    },
+                    [window.Invoker.HookPoint.ON_SUCCESS]: (context) => {
+                        // Add success animation
+                        if (context.invoker) {
+                            context.invoker.style.animation = 'successPulse 0.5s ease-in-out';
+                            setTimeout(() => {
+                                context.invoker.style.animation = '';
+                            }, 500);
+                        }
+                    },
+                    [window.Invoker.HookPoint.ON_ERROR]: (context) => {
+                        // Add error animation
+                        if (context.invoker) {
+                            context.invoker.style.animation = 'errorShake 0.5s ease-in-out';
+                            setTimeout(() => {
+                                context.invoker.style.animation = '';
+                            }, 500);
+                        }
+                    }
+                }
+            };
+
+            // Add CSS animations for UI plugin
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes successPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                    100% { transform: scale(1); }
+                }
+
+                @keyframes errorShake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    75% { transform: translateX(5px); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        function logAnalytics(message) {
+            const output = document.getElementById('analytics-output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.textContent += `[${timestamp}] ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateSecurityStatus(message) {
+            const status = document.getElementById('security-status');
+            status.textContent = message;
+            status.className = 'status ' + (message.includes('✅') ? 'success' : 'error');
+        }
+
+        function updateUIStatus(message) {
+            const status = document.getElementById('ui-status');
+            status.textContent = message;
+            status.className = 'status ' + (message.includes('✅') ? 'success' : 'info');
+        }
+
+        function toggleAnalyticsPlugin() {
+            if (window.Invoker.instance.plugins.has('analytics')) {
+                window.Invoker.unregisterPlugin('analytics');
+                document.getElementById('analytics-output').textContent = 'Analytics plugin disabled...\n';
+            } else {
+                window.Invoker.registerPlugin(analyticsPlugin);
+                logAnalytics('Analytics plugin enabled');
+            }
+        }
+
+        function toggleSecurityPlugin() {
+            if (window.Invoker.instance.plugins.has('security')) {
+                window.Invoker.unregisterPlugin('security');
+                updateSecurityStatus('Security plugin disabled');
+            } else {
+                window.Invoker.registerPlugin(securityPlugin);
+                updateSecurityStatus('Security plugin enabled');
+            }
+        }
+
+        function toggleUIPlugin() {
+            if (window.Invoker.instance.plugins.has('ui-enhancement')) {
+                window.Invoker.unregisterPlugin('ui-enhancement');
+                updateUIStatus('UI enhancement plugin disabled');
+            } else {
+                window.Invoker.registerPlugin(uiPlugin);
+                updateUIStatus('UI enhancement plugin enabled');
+            }
+        }
+
+        function clearAnalytics() {
+            document.getElementById('analytics-output').textContent = 'Analytics cleared...\n';
+        }
+
+        // Example of using middleware directly (not through plugins)
+        window.Invoker.registerMiddleware(window.Invoker.HookPoint.BEFORE_COMMAND, (context) => {
+            console.log('Global middleware: Command about to execute:', context.fullCommand);
+        });
+
+        // Example custom command with middleware
+        window.Invoker.register('--demo:command', async (context) => {
+            console.log('Demo command executed with params:', context.params);
+            // Simulate some work
+            await new Promise(resolve => setTimeout(resolve, 500));
+        });
+    </script>
+</body>
+</html>

@@ -759,6 +759,155 @@ Chain multiple commands together for complex interactions.
 </div>
 ```
 
+## 🔌 Plugin System
+
+Invokers features a powerful plugin system that allows you to extend functionality through middleware hooks. Plugins can intercept command execution at various lifecycle points, enabling features like analytics, security checks, UI enhancements, and more.
+
+### Plugin Architecture
+
+Plugins are objects that implement the `InvokerPlugin` interface and can register middleware functions for specific hook points in the command execution lifecycle:
+
+```typescript
+interface InvokerPlugin {
+  name: string;
+  version?: string;
+  description?: string;
+
+  onRegister?(manager: InvokerManager): void;
+  onUnregister?(manager: InvokerManager): void;
+
+  middleware?: Partial<Record<HookPoint, MiddlewareFunction>>;
+}
+
+type MiddlewareFunction = (context: CommandContext & { result?: CommandExecutionResult }, hookPoint: HookPoint) => void | Promise<void>;
+```
+
+### Hook Points
+
+Plugins can hook into these command execution lifecycle points:
+
+- `HookPoint.BEFORE_COMMAND` - Before any command execution begins
+- `HookPoint.AFTER_COMMAND` - After command execution completes (success or error)
+- `HookPoint.BEFORE_VALIDATION` - Before command parameter validation
+- `HookPoint.AFTER_VALIDATION` - After validation passes
+- `HookPoint.ON_SUCCESS` - When a command executes successfully
+- `HookPoint.ON_ERROR` - When a command fails
+- `HookPoint.ON_COMPLETE` - Always executes after command completion
+
+### Creating a Plugin
+
+```javascript
+// Analytics plugin example
+const analyticsPlugin = {
+  name: 'analytics',
+  version: '1.0.0',
+  description: 'Tracks command usage',
+
+  middleware: {
+    [window.Invoker.HookPoint.BEFORE_COMMAND]: (context) => {
+      console.log(`Command executed: ${context.fullCommand}`);
+      // Track analytics here
+    },
+    [window.Invoker.HookPoint.ON_ERROR]: (context) => {
+      console.error(`Command failed: ${context.fullCommand}`, context.result.error);
+      // Report errors here
+    }
+  }
+};
+
+// Register the plugin
+window.Invoker.instance.registerPlugin(analyticsPlugin);
+
+// Later, unregister if needed
+window.Invoker.instance.unregisterPlugin('analytics');
+```
+
+### Security Plugin Example
+
+```javascript
+const securityPlugin = {
+  name: 'security',
+  middleware: {
+    [window.Invoker.HookPoint.BEFORE_COMMAND]: (context) => {
+      // Rate limiting
+      const now = Date.now();
+      const lastExecution = context.invoker?.dataset.lastExecution || 0;
+
+      if (now - lastExecution < 1000) {
+        throw new Error('Rate limit exceeded');
+      }
+
+      context.invoker.dataset.lastExecution = now;
+
+      // Security checks
+      if (context.fullCommand.includes('dangerous')) {
+        throw new Error('Security policy violation');
+      }
+    }
+  }
+};
+```
+
+### UI Enhancement Plugin Example
+
+```javascript
+const uiPlugin = {
+  name: 'ui-enhancement',
+  middleware: {
+    [window.Invoker.HookPoint.BEFORE_COMMAND]: (context) => {
+      // Add loading state
+      if (context.invoker) {
+        context.invoker.disabled = true;
+        context.invoker.dataset.originalText = context.invoker.textContent;
+        context.invoker.textContent = 'Loading...';
+      }
+    },
+    [window.Invoker.HookPoint.ON_COMPLETE]: (context) => {
+      // Remove loading state
+      if (context.invoker) {
+        context.invoker.disabled = false;
+        context.invoker.textContent = context.invoker.dataset.originalText;
+      }
+    }
+  }
+};
+```
+
+### Global Middleware
+
+You can also register middleware globally without creating a full plugin:
+
+```javascript
+// Register global middleware
+window.Invoker.instance.registerMiddleware(window.Invoker.HookPoint.BEFORE_COMMAND, (context) => {
+  console.log('All commands pass through here:', context.fullCommand);
+});
+
+// Unregister specific middleware
+window.Invoker.instance.unregisterMiddleware(window.Invoker.HookPoint.BEFORE_COMMAND, middlewareFunction);
+```
+
+### Plugin Lifecycle
+
+Plugins can implement `onRegister` and `onUnregister` methods for setup and cleanup:
+
+```javascript
+const myPlugin = {
+  name: 'my-plugin',
+  onRegister(manager) {
+    console.log('Plugin registered, setting up...');
+    // Initialize plugin resources
+  },
+  onUnregister(manager) {
+    console.log('Plugin unregistered, cleaning up...');
+    // Clean up resources
+  }
+};
+
+// Register the plugin
+window.Invoker.instance.registerPlugin(myPlugin);
+```
+
 ## 🧰 Extended Commands
 
 Invokers includes a comprehensive set of extended commands that are automatically available when you import the library. These provide advanced features for real-world applications:

@@ -358,6 +358,48 @@ export interface CommandContext {
 }
 
 /**
+ * Middleware hook points in the command execution lifecycle.
+ */
+export enum HookPoint {
+  BEFORE_COMMAND = 'beforeCommand',
+  AFTER_COMMAND = 'afterCommand',
+  BEFORE_VALIDATION = 'beforeValidation',
+  AFTER_VALIDATION = 'afterValidation',
+  ON_SUCCESS = 'onSuccess',
+  ON_ERROR = 'onError',
+  ON_COMPLETE = 'onComplete'
+}
+
+  /**
+   * Middleware function signature.
+   */
+  export type MiddlewareFunction = (context: CommandContext & { result?: CommandExecutionResult }, hookPoint: HookPoint) => void | Promise<void>;
+
+/**
+ * Plugin interface for extending Invokers functionality.
+ */
+export interface InvokerPlugin {
+  name: string;
+  version?: string;
+  description?: string;
+
+  /**
+   * Called when the plugin is registered.
+   */
+  onRegister?(manager: InvokerManager): void;
+
+  /**
+   * Called when the plugin is unregistered.
+   */
+  onUnregister?(manager: InvokerManager): void;
+
+  /**
+   * Middleware functions for different hook points.
+   */
+  middleware?: Partial<Record<HookPoint, MiddlewareFunction>>;
+}
+
+/**
  * The function signature for a custom library command's implementation logic.
  * Callbacks can now be synchronous (return void) or asynchronous (return a Promise).
  * The library will await the result before proceeding with any chained commands.
@@ -418,6 +460,7 @@ declare global {
       parseCommandString: typeof parseCommandString;
       createCommandString: typeof createCommandString;
       instance: InvokerManager;
+      HookPoint: typeof HookPoint;
     };
   }
 }
@@ -497,6 +540,10 @@ export class InvokerManager {
   private pipelineManager: PipelineManager;
   private readonly performanceMonitor = new PerformanceMonitor();
 
+  // --- Plugin/Middleware System ---
+  private plugins = new Map<string, InvokerPlugin>();
+  private middleware = new Map<HookPoint, MiddlewareFunction[]>();
+
   // The constructor is now private to enforce the singleton pattern.
   private constructor() {
     this.andThenManager = new AndThenManager(this);
@@ -510,6 +557,17 @@ export class InvokerManager {
       if (!(window as any).__invokerListenersAdded) {
         this.listen();
         (window as any).__invokerListenersAdded = true;
+      }
+      // Set up global Invoker API
+      if (!window.Invoker) {
+        window.Invoker = {
+          register: this.register.bind(this),
+          executeCommand: this.executeCommand.bind(this),
+          parseCommandString,
+          createCommandString,
+          instance: this,
+          HookPoint
+        };
       }
     } else if (typeof global !== "undefined" && (global as any).window && (global as any).document) {
       // Test environment with jsdom
@@ -637,12 +695,126 @@ export class InvokerManager {
   }
 
   /**
-  * Registers a new custom command with comprehensive validation.
-  * All commands must start with `--` to be valid.
-  *
-  * @param name The unique name of the command (e.g., `'--class'` or `'class'`).
-  * @param callback The function to execute for this command.
-  */
+   * Registers a plugin with middleware and lifecycle hooks.
+   */
+  public registerPlugin(plugin: InvokerPlugin): void {
+    if (this.plugins.has(plugin.name)) {
+      console.warn(`Invokers: Plugin "${plugin.name}" is already registered`);
+      return;
+    }
+
+    this.plugins.set(plugin.name, plugin);
+
+    // Register middleware functions
+    if (plugin.middleware) {
+      for (const [hookPoint, middlewareFn] of Object.entries(plugin.middleware)) {
+        if (middlewareFn) {
+          this.registerMiddleware(hookPoint as HookPoint, middlewareFn);
+        }
+      }
+    }
+
+    // Call plugin's onRegister hook
+    if (plugin.onRegister) {
+      try {
+        plugin.onRegister(this);
+      } catch (error) {
+        console.error(`Invokers: Error in plugin "${plugin.name}" onRegister:`, error);
+      }
+    }
+
+    if (isDebugMode) {
+      console.log(`Invokers: Plugin "${plugin.name}" registered successfully`);
+    }
+  }
+
+  /**
+   * Unregisters a plugin.
+   */
+  public unregisterPlugin(pluginName: string): void {
+    const plugin = this.plugins.get(pluginName);
+    if (!plugin) {
+      console.warn(`Invokers: Plugin "${pluginName}" is not registered`);
+      return;
+    }
+
+    // Call plugin's onUnregister hook
+    if (plugin.onUnregister) {
+      try {
+        plugin.onUnregister(this);
+      } catch (error) {
+        console.error(`Invokers: Error in plugin "${pluginName}" onUnregister:`, error);
+      }
+    }
+
+    // Remove middleware functions
+    if (plugin.middleware) {
+      for (const hookPoint of Object.keys(plugin.middleware) as HookPoint[]) {
+        this.unregisterMiddleware(hookPoint, plugin.middleware[hookPoint]!);
+      }
+    }
+
+    this.plugins.delete(pluginName);
+
+    if (isDebugMode) {
+      console.log(`Invokers: Plugin "${pluginName}" unregistered successfully`);
+    }
+  }
+
+  /**
+   * Registers a middleware function for a specific hook point.
+   */
+  public registerMiddleware(hookPoint: HookPoint, middleware: MiddlewareFunction): void {
+    if (!this.middleware.has(hookPoint)) {
+      this.middleware.set(hookPoint, []);
+    }
+    this.middleware.get(hookPoint)!.push(middleware);
+  }
+
+  /**
+   * Unregisters a middleware function from a specific hook point.
+   */
+  public unregisterMiddleware(hookPoint: HookPoint, middleware: MiddlewareFunction): void {
+    const middlewareList = this.middleware.get(hookPoint);
+    if (middlewareList) {
+      const index = middlewareList.indexOf(middleware);
+      if (index > -1) {
+        middlewareList.splice(index, 1);
+      }
+    }
+  }
+
+  /**
+   * Executes all middleware for a given hook point.
+   */
+  private async executeMiddleware(hookPoint: HookPoint, context: CommandContext & { result?: CommandExecutionResult }, allowErrors: boolean = false): Promise<void> {
+    const middlewareList = this.middleware.get(hookPoint);
+    if (!middlewareList || middlewareList.length === 0) {
+      return;
+    }
+
+    for (const middleware of middlewareList) {
+      try {
+        await Promise.resolve(middleware(context, hookPoint));
+      } catch (error) {
+        if (allowErrors) {
+          // For validation/pre-command middleware, errors should propagate
+          throw error;
+        } else {
+          console.error(`Invokers: Middleware error at ${hookPoint}:`, error);
+          // Continue with other middleware even if one fails
+        }
+      }
+    }
+  }
+
+  /**
+   * Registers a new custom command with comprehensive validation.
+   * All commands must start with `--` to be valid.
+   *
+   * @param name The unique name of the command (e.g., `'--class'` or `'class'`).
+   * @param callback The function to execute for this command.
+   */
   public register(name: string, callback: CommandCallback): void {
     // Validate inputs
     if (!name || typeof name !== 'string') {
@@ -786,7 +958,6 @@ export class InvokerManager {
     }
 
     let commandFound = false;
-
     for (const registeredCommand of this.sortedCommandKeys) {
       if (commandStr.startsWith(registeredCommand) && (commandStr.length === registeredCommand.length || commandStr[registeredCommand.length] === ":")) {
         commandFound = true;
@@ -812,6 +983,12 @@ export class InvokerManager {
           const sanitizedParams = sanitizeParams(params);
           const context = this.createContext(event, commandStr, sanitizedParams);
           const invoker = event.source as HTMLButtonElement;
+
+          // Execute BEFORE_COMMAND middleware (early, with full context)
+          await this.executeMiddleware(HookPoint.BEFORE_COMMAND, context, true);
+
+          // Execute BEFORE_VALIDATION middleware
+          await this.executeMiddleware(HookPoint.BEFORE_VALIDATION, context, true);
 
           // Check command state before execution
           const commandKey = `${commandStr}:${context.targetElement.id}`;
@@ -851,6 +1028,9 @@ export class InvokerManager {
               );
             }
 
+            // Execute AFTER_VALIDATION middleware
+            await this.executeMiddleware(HookPoint.AFTER_VALIDATION, context);
+
             // Await the primary command with timeout protection
             const executionPromise = Promise.resolve(callback(context));
             const timeoutPromise = new Promise((_, reject) => {
@@ -864,12 +1044,18 @@ export class InvokerManager {
               this.commandStates.set(commandKey, 'completed');
             }
 
+            // Execute ON_SUCCESS middleware
+            await this.executeMiddleware(HookPoint.ON_SUCCESS, { ...context, result: executionResult });
+
             if (isDebugMode) {
               console.log(`Invokers: Command "${registeredCommand}" executed successfully`);
             }
 
           } catch (error) {
             executionResult = { success: false, error: error as Error };
+
+            // Execute ON_ERROR middleware
+            await this.executeMiddleware(HookPoint.ON_ERROR, { ...context, result: executionResult });
 
             const invokerError = createInvokerError(
               `Command "${registeredCommand}" execution failed`,
@@ -892,6 +1078,12 @@ export class InvokerManager {
             this.attemptGracefulDegradation(context, error as Error);
           }
 
+          // Execute ON_COMPLETE middleware (always runs)
+          await this.executeMiddleware(HookPoint.ON_COMPLETE, { ...context, result: executionResult });
+
+          // Execute AFTER_COMMAND middleware
+          await this.executeMiddleware(HookPoint.AFTER_COMMAND, { ...context, result: executionResult });
+
           // Process <and-then> elements
           if (context.invoker) {
             await this.andThenManager.processAndThen(context.invoker, executionResult, context.targetElement);
@@ -904,6 +1096,12 @@ export class InvokerManager {
           }
         } catch (commandError) {
           // Handle errors in the command setup/execution wrapper
+          // Re-throw middleware errors that should prevent command execution
+          if ((commandError as Error).message.includes('Validation failed') ||
+              (commandError as Error).message.includes('Plugin attempted to access')) {
+            throw commandError;
+          }
+
           const wrapperError = createInvokerError(
             `Failed to execute command "${registeredCommand}"`,
             ErrorSeverity.CRITICAL,
@@ -3707,10 +3905,19 @@ const setupGlobalAPI = () => {
       validateElement,
       createError: createInvokerError,
       logError: logInvokerError,
+
+      // Plugin and middleware API
+      registerPlugin: invokerInstance.registerPlugin.bind(invokerInstance),
+      unregisterPlugin: invokerInstance.unregisterPlugin.bind(invokerInstance),
+      registerMiddleware: invokerInstance.registerMiddleware.bind(invokerInstance),
+      unregisterMiddleware: invokerInstance.unregisterMiddleware.bind(invokerInstance),
+
       reset() {
         invokerInstance['commands'].clear();
         invokerInstance['commandStates'].clear();
         invokerInstance['sortedCommandKeys'] = [];
+        invokerInstance['plugins'].clear();
+        invokerInstance['middleware'].clear();
         console.log('Invokers: Reset complete.');
       }
     };
