@@ -384,6 +384,18 @@ export interface ConditionalCommands {
   onComplete?: string[];
 }
 
+/**
+ * Pipeline step configuration for template-based command pipelines.
+ */
+export interface PipelineStep {
+  command: string;
+  target: string;
+  condition?: 'success' | 'error' | 'always';
+  once?: boolean;
+  delay?: number;
+  data?: Record<string, string>;
+}
+
 // --- Global Type Augmentations ---
 
 declare global {
@@ -476,6 +488,7 @@ export class InvokerManager {
   private sortedCommandKeys: string[] = [];
   private commandStates = new Map<string, CommandState>();
   private andThenManager: AndThenManager;
+  private pipelineManager: PipelineManager;
   private executionQueue: Promise<void> = Promise.resolve();
 
   // Performance and debugging tracking
@@ -486,6 +499,7 @@ export class InvokerManager {
 
   constructor() {
     this.andThenManager = new AndThenManager(this);
+    this.pipelineManager = new PipelineManager(this);
 
     // Only initialize if this is the first instance to avoid duplicate listeners
     if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -1597,10 +1611,206 @@ export class InvokerManager {
         );
       }
     });
+
+    // Pipeline command for template-based workflows
+    this.register("--pipeline", async ({ invoker, params }) => {
+      const [action, pipelineId] = params;
+      
+      if (action !== 'execute') {
+        throw createInvokerError(
+          `Invalid pipeline action "${action}". Only "execute" is supported`,
+          ErrorSeverity.ERROR,
+          {
+            command: '--pipeline',
+            element: invoker,
+            context: { action, availableActions: ['execute'] },
+            recovery: 'Use --pipeline:execute:your-pipeline-id'
+          }
+        );
+      }
+
+      if (!pipelineId) {
+        throw createInvokerError(
+          'Pipeline command requires a pipeline ID',
+          ErrorSeverity.ERROR,
+          {
+            command: '--pipeline',
+            element: invoker,
+            context: { params },
+            recovery: 'Use --pipeline:execute:your-pipeline-id'
+          }
+        );
+      }
+
+      const context = this.createContext(
+        { command: '--pipeline:execute', source: invoker, target: invoker } as any,
+        '--pipeline:execute',
+        params
+      );
+
+      await this.pipelineManager.executePipeline(pipelineId, context);
+    });
   }
 }
 
 
+
+// --- Pipeline Manager Class ---
+
+/**
+ * Manages template-based command pipelines using <pipeline-step> elements.
+ */
+class PipelineManager {
+  private invokerManager: InvokerManager;
+
+  constructor(invokerManager: InvokerManager) {
+    this.invokerManager = invokerManager;
+  }
+
+  /**
+   * Executes a pipeline defined in a template element.
+   */
+  async executePipeline(pipelineId: string, context: CommandContext): Promise<void> {
+    const template = document.getElementById(pipelineId) as HTMLTemplateElement;
+    if (!template?.hasAttribute('data-pipeline')) {
+      console.warn(`Invokers: Pipeline template "${pipelineId}" not found or not marked with data-pipeline attribute`);
+      return;
+    }
+
+    try {
+      const steps = this.parsePipelineSteps(template);
+      let previousResult: CommandExecutionResult = { success: true };
+
+      for (const step of steps) {
+        if (this.shouldExecuteStep(step, previousResult)) {
+          if (step.delay && step.delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, step.delay));
+          }
+
+          previousResult = await this.executeStep(step, context);
+
+          if (step.once) {
+            this.removeStepFromTemplate(template, step);
+          }
+
+          // If a step fails and there are no error handlers, stop execution
+          if (!previousResult.success && !this.hasErrorHandler(steps, steps.indexOf(step))) {
+            console.warn(`Invokers: Pipeline "${pipelineId}" stopped due to failed step: ${step.command}`);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Invokers: Pipeline "${pipelineId}" execution failed:`, error);
+    }
+  }
+
+  /**
+   * Parses pipeline steps from a template element.
+   */
+  private parsePipelineSteps(template: HTMLTemplateElement): PipelineStep[] {
+    const steps: PipelineStep[] = [];
+    const content = template.content;
+    const stepElements = content.querySelectorAll('pipeline-step');
+
+    stepElements.forEach((stepEl, index) => {
+      const command = stepEl.getAttribute('command');
+      const target = stepEl.getAttribute('target');
+
+      if (!command || !target) {
+        console.warn(`Invokers: Pipeline step ${index} missing required command or target attribute`);
+        return;
+      }
+
+      const step: PipelineStep = {
+        command,
+        target,
+        condition: (stepEl.getAttribute('condition') as 'success' | 'error' | 'always') || 'always',
+        once: stepEl.hasAttribute('once'),
+        delay: parseInt(stepEl.getAttribute('delay') || '0', 10)
+      };
+
+      // Extract data attributes
+      const data: Record<string, string> = {};
+      Array.from(stepEl.attributes).forEach(attr => {
+        if (attr.name.startsWith('data-')) {
+          data[attr.name] = attr.value;
+        }
+      });
+      
+      if (Object.keys(data).length > 0) {
+        step.data = data;
+      }
+
+      steps.push(step);
+    });
+
+    return steps;
+  }
+
+  /**
+   * Determines if a pipeline step should execute based on condition and previous result.
+   */
+  private shouldExecuteStep(step: PipelineStep, previousResult: CommandExecutionResult): boolean {
+    switch (step.condition) {
+      case 'success':
+        return previousResult.success === true;
+      case 'error':
+        return previousResult.success === false;
+      case 'always':
+      default:
+        return true;
+    }
+  }
+
+  /**
+   * Executes a single pipeline step.
+   */
+  private async executeStep(step: PipelineStep, context: CommandContext): Promise<CommandExecutionResult> {
+    try {
+      // Create a synthetic invoker for the pipeline step
+      const syntheticInvoker = document.createElement('button');
+      syntheticInvoker.setAttribute('type', 'button');
+      syntheticInvoker.setAttribute('command', step.command.startsWith('--') ? step.command : `--${step.command}`);
+      syntheticInvoker.setAttribute('commandfor', step.target);
+
+      // Apply data attributes from the pipeline step
+      if (step.data) {
+        Object.entries(step.data).forEach(([key, value]) => {
+          syntheticInvoker.setAttribute(key, value);
+        });
+      }
+
+      await this.invokerManager.executeCommand(step.command, step.target, syntheticInvoker);
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error as Error };
+    }
+  }
+
+  /**
+   * Checks if there are error handlers after a given step index.
+   */
+  private hasErrorHandler(steps: PipelineStep[], currentIndex: number): boolean {
+    return steps.slice(currentIndex + 1).some(step => step.condition === 'error');
+  }
+
+  /**
+   * Removes a step from the template (for once-only steps).
+   */
+  private removeStepFromTemplate(template: HTMLTemplateElement, stepToRemove: PipelineStep): void {
+    const content = template.content;
+    const stepElements = content.querySelectorAll('pipeline-step');
+    
+    stepElements.forEach(stepEl => {
+      if (stepEl.getAttribute('command') === stepToRemove.command && 
+          stepEl.getAttribute('target') === stepToRemove.target) {
+        stepEl.remove();
+      }
+    });
+  }
+}
 
 // --- AndThen Manager Class ---
 

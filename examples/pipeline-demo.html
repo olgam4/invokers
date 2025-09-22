@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline & Command Chaining Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .demo-box {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e1e4e8;
+      border-radius: 8px;
+      background: #fafbfc;
+    }
+
+    button {
+      background: #0969da;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #0860ca;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 16px 0;
+      font-weight: 500;
+    }
+
+    .success {
+      background: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c2c7;
+    }
+
+    .processing {
+      background: #fff3cd;
+      color: #664d03;
+      border: 1px solid #ffecb5;
+      animation: pulse 1.5s infinite;
+    }
+
+    .completed {
+      background: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .workflow-step {
+      padding: 16px;
+      margin: 8px 0;
+      border-left: 4px solid #dee2e6;
+      background: white;
+      border-radius: 0 6px 6px 0;
+      transition: all 0.3s;
+    }
+
+    .workflow-step.active {
+      border-left-color: #0969da;
+      background: #f0f6ff;
+    }
+
+    .workflow-step.completed {
+      border-left-color: #28a745;
+      background: #f8fff9;
+    }
+
+    .workflow-step.error {
+      border-left-color: #dc3545;
+      background: #fff5f5;
+    }
+
+    code {
+      background: #f6f8fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0969da, #2ea043);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .form-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #d1d9e0;
+    }
+
+    .form-container.submitted {
+      background: #f0f9ff;
+      border-color: #0969da;
+    }
+
+    .tutorial-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      z-index: 1000;
+    }
+
+    .tutorial-overlay.tutorial-active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tutorial-content {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 400px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔗 Pipeline & Command Chaining Demo</h1>
+  <p>This page demonstrates the advanced pipeline and chaining capabilities of the Invokers library.</p>
+
+  <div class="demo-section">
+    <h2>Enhanced Attribute-Based Chaining</h2>
+    <p>Commands can be chained based on success/error states using <code>data-after-*</code> attributes:</p>
+    
+    <div class="demo-box">
+      <h3>Conditional Success/Error Chains</h3>
+      <button type="button"
+              command="--fetch:get"
+              data-url="https://httpbin.org/json"
+              commandfor="fetch-result"
+              data-after-success="--class:add:success,--text:set:✅ Data loaded successfully!"
+              data-after-error="--class:add:error,--text:set:❌ Failed to load data"
+              data-after-complete="--attr:set:aria-busy:false">
+        Load Data with Smart Chaining
+      </button>
+      
+      <button type="button"
+              command="--fetch:get"
+              data-url="https://invalid-url-that-will-fail.example"
+              commandfor="fetch-result"
+              data-after-success="--class:add:success,--text:set:✅ This won't run"
+              data-after-error="--class:add:error,--text:set:❌ Error chain executed"
+              data-after-complete="--attr:set:aria-busy:false">
+        Trigger Error Chain
+      </button>
+
+      <div id="fetch-result" class="status-message" aria-busy="false">
+        Click either button to see conditional chaining in action
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Declarative &lt;and-then&gt; Elements</h2>
+    <p>Create visual, tree-structured command chains with nested <code>&lt;and-then&gt;</code> elements:</p>
+    
+    <div class="demo-box">
+      <h3>Multi-Step Workflow</h3>
+      <button type="button" command="--text:set:Step 1 complete" commandfor="workflow-output">
+        Start Multi-Step Process
+        
+        <and-then command="--class:add:processing" commandfor="workflow-output" data-condition="success">
+          <and-then command="--text:append: → Step 2 complete" commandfor="workflow-output" data-delay="800">
+            <and-then command="--class:remove:processing" commandfor="workflow-output">
+              <and-then command="--class:add:completed" commandfor="workflow-output" data-delay="300">
+                <and-then command="--text:append: → All steps finished!" commandfor="workflow-output">
+                </and-then>
+              </and-then>
+            </and-then>
+          </and-then>
+        </and-then>
+      </button>
+
+      <div id="workflow-output" class="status-message">Ready to start workflow...</div>
+    </div>
+
+    <div class="demo-box">
+      <h3>One-Time Tutorial Steps</h3>
+      <button type="button" command="--show" commandfor="tutorial-step-1">
+        Start Tutorial (One-Time Only)
+        
+        <and-then command="--class:add:tutorial-active" commandfor="tutorial-overlay" data-once="true">
+          <and-then command="--text:set:Welcome to the tutorial!" commandfor="tutorial-message" data-once="true">
+            <and-then command="--attr:set:data-step:1" commandfor="tutorial-content" data-once="true">
+            </and-then>
+          </and-then>
+        </and-then>
+      </button>
+
+      <div id="tutorial-step-1" hidden>
+        <p>Tutorial content would go here...</p>
+        <button type="button" command="--hide" commandfor="tutorial-step-1">Close Tutorial</button>
+      </div>
+      
+      <div id="tutorial-overlay" class="tutorial-overlay">
+        <div class="tutorial-content">
+          <h3 id="tutorial-message">Tutorial Loading...</h3>
+          <div id="tutorial-content">
+            <p>This tutorial will only run once per page load!</p>
+            <button type="button" 
+                    command="--class:remove:tutorial-active" 
+                    commandfor="tutorial-overlay">
+              Got it!
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Template-Based Command Pipelines</h2>
+    <p>Define complex workflows using templates with <code>&lt;pipeline-step&gt;</code> elements:</p>
+    
+    <div class="demo-box">
+      <h3>User Registration Pipeline</h3>
+      <button type="button" command="--pipeline:execute:user-registration">
+        Complete Registration
+      </button>
+
+      <template id="user-registration" data-pipeline="true">
+        <pipeline-step command="--text:set:📝 Validating form..." target="registration-status" />
+        <pipeline-step command="--class:add:processing" target="registration-form" condition="success" delay="500" />
+        <pipeline-step command="--text:set:🌐 Submitting to server..." target="registration-status" condition="success" delay="800" />
+        <pipeline-step command="--class:add:submitted" target="registration-form" condition="success" delay="1000" />
+        <pipeline-step command="--text:set:✅ Registration complete!" target="registration-status" condition="success" />
+        <pipeline-step command="--show" target="welcome-screen" condition="success" once="true" delay="500" />
+        <pipeline-step command="--text:set:❌ Registration failed. Please try again." target="registration-status" condition="error" />
+      </template>
+
+      <div id="registration-form" class="form-container">
+        <h4>Registration Form</h4>
+        <div id="registration-status" class="status-message">Ready to register</div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div id="welcome-screen" hidden class="status-message success">
+        <h3>🎉 Welcome!</h3>
+        <p>Your account has been created successfully.</p>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <h3>Error Handling Pipeline</h3>
+      <button type="button" command="--pipeline:execute:error-demo">
+        Trigger Error Pipeline
+      </button>
+
+      <template id="error-demo" data-pipeline="true">
+        <pipeline-step command="--text:set:Starting process..." target="error-status" />
+        <pipeline-step command="--error:simulate" target="error-status" condition="success" delay="500" />
+        <pipeline-step command="--text:set:✅ This won't run" target="error-status" condition="success" />
+        <pipeline-step command="--text:set:🔧 Error detected, running recovery..." target="error-status" condition="error" delay="300" />
+        <pipeline-step command="--class:add:error" target="error-container" condition="error" />
+        <pipeline-step command="--text:append: Recovery complete." target="error-status" condition="error" delay="500" />
+      </template>
+
+      <div id="error-container">
+        <div id="error-status" class="status-message">Ready for error demo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Universal data-and-then Chaining</h2>
+    <p>Any command can be chained with any other using the <code>data-and-then</code> attribute:</p>
+    
+    <div class="demo-box">
+      <h3>Synchronous Command Chaining</h3>
+      <button type="button"
+              command="--class:add:highlighted"
+              commandfor="sync-target"
+              data-and-then="--text:set:✨ Highlighted and updated!"
+              data-then-target="sync-status">
+        Highlight + Update Text
+      </button>
+
+      <div id="sync-target" class="workflow-step">
+        Target element that will be highlighted
+      </div>
+      <div id="sync-status" class="status-message">
+        Status will update after highlight
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <h3>Asynchronous Command Chaining</h3>
+      <p>The library waits for async commands to complete before running the chain:</p>
+      
+      <button type="button"
+              command="--fetch:get"
+              data-url="https://httpbin.org/delay/1"
+              commandfor="async-target"
+              data-and-then="--class:add:loaded">
+        Fetch + Animate
+      </button>
+
+      <div id="async-target" class="status-message">
+        Content will load here, then get animated
+      </div>
+
+      <style>
+        .loaded {
+          animation: slideInUp 0.5s ease-out;
+          background: #d1e7dd !important;
+        }
+        
+        @keyframes slideInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      </style>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Complex Real-World Example</h2>
+    <p>A comprehensive form submission workflow combining all pipeline features:</p>
+    
+    <div class="demo-box">
+      <div class="form-container" id="complex-form">
+        <h3>Multi-Step Form Submission</h3>
+        
+        <button type="button"
+                command="--text:set:📋 Validating form data..."
+                commandfor="complex-status"
+                data-after-success="--class:add:processing,--text:set:🌐 Submitting to server..."
+                data-after-complete="--attr:set:aria-busy:false">
+          Submit Complex Form
+          
+          <!-- Success flow with nested and-then elements -->
+          <and-then command="--class:add:submitted" commandfor="complex-form" data-condition="success" data-delay="1000">
+            <and-then command="--text:set:✅ Form submitted successfully!" commandfor="complex-status">
+              <and-then command="--show" commandfor="success-panel" data-once="true" data-delay="500">
+                <and-then command="--class:remove:processing" commandfor="complex-form">
+                  <and-then command="--class:add:completed" commandfor="complex-form">
+                  </and-then>
+                </and-then>
+              </and-then>
+            </and-then>
+          </and-then>
+          
+          <!-- Error flow -->
+          <and-then command="--class:add:error" commandfor="complex-form" data-condition="error">
+            <and-then command="--text:set:❌ Submission failed. Please try again." commandfor="complex-status">
+              <and-then command="--show" commandfor="error-panel" data-delay="300">
+              </and-then>
+            </and-then>
+          </and-then>
+        </button>
+
+        <div id="complex-status" class="status-message" aria-busy="false">
+          Ready to submit form
+        </div>
+
+        <div id="success-panel" hidden class="status-message success">
+          <h4>🎉 Success!</h4>
+          <p>Your form has been submitted and processed successfully.</p>
+          <button type="button" 
+                  command="--attr:set:data-submissions:1"
+                  commandfor="complex-form">
+            Mark as Submitted
+          </button>
+        </div>
+
+        <div id="error-panel" hidden class="status-message error">
+          <h4>⚠️ Submission Error</h4>
+          <p>There was an issue processing your form. Please check your data and try again.</p>
+          <button type="button" 
+                  command="--class:remove:error"
+                  commandfor="complex-form"
+                  data-and-then="--hide"
+                  data-then-target="error-panel">
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Command Lifecycle States</h2>
+    <p>Control command execution with lifecycle states:</p>
+    
+    <div class="demo-box">
+      <div class="workflow-step">
+        <h4>One-Time Commands</h4>
+        <button type="button"
+                command="--text:set:🎯 Welcome message shown (once only)"
+                commandfor="once-output"
+                data-state="once">
+          Show Welcome (Once Only)
+        </button>
+        <div id="once-output" class="status-message">Click the button above - it will only work once!</div>
+      </div>
+
+      <div class="workflow-step">
+        <h4>Disabled Commands</h4>
+        <button type="button"
+                command="--text:set:This won't execute"
+                commandfor="disabled-output"
+                data-state="disabled">
+          Disabled Command
+        </button>
+        <div id="disabled-output" class="status-message">This output won't change</div>
+      </div>
+
+      <div class="workflow-step">
+        <h4>Completed Commands</h4>
+        <button type="button"
+                command="--text:set:This also won't execute"
+                commandfor="completed-output"
+                data-state="completed">
+          Completed Command
+        </button>
+        <div id="completed-output" class="status-message">This output also won't change</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the Invokers library -->
+  <script type="module" src="../src/index.ts"></script>
+
+  <script>
+    // Register custom commands for the demos
+    window.addEventListener('load', () => {
+      if (window.Invoker) {
+        // Error simulation command
+        window.Invoker.register('--error:simulate', ({ targetElement }) => {
+          throw new Error('Simulated error for demo purposes');
+        });
+
+        // Progress update command
+        window.Invoker.register('--progress:update', ({ targetElement, params }) => {
+          const [percentage] = params;
+          const progressFill = targetElement.querySelector('.progress-fill');
+          if (progressFill) {
+            progressFill.style.width = `${percentage}%`;
+          }
+        });
+
+        console.log('Pipeline demo loaded with custom commands');
+        
+        // Enable debug mode to see execution details
+        window.Invoker.debug = true;
+      }
+    });
+
+    // Add some visual feedback
+    document.addEventListener('command', (e) => {
+      console.log('Command executed:', e.command, 'on:', e.target);
+    });
+
+    // Add loading states for fetch operations
+    document.addEventListener('command', (e) => {
+      if (e.command.startsWith('--fetch')) {
+        const target = e.target;
+        target.setAttribute('aria-busy', 'true');
+        target.classList.add('processing');
+        
+        // Remove processing state after a delay (simulating completion)
+        setTimeout(() => {
+          target.setAttribute('aria-busy', 'false');
+          target.classList.remove('processing');
+        }, 2000);
+      }
+    });
+  </script>
+</body>
+</html>

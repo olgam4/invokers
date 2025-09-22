@@ -180,6 +180,11 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `step-up`              | `<input type=number>`| Increment number input                       |
 | `step-down`            | `<input type=number>`| Decrement number input                       |
 
+### Pipeline Commands
+| Command                | Purpose                                      | Example                                      |
+| ---------------------- | -------------------------------------------- | -------------------------------------------- |
+| `--pipeline:execute:id`| Execute template-based command pipeline     | `command="--pipeline:execute:user-flow"`    |
+
 💡 **Tip:** Commands starting with `--` are Invokers extensions. Commands without prefixes are native/future browser commands.
 
 ## 🚀 Installation
@@ -786,6 +791,92 @@ Copy these common patterns and adapt them to your needs.
 ## 🎯 Power User Features
 
 For complex applications, Invokers provides sophisticated workflow orchestration capabilities.
+
+### Enhanced Attribute-Based Chaining
+
+The most powerful feature for building complex workflows is conditional command chaining based on execution results:
+
+#### Conditional Execution Attributes
+
+```html
+<!-- Different commands based on success/failure -->
+<button type="button"
+  command="--fetch:get"
+  data-url="/api/user-data"
+  commandfor="profile"
+  data-after-success="--class:add:loaded,--text:set:Profile loaded!"
+  data-after-error="--class:add:error,--text:set:Failed to load profile"
+  data-after-complete="--attr:set:aria-busy:false">
+  Load Profile
+</button>
+<div id="profile" aria-busy="false">Profile will load here...</div>
+```
+
+#### Enhanced Chaining Attributes
+
+| Attribute | When It Executes | Purpose |
+| --------- | ---------------- | ------- |
+| `data-after-success` | Command completed successfully | Commands for success scenarios |
+| `data-after-error` | Command failed with error | Commands for error handling |
+| `data-after-complete` | Command finished (success or error) | Cleanup commands that always run |
+| `data-then-target` | For chained commands | Override target for followup commands |
+| `data-then-state` | For chained commands | Set execution state (`once`, `disabled`, etc.) |
+
+#### Universal `data-and-then` Chaining
+
+Chain any command with any other command. Works for both synchronous and asynchronous operations:
+
+```html
+<!-- Synchronous chaining -->
+<button type="button"
+  command="--class:add:highlighted"
+  commandfor="status-box"
+  data-and-then="--text:set:Status updated!">
+  Highlight and Update
+</button>
+
+<!-- Asynchronous chaining (waits for fetch to complete) -->
+<button type="button"
+  command="--fetch:get"
+  data-url="/api/content"
+  commandfor="content-area"
+  data-and-then="--class:add:loaded">
+  Load and Animate
+</button>
+```
+
+### Template-Based Command Pipelines
+
+For the most complex workflows, define reusable command sequences using templates:
+
+```html
+<button type="button" command="--pipeline:execute:user-registration">
+  Complete Registration
+</button>
+
+<template id="user-registration" data-pipeline="true">
+  <pipeline-step command="--form:validate" target="registration-form" />
+  <pipeline-step command="--fetch:post" target="api-endpoint" 
+                  data-url="/register" condition="success" />
+  <pipeline-step command="--class:add:registered" target="user-profile" 
+                  condition="success" once="true" />
+  <pipeline-step command="--show" target="welcome-screen" 
+                  condition="success" delay="500" />
+  <pipeline-step command="--text:set:Registration failed" target="error-display" 
+                  condition="error" />
+</template>
+```
+
+#### Pipeline Step Attributes
+
+| Attribute | Purpose | Example |
+| --------- | ------- | ------- |
+| `command` | Command to execute | `--fetch:get` |
+| `target` | Target element ID | `user-profile` |
+| `condition` | When to execute | `success`, `error`, `always` (default) |
+| `delay` | Delay in milliseconds | `500` |
+| `once` | Remove step after execution | `true` |
+| `data-*` | Pass data to command | `data-url="/api/users"` |
 
 #### Declarative `<and-then>` Elements
 
