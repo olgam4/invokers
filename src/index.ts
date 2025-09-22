@@ -2035,11 +2035,11 @@ if (typeof window !== "undefined") {
 if (typeof window !== "undefined") {
   try {
     // Try to import and register extended commands
-    import('./invoker-commands').then(({ registerAll }) => {
-      registerAll();
-    }).catch(() => {
-      // Extended commands not available, continue with core commands only
-    });
+    // import('./invoker-commands').then(({ registerAll }) => {
+    //   registerAll();
+    // }).catch(() => {
+    //   // Extended commands not available, continue with core commands only
+    // });
   } catch (e) {
     // Extended commands not available, continue with core commands only
   }
