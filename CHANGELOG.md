@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.5.0](https://github.com/doeixd/invokers/compare/v1.4.0...v1.5.0) (2025-09-22)
+
+
+### Features
+
+* plugin system ([7e3a613](https://github.com/doeixd/invokers/commit/7e3a613671f702170ef25fd690ec03a9cb70d5e4))
+
+
+### Bug Fixes
+
+* small changes ([1cbef23](https://github.com/doeixd/invokers/commit/1cbef2340d822920d8d88784578e6fce4ef4779f))
+
 ## [1.4.0](https://github.com/doeixd/invokers/compare/v1.3.2...v1.4.0) (2025-09-22)
 
 
