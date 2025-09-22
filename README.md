@@ -479,6 +479,13 @@ Invokers includes a comprehensive set of extended commands that are automaticall
 - **Focus Management**: `--focus` - Programmatically focus elements
 - **State Management**: `--disabled:toggle` - Enable/disable form elements
 - **Scroll Controls**: `--scroll:into-view`, `--scroll:to` - Smooth scrolling to elements
+- **Storage**: `--storage:local:set`, `--storage:session:get` - Persist data in browser storage
+- **Animation**: `--animate:fade-in`, `--animate:slide-up` - CSS animations and transitions
+- **Event Emitting**: `--emit:custom-event` - Dispatch custom events
+- **URL Manipulation**: `--url:params:get`, `--url:hash:set` - Work with URLs and browser history
+- **History Navigation**: `--history:push`, `--history:back` - Browser history management
+- **Device APIs**: `--device:vibrate`, `--device:geolocation:get` - Access device features
+- **Accessibility**: `--a11y:announce`, `--a11y:focus-trap` - Screen reader and focus management
 - **Clipboard**: `--clipboard:copy` - Copy text to clipboard
 - **Navigation**: `--navigate:to` - Programmatic navigation
 - **Text Operations**: `--text:copy` - Copy element text content

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Advanced Features Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .demo-box {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e1e4e8;
+      border-radius: 8px;
+      background: #fafbfc;
+    }
+
+    button {
+      background: #0969da;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #0860ca;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 16px 0;
+      font-weight: 500;
+    }
+
+    .success {
+      background: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c2c7;
+    }
+
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .form-group {
+      margin: 16px 0;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d9e0;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #0969da;
+      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+    }
+
+    .animated-element {
+      padding: 20px;
+      background: #e3f2fd;
+      border-radius: 8px;
+      margin: 10px 0;
+      transition: all 0.3s ease;
+    }
+
+    /* Animation classes for --animate command */
+    .invokers-animate-fade-in {
+      animation: invokers-fade-in 0.5s ease-in-out;
+    }
+
+    .invokers-animate-fade-out {
+      animation: invokers-fade-out 0.5s ease-in-out;
+    }
+
+    .invokers-animate-slide-up {
+      animation: invokers-slide-up 0.5s ease-out;
+    }
+
+    .invokers-animate-slide-down {
+      animation: invokers-slide-down 0.5s ease-out;
+    }
+
+    .invokers-animate-slide-left {
+      animation: invokers-slide-left 0.5s ease-out;
+    }
+
+    .invokers-animate-slide-right {
+      animation: invokers-slide-right 0.5s ease-out;
+    }
+
+    .invokers-animate-bounce {
+      animation: invokers-bounce 0.6s ease-in-out;
+    }
+
+    .invokers-animate-shake {
+      animation: invokers-shake 0.5s ease-in-out;
+    }
+
+    .invokers-animate-pulse {
+      animation: invokers-pulse 0.8s ease-in-out;
+    }
+
+    .invokers-animate-flip {
+      animation: invokers-flip 0.6s ease-in-out;
+    }
+
+    .invokers-animate-rotate-in {
+      animation: invokers-rotate-in 0.5s ease-out;
+    }
+
+    .invokers-animate-zoom-in {
+      animation: invokers-zoom-in 0.5s ease-out;
+    }
+
+    .invokers-animate-zoom-out {
+      animation: invokers-zoom-out 0.5s ease-out;
+    }
+
+    @keyframes invokers-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes invokers-fade-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    @keyframes invokers-slide-up {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes invokers-slide-down {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes invokers-slide-left {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes invokers-slide-right {
+      from { transform: translateX(-100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes invokers-bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+
+    @keyframes invokers-shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+
+    @keyframes invokers-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes invokers-flip {
+      0% { transform: rotateY(0); }
+      50% { transform: rotateY(180deg); }
+      100% { transform: rotateY(360deg); }
+    }
+
+    @keyframes invokers-rotate-in {
+      from { transform: rotate(-180deg) scale(0); opacity: 0; }
+      to { transform: rotate(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes invokers-zoom-in {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes invokers-zoom-out {
+      from { transform: scale(1); opacity: 0; }
+      to { transform: scale(0); opacity: 1; }
+    }
+
+    .storage-display {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin: 10px 0;
+    }
+
+    .event-log {
+      background: #f8f9fa;
+      border: 1px solid #d1d9e0;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .focus-trap-demo {
+      border: 2px dashed #0969da;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 6px;
+      background: #0969da;
+      color: white;
+      padding: 8px;
+      text-decoration: none;
+      border-radius: 4px;
+      z-index: 1000;
+    }
+
+    .skip-link:focus {
+      top: 6px;
+    }
+
+    code {
+      background: #f6f8fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <h1>🚀 Advanced Features Demo</h1>
+  <p>This page demonstrates the new advanced commands: <code>--storage</code>, <code>--animate</code>, <code>--emit</code>, <code>--url</code>, <code>--history</code>, <code>--device</code>, and <code>--a11y</code>.</p>
+
+  <div id="main-content">
+    <div class="demo-section">
+      <h2>Storage Commands (--storage)</h2>
+      <p>Persist data in localStorage or sessionStorage.</p>
+
+      <div class="demo-box">
+        <h3>Save User Preferences</h3>
+        <div class="form-group">
+          <label for="username-input">Username:</label>
+          <input type="text" id="username-input" placeholder="Enter username">
+        </div>
+
+        <button type="button" command="--storage:local:set:username" commandfor="username-input">
+          Save to Local Storage
+        </button>
+        <button type="button" command="--storage:session:set:username" commandfor="username-input">
+          Save to Session Storage
+        </button>
+        <button type="button" command="--storage:local:get:username" commandfor="username-display">
+          Load from Local Storage
+        </button>
+        <button type="button" command="--storage:session:get:username" commandfor="username-display">
+          Load from Session Storage
+        </button>
+
+        <div id="username-display" class="storage-display">Stored username will appear here</div>
+      </div>
+
+      <div class="demo-box">
+        <h3>Storage Management</h3>
+        <button type="button" command="--storage:local:remove:username">
+          Remove Username from Local
+        </button>
+        <button type="button" command="--storage:session:clear">
+          Clear All Session Storage
+        </button>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Animation Commands (--animate)</h2>
+      <p>Trigger CSS animations declaratively.</p>
+
+      <div class="demo-box">
+        <h3>Animate Elements</h3>
+        <div id="animated-element" class="animated-element">
+          This element can be animated!
+        </div>
+
+        <button type="button" command="--animate:fade-in" commandfor="animated-element">
+          Fade In
+        </button>
+        <button type="button" command="--animate:slide-up" commandfor="animated-element">
+          Slide Up
+        </button>
+        <button type="button" command="--animate:bounce" commandfor="animated-element">
+          Bounce
+        </button>
+        <button type="button" command="--animate:shake" commandfor="animated-element">
+          Shake
+        </button>
+        <button type="button" command="--animate:flip" commandfor="animated-element">
+          Flip
+        </button>
+        <button type="button" command="--animate:pulse" commandfor="animated-element">
+          Pulse
+        </button>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Event Emitting Commands (--emit)</h2>
+      <p>Dispatch custom events for advanced interactions.</p>
+
+      <div class="demo-box">
+        <h3>Custom Events</h3>
+        <button type="button" command="--emit:user-action:save-form">
+          Emit Save Event
+        </button>
+        <button type="button" command="--emit:navigation:next-page">
+          Emit Navigation Event
+        </button>
+
+        <div class="event-log" id="event-log">
+          Event log will appear here...
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>URL Commands (--url)</h2>
+      <p>Manipulate URLs and browser location.</p>
+
+      <div class="demo-box">
+        <h3>URL Parameters</h3>
+        <div class="form-group">
+          <label for="param-name">Parameter Name:</label>
+          <input type="text" id="param-name" value="test">
+        </div>
+
+        <div class="form-group">
+          <label for="param-value">Parameter Value:</label>
+          <input type="text" id="param-value" value="hello">
+        </div>
+
+        <button type="button" command="--url:params:set" commandfor="param-name" data-and-then="--url:params:set" data-then-target="param-value">
+          Set URL Param
+        </button>
+        <button type="button" command="--url:params:get:test" commandfor="param-display">
+          Get URL Param 'test'
+        </button>
+
+        <div id="param-display" class="storage-display">Parameter value will appear here</div>
+      </div>
+
+      <div class="demo-box">
+        <h3>Hash Navigation</h3>
+        <button type="button" command="--url:hash:set:section-1">
+          Set Hash to #section-1
+        </button>
+        <button type="button" command="--url:hash:get" commandfor="hash-display">
+          Get Current Hash
+        </button>
+
+        <div id="hash-display" class="storage-display">Current hash will appear here</div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>History Commands (--history)</h2>
+      <p>Control browser navigation history.</p>
+
+      <div class="demo-box">
+        <h3>History Navigation</h3>
+        <button type="button" command="--history:push:/demo-page">
+          Push /demo-page to History
+        </button>
+        <button type="button" command="--history:replace:/replaced-page">
+          Replace Current with /replaced-page
+        </button>
+        <button type="button" command="--history:back">
+          Go Back
+        </button>
+        <button type="button" command="--history:forward">
+          Go Forward
+        </button>
+        <button type="button" command="--history:go:-2">
+          Go Back 2 Pages
+        </button>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Device Commands (--device)</h2>
+      <p>Access device features and sensors.</p>
+
+      <div class="demo-box">
+        <h3>Device Features</h3>
+        <button type="button" command="--device:vibrate:200:100:200">
+          Vibrate Pattern
+        </button>
+        <button type="button" command="--device:share:title:Check this out:text:Amazing demo:url:https://example.com">
+          Share Content
+        </button>
+        <button type="button" command="--device:geolocation:get" commandfor="location-display">
+          Get Location
+        </button>
+        <button type="button" command="--device:battery:get" commandfor="battery-display">
+          Get Battery Info
+        </button>
+
+        <div id="location-display" class="storage-display">Location data will appear here</div>
+        <div id="battery-display" class="storage-display">Battery info will appear here</div>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Accessibility Commands (--a11y)</h2>
+      <p>Enhance accessibility with screen reader support and focus management.</p>
+
+      <div class="demo-box">
+        <h3>Screen Reader Announcements</h3>
+        <button type="button" command="--a11y:announce:Form saved successfully!">
+          Announce Success
+        </button>
+        <button type="button" command="--a11y:announce:Error: Please check your input">
+          Announce Error
+        </button>
+      </div>
+
+      <div class="demo-box">
+        <h3>Focus Management</h3>
+        <div class="form-group">
+          <label for="focus-input-1">First Input:</label>
+          <input type="text" id="focus-input-1" placeholder="First field">
+        </div>
+
+        <div class="form-group">
+          <label for="focus-input-2">Second Input:</label>
+          <input type="text" id="focus-input-2" placeholder="Second field">
+        </div>
+
+        <button type="button" command="--a11y:focus" commandfor="focus-input-1">
+          Focus First Input
+        </button>
+        <button type="button" command="--a11y:focus" commandfor="focus-input-2">
+          Focus Second Input
+        </button>
+        <button type="button" command="--a11y:skip-to:focus-input-2">
+          Skip to Second Input
+        </button>
+      </div>
+
+      <div class="demo-box">
+        <h3>Focus Trap Demo</h3>
+        <div id="focus-trap-container" class="focus-trap-demo">
+          <p>This container can trap focus when enabled.</p>
+          <button type="button" id="trap-btn-1">Button 1</button>
+          <button type="button" id="trap-btn-2">Button 2</button>
+          <button type="button" id="trap-btn-3">Button 3</button>
+        </div>
+
+        <button type="button" command="--a11y:focus-trap:enable" commandfor="focus-trap-container">
+          Enable Focus Trap
+        </button>
+        <button type="button" command="--a11y:focus-trap:disable" commandfor="focus-trap-container">
+          Disable Focus Trap
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the Invokers library -->
+  <script type="module" src="../dist/esm/development/index.js"></script>
+
+  <script>
+    // Event listener for custom events
+    document.addEventListener('user-action', (e) => {
+      logEvent('user-action', e.detail);
+    });
+
+    document.addEventListener('navigation', (e) => {
+      logEvent('navigation', e.detail);
+    });
+
+    // Geolocation success/error listeners
+    document.addEventListener('geolocation:success', (e) => {
+      logEvent('geolocation:success', e.detail);
+    });
+
+    document.addEventListener('geolocation:error', (e) => {
+      logEvent('geolocation:error', e.detail);
+    });
+
+    function logEvent(type, detail) {
+      const log = document.getElementById('event-log');
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.textContent = `[${timestamp}] ${type}: ${JSON.stringify(detail)}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Add some visual feedback
+    document.addEventListener('command', (e) => {
+      console.log('Command executed:', e.command, 'on:', e.target);
+    });
+  </script>
+</body>
+</html>

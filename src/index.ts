@@ -1822,6 +1822,730 @@ export class InvokerManager {
       }
     });
 
+    // --storage command for localStorage and sessionStorage
+    this.register("--storage", ({ invoker, getTargets, params }) => {
+      const [storageType, action, key, ...valueParts] = params;
+      const value = valueParts.join(':'); // Rejoin with colons for complex values
+      const targets = getTargets();
+
+      if (!storageType || !['local', 'session'].includes(storageType)) {
+        throw createInvokerError(
+          `Invalid storage type "${storageType}". Must be "local" or "session"`,
+          ErrorSeverity.ERROR,
+          {
+            command: '--storage',
+            element: invoker,
+            context: { storageType, availableTypes: ['local', 'session'] },
+            recovery: 'Use --storage:local:action:key or --storage:session:action:key'
+          }
+        );
+      }
+
+      const storage = storageType === 'local' ? localStorage : sessionStorage;
+
+      try {
+        switch (action) {
+          case 'set':
+            if (!key) {
+              throw createInvokerError(
+                'Storage set requires a key',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--storage',
+                  element: invoker,
+                  recovery: 'Use --storage:local:set:key:value or --storage:session:set:key:value'
+                }
+              );
+            }
+            storage.setItem(key, value);
+            break;
+
+          case 'get':
+            if (!key) {
+              throw createInvokerError(
+                'Storage get requires a key',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--storage',
+                  element: invoker,
+                  recovery: 'Use --storage:local:get:key or --storage:session:get:key'
+                }
+              );
+            }
+            const storedValue = storage.getItem(key);
+            if (targets.length > 0 && storedValue !== null) {
+              if ('value' in targets[0]) {
+                (targets[0] as HTMLInputElement).value = storedValue;
+              } else {
+                targets[0].textContent = storedValue;
+              }
+            }
+            break;
+
+          case 'remove':
+            if (!key) {
+              throw createInvokerError(
+                'Storage remove requires a key',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--storage',
+                  element: invoker,
+                  recovery: 'Use --storage:local:remove:key or --storage:session:remove:key'
+                }
+              );
+            }
+            storage.removeItem(key);
+            break;
+
+          case 'clear':
+            storage.clear();
+            break;
+
+          default:
+            throw createInvokerError(
+              `Unknown storage action "${action}"`,
+              ErrorSeverity.ERROR,
+              {
+                command: '--storage',
+                element: invoker,
+                context: { action, availableActions: ['set', 'get', 'remove', 'clear'] },
+                recovery: 'Use set, get, remove, or clear actions'
+              }
+            );
+        }
+      } catch (error) {
+        throw createInvokerError(
+          `Storage operation failed: ${(error as Error).message}`,
+          ErrorSeverity.ERROR,
+          {
+            command: '--storage',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Check storage availability and quota limits'
+          }
+        );
+      }
+    });
+
+    // --animate command for CSS animations
+    this.register("--animate", ({ invoker, getTargets, params }) => {
+      const [animation] = params;
+      const targets = getTargets();
+
+      if (targets.length === 0) {
+        const error = createInvokerError(
+          'No target elements found for --animate command',
+          ErrorSeverity.WARNING,
+          {
+            command: '--animate',
+            element: invoker,
+            recovery: 'Ensure commandfor points to a valid element'
+          }
+        );
+        logInvokerError(error);
+        return;
+      }
+
+      const validAnimations = [
+        'fade-in', 'fade-out', 'slide-up', 'slide-down', 'slide-left', 'slide-right',
+        'bounce', 'shake', 'pulse', 'flip', 'rotate-in', 'zoom-in', 'zoom-out'
+      ];
+
+      if (!validAnimations.includes(animation)) {
+        throw createInvokerError(
+          `Unknown animation "${animation}"`,
+          ErrorSeverity.ERROR,
+          {
+            command: '--animate',
+            element: invoker,
+            context: { animation, validAnimations },
+            recovery: `Use one of: ${validAnimations.join(', ')}`
+          }
+        );
+      }
+
+      try {
+        targets.forEach(target => {
+          if (!target.isConnected) {
+            console.warn('Invokers: Skipping disconnected target element', target);
+            return;
+          }
+
+          // Remove any existing animation classes
+          target.classList.forEach(className => {
+            if (className.startsWith('invokers-animate-')) {
+              target.classList.remove(className);
+            }
+          });
+
+          // Force reflow to restart animation
+          void target.offsetHeight;
+
+          // Add the animation class
+          target.classList.add(`invokers-animate-${animation}`);
+
+          // Remove the class after animation completes
+          const handleAnimationEnd = () => {
+            target.classList.remove(`invokers-animate-${animation}`);
+            target.removeEventListener('animationend', handleAnimationEnd);
+          };
+          target.addEventListener('animationend', handleAnimationEnd);
+        });
+      } catch (error) {
+        throw createInvokerError(
+          'Failed to animate target elements',
+          ErrorSeverity.ERROR,
+          {
+            command: '--animate',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Ensure target elements support CSS animations'
+          }
+        );
+      }
+    });
+
+    // --emit command for dispatching custom events
+    this.register("--emit", ({ invoker, getTargets, params }) => {
+      const [eventType, ...detailParts] = params;
+      const detail = detailParts.length > 0 ? detailParts.join(':') : null;
+      const targets = getTargets();
+
+      if (!eventType) {
+        throw createInvokerError(
+          'Emit command requires an event type',
+          ErrorSeverity.ERROR,
+          {
+            command: '--emit',
+            element: invoker,
+            recovery: 'Use --emit:event-type or --emit:event-type:detail-data'
+          }
+        );
+      }
+
+      try {
+        const eventInit: CustomEventInit = {};
+        if (detail !== null) {
+          try {
+            eventInit.detail = JSON.parse(detail);
+          } catch {
+            eventInit.detail = detail;
+          }
+        }
+
+        const customEvent = new CustomEvent(eventType, {
+          bubbles: true,
+          cancelable: true,
+          ...eventInit
+        });
+
+        if (targets.length > 0) {
+          targets.forEach(target => target.dispatchEvent(customEvent));
+        } else {
+          // If no targets, dispatch on the document
+          document.dispatchEvent(customEvent);
+        }
+      } catch (error) {
+        throw createInvokerError(
+          'Failed to emit custom event',
+          ErrorSeverity.ERROR,
+          {
+            command: '--emit',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Ensure event type is a valid string'
+          }
+        );
+      }
+    });
+
+    // --url command for URL manipulation
+    this.register("--url", ({ invoker, getTargets, params }) => {
+      const [action, ...valueParts] = params;
+      const value = valueParts.join(':');
+      const targets = getTargets();
+
+      try {
+        switch (action) {
+          case 'params:get':
+            if (!value) {
+              throw createInvokerError(
+                'URL params:get requires a parameter name',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--url',
+                  element: invoker,
+                  recovery: 'Use --url:params:get:param-name'
+                }
+              );
+            }
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramValue = urlParams.get(value) || '';
+            if (targets.length > 0) {
+              if ('value' in targets[0]) {
+                (targets[0] as HTMLInputElement).value = paramValue;
+              } else {
+                targets[0].textContent = paramValue;
+              }
+            }
+            break;
+
+          case 'params:set':
+            if (!value || !value.includes(':')) {
+              throw createInvokerError(
+                'URL params:set requires param-name:value format',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--url',
+                  element: invoker,
+                  recovery: 'Use --url:params:set:param-name:new-value'
+                }
+              );
+            }
+            const [paramName, newParamValue] = value.split(':', 2);
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set(paramName, newParamValue);
+            window.history.replaceState(null, '', currentUrl.toString());
+            break;
+
+          case 'hash:get':
+            const hashValue = window.location.hash.substring(1); // Remove the #
+            if (targets.length > 0) {
+              if ('value' in targets[0]) {
+                (targets[0] as HTMLInputElement).value = hashValue;
+              } else {
+                targets[0].textContent = hashValue;
+              }
+            }
+            break;
+
+          case 'hash:set':
+            window.location.hash = value ? `#${value}` : '';
+            break;
+
+          case 'reload':
+            window.location.reload();
+            break;
+
+          case 'replace':
+            if (!value) {
+              throw createInvokerError(
+                'URL replace requires a URL',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--url',
+                  element: invoker,
+                  recovery: 'Use --url:replace:new-url'
+                }
+              );
+            }
+            window.location.replace(value);
+            break;
+
+          default:
+            throw createInvokerError(
+              `Unknown URL action "${action}"`,
+              ErrorSeverity.ERROR,
+              {
+                command: '--url',
+                element: invoker,
+                context: { action, availableActions: ['params:get', 'params:set', 'hash:get', 'hash:set', 'reload', 'replace'] },
+                recovery: 'Use a valid URL action'
+              }
+            );
+        }
+      } catch (error) {
+        throw createInvokerError(
+          'URL operation failed',
+          ErrorSeverity.ERROR,
+          {
+            command: '--url',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Check URL format and browser support'
+          }
+        );
+      }
+    });
+
+    // --history command for browser history manipulation
+    this.register("--history", ({ invoker, params }) => {
+      const [action, ...valueParts] = params;
+      const value = valueParts.join(':');
+
+      try {
+        switch (action) {
+          case 'push':
+            if (!value) {
+              throw createInvokerError(
+                'History push requires a URL',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--history',
+                  element: invoker,
+                  recovery: 'Use --history:push:new-url'
+                }
+              );
+            }
+            window.history.pushState(null, '', value);
+            break;
+
+          case 'replace':
+            if (!value) {
+              throw createInvokerError(
+                'History replace requires a URL',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--history',
+                  element: invoker,
+                  recovery: 'Use --history:replace:new-url'
+                }
+              );
+            }
+            window.history.replaceState(null, '', value);
+            break;
+
+          case 'back':
+            window.history.back();
+            break;
+
+          case 'forward':
+            window.history.forward();
+            break;
+
+          case 'go':
+            const delta = value ? parseInt(value, 10) : -1;
+            if (isNaN(delta)) {
+              throw createInvokerError(
+                'History go requires a valid number',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--history',
+                  element: invoker,
+                  recovery: 'Use --history:go:number (positive for forward, negative for back)'
+                }
+              );
+            }
+            window.history.go(delta);
+            break;
+
+          default:
+            throw createInvokerError(
+              `Unknown history action "${action}"`,
+              ErrorSeverity.ERROR,
+              {
+                command: '--history',
+                element: invoker,
+                context: { action, availableActions: ['push', 'replace', 'back', 'forward', 'go'] },
+                recovery: 'Use a valid history action'
+              }
+            );
+        }
+      } catch (error) {
+        throw createInvokerError(
+          'History operation failed',
+          ErrorSeverity.ERROR,
+          {
+            command: '--history',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Check browser history support'
+          }
+        );
+      }
+    });
+
+    // --device command for device APIs
+    this.register("--device", ({ invoker, getTargets, params }) => {
+      const [action, ...valueParts] = params;
+      const value = valueParts.join(':');
+      const targets = getTargets();
+
+      try {
+        switch (action) {
+          case 'vibrate':
+            if (!value) {
+              throw createInvokerError(
+                'Device vibrate requires a pattern',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--device',
+                  element: invoker,
+                  recovery: 'Use --device:vibrate:200 or --device:vibrate:100:200:100'
+                }
+              );
+            }
+            if ('vibrate' in navigator) {
+              const pattern = value.split(':').map(n => parseInt(n, 10));
+              (navigator as any).vibrate(pattern.length === 1 ? pattern[0] : pattern);
+            } else {
+              console.warn('Invokers: Vibration API not supported');
+            }
+            break;
+
+          case 'share':
+            if (!('share' in navigator)) {
+              console.warn('Invokers: Web Share API not supported');
+              return;
+            }
+            const shareData: any = {};
+            if (value) {
+              const parts = value.split(':');
+              for (let i = 0; i < parts.length; i += 2) {
+                const key = parts[i];
+                const val = parts[i + 1];
+                if (key && val) {
+                  shareData[key] = val;
+                }
+              }
+            }
+            (navigator as any).share(shareData);
+            break;
+
+          case 'geolocation:get':
+            if (!('geolocation' in navigator)) {
+              throw createInvokerError(
+                'Geolocation API not supported',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--device',
+                  element: invoker,
+                  recovery: 'Geolocation requires HTTPS and user permission'
+                }
+              );
+            }
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const data = {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy
+                };
+                if (targets.length > 0) {
+                  targets[0].textContent = JSON.stringify(data);
+                }
+                // Dispatch success event
+                document.dispatchEvent(new CustomEvent('geolocation:success', { detail: data }));
+              },
+              (error) => {
+                // Dispatch error event
+                document.dispatchEvent(new CustomEvent('geolocation:error', { detail: error }));
+              }
+            );
+            break;
+
+          case 'orientation:get':
+            if (!window.DeviceOrientationEvent) {
+              console.warn('Invokers: Device Orientation API not supported');
+              return;
+            }
+            // This would need event listeners, but for simplicity, we'll just check support
+            const orientation = (window as any).screen?.orientation?.angle || 'unknown';
+            if (targets.length > 0) {
+              targets[0].textContent = orientation.toString();
+            }
+            break;
+
+          case 'battery:get':
+            if (!('getBattery' in navigator)) {
+              console.warn('Invokers: Battery API not supported');
+              return;
+            }
+            (navigator as any).getBattery().then((battery: any) => {
+              const data = {
+                level: battery.level,
+                charging: battery.charging,
+                chargingTime: battery.chargingTime,
+                dischargingTime: battery.dischargingTime
+              };
+              if (targets.length > 0) {
+                targets[0].textContent = JSON.stringify(data);
+              }
+            });
+            break;
+
+          default:
+            throw createInvokerError(
+              `Unknown device action "${action}"`,
+              ErrorSeverity.ERROR,
+              {
+                command: '--device',
+                element: invoker,
+                context: { action, availableActions: ['vibrate', 'share', 'geolocation:get', 'orientation:get', 'battery:get'] },
+                recovery: 'Use a supported device action'
+              }
+            );
+        }
+      } catch (error) {
+        throw createInvokerError(
+          'Device API operation failed',
+          ErrorSeverity.ERROR,
+          {
+            command: '--device',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Check device API support and permissions'
+          }
+        );
+      }
+    });
+
+    // --a11y command for accessibility helpers
+    this.register("--a11y", ({ invoker, getTargets, params }) => {
+      const [action, ...valueParts] = params;
+      const value = valueParts.join(':');
+      const targets = getTargets();
+
+      try {
+        switch (action) {
+          case 'announce':
+            if (!value) {
+              throw createInvokerError(
+                'A11y announce requires text to announce',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use --a11y:announce:Your announcement text'
+                }
+              );
+            }
+            // Create or find an aria-live region
+            let liveRegion = document.getElementById('invokers-a11y-announcer');
+            if (!liveRegion) {
+              liveRegion = document.createElement('div');
+              liveRegion.id = 'invokers-a11y-announcer';
+              liveRegion.setAttribute('aria-live', 'polite');
+              liveRegion.setAttribute('aria-atomic', 'true');
+              liveRegion.style.position = 'absolute';
+              liveRegion.style.left = '-10000px';
+              liveRegion.style.width = '1px';
+              liveRegion.style.height = '1px';
+              liveRegion.style.overflow = 'hidden';
+              document.body.appendChild(liveRegion);
+            }
+            liveRegion.textContent = value;
+            break;
+
+          case 'focus':
+            if (targets.length === 0) {
+              throw createInvokerError(
+                'A11y focus requires target elements',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use commandfor to specify which element to focus'
+                }
+              );
+            }
+            targets[0].focus();
+            break;
+
+          case 'skip-to':
+            if (!value) {
+              throw createInvokerError(
+                'A11y skip-to requires an element ID',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use --a11y:skip-to:element-id'
+                }
+              );
+            }
+            const targetElement = document.getElementById(value);
+            if (targetElement) {
+              targetElement.focus();
+              targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+              throw createInvokerError(
+                `Element with id "${value}" not found`,
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Ensure the target element exists and has the correct ID'
+                }
+              );
+            }
+            break;
+
+          case 'focus-trap':
+            if (!value || !['enable', 'disable'].includes(value)) {
+              throw createInvokerError(
+                'A11y focus-trap requires "enable" or "disable"',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use --a11y:focus-trap:enable or --a11y:focus-trap:disable'
+                }
+              );
+            }
+            // Simple focus trap implementation
+            if (value === 'enable' && targets.length > 0) {
+              const container = targets[0];
+              const focusableElements = container.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+              );
+              const firstElement = focusableElements[0] as HTMLElement;
+              const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+              const handleTabKey = (e: KeyboardEvent) => {
+                if (e.key === 'Tab') {
+                  if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                      lastElement.focus();
+                      e.preventDefault();
+                    }
+                  } else {
+                    if (document.activeElement === lastElement) {
+                      firstElement.focus();
+                      e.preventDefault();
+                    }
+                  }
+                }
+              };
+
+              container.addEventListener('keydown', handleTabKey);
+              (container as any)._focusTrapHandler = handleTabKey;
+              firstElement?.focus();
+            } else if (value === 'disable' && targets.length > 0) {
+              const container = targets[0];
+              if ((container as any)._focusTrapHandler) {
+                container.removeEventListener('keydown', (container as any)._focusTrapHandler);
+                delete (container as any)._focusTrapHandler;
+              }
+            }
+            break;
+
+          default:
+            throw createInvokerError(
+              `Unknown accessibility action "${action}"`,
+              ErrorSeverity.ERROR,
+              {
+                command: '--a11y',
+                element: invoker,
+                context: { action, availableActions: ['announce', 'focus', 'skip-to', 'focus-trap'] },
+                recovery: 'Use a valid accessibility action'
+              }
+            );
+        }
+      } catch (error) {
+        throw createInvokerError(
+          'Accessibility operation failed',
+          ErrorSeverity.ERROR,
+          {
+            command: '--a11y',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Check accessibility requirements and target elements'
+          }
+        );
+      }
+    });
+
     // Pipeline command for template-based workflows
     this.register("--pipeline", async ({ invoker, params }) => {
       const [action, pipelineId] = params;
