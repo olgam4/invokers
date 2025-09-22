@@ -29,8 +29,8 @@ describe('Enhanced Attribute-Based Chaining', () => {
      document.body.appendChild(mockButton);
      document.body.appendChild(mockTarget);
 
-     // Create InvokerManager instance
-     invokerManager = new InvokerManager();
+      // Get singleton InvokerManager instance
+      invokerManager = InvokerManager.getInstance();
    });
 
   describe('Universal Chaining (data-and-then)', () => {

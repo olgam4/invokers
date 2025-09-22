@@ -507,8 +507,13 @@ export const commands: CommandRegistry = {
 };
 
 /**
- * Registers all extended commands with the global `window.Invoker` instance.
+ * Registers commands from this module with the global `Invoker` instance.
+ * This function is now simpler and more robust, ensuring all commands are found.
+ *
  * @param specificCommands An optional array of command names to register. If omitted, all commands are registered.
+ * @example
+ * registerAll(); // Registers all commands
+ * registerAll(['--media:toggle', '--scroll:to']); // Registers specific commands
  */
 export function registerAll(specificCommands?: string[]): void {
   if (!window.Invoker) {
@@ -516,10 +521,17 @@ export function registerAll(specificCommands?: string[]): void {
     return;
   }
   const commandsToRegister = specificCommands || Object.keys(commands);
+
   for (const name of commandsToRegister) {
-    const prefixedName = name.startsWith('--') ? name : `--${name}`;
-    if (commands[prefixedName]) {
-      window.Invoker.register(prefixedName, commands[prefixedName]);
+    // Normalize the name the user might have passed in (e.g., 'dom:swap' vs '--dom:swap')
+    const normalizedName = name.startsWith('--') ? name : `--${name}`;
+
+    if (commands[normalizedName]) {
+      // Always pass the key from our `commands` object and its callback.
+      // The core `register` method will handle everything else.
+      window.Invoker.register(normalizedName, commands[normalizedName]);
+    } else {
+      console.warn(`Invokers: Command "${name}" was requested but not found in the commands module. Skipping registration.`);
     }
   }
 }

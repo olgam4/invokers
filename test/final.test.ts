@@ -6,7 +6,7 @@ describe('Final Implementation Test', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
-    invokerManager = new InvokerManager();
+    invokerManager = InvokerManager.getInstance();
   });
 
   it('should demonstrate working command chaining', async () => {

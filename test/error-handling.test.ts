@@ -6,8 +6,8 @@ describe('Enhanced Error Handling & Debugging', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
-    invokerManager = new InvokerManager();
-    
+    invokerManager = InvokerManager.getInstance();
+
     // Enable debug mode for testing
     if (typeof window !== 'undefined' && window.Invoker) {
       window.Invoker.debug = true;

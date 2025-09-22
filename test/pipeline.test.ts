@@ -32,34 +32,40 @@ global.CustomEvent = dom.window.CustomEvent;
 
 // Import after setting up globals
 import '../src/index';
+import { InvokerManager } from '../src/index';
 
 describe('Pipeline Functionality', () => {
+  let invokerManager: InvokerManager;
+
   beforeEach(() => {
     document.body.innerHTML = '';
-    
+
+    // Get singleton InvokerManager instance
+    invokerManager = InvokerManager.getInstance();
+
     // Clear any existing custom commands for clean state
-    if (window.Invoker) {
-      try {
-        (window.Invoker as any).reset?.();
-      } catch (e) {
-        // Reset method might not exist in all scenarios
-      }
+    try {
+      (invokerManager as any).commands.clear();
+      (invokerManager as any).commandStates.clear();
+      (invokerManager as any).sortedCommandKeys = [];
+    } catch (e) {
+      // Reset method might not exist in all scenarios
     }
   });
 
   describe('Enhanced Attribute-Based Chaining', () => {
     beforeEach(() => {
       // Register test commands
-      window.Invoker.register('--test:success', ({ targetElement }) => {
+      invokerManager.register('--test:success', ({ targetElement }) => {
         targetElement.textContent = 'Success executed';
       });
 
-      window.Invoker.register('--test:error', ({ targetElement }) => {
+      invokerManager.register('--test:error', ({ targetElement }) => {
         targetElement.textContent = 'Error executed';
         throw new Error('Simulated error');
       });
 
-      window.Invoker.register('--test:complete', ({ targetElement }) => {
+      invokerManager.register('--test:complete', ({ targetElement }) => {
         targetElement.classList.add('completed');
       });
     });
@@ -168,16 +174,16 @@ describe('Pipeline Functionality', () => {
 
   describe('Declarative <and-then> Elements', () => {
     beforeEach(() => {
-      window.Invoker.register('--step:execute', ({ targetElement, params }) => {
+      invokerManager.register('--step:execute', ({ targetElement, params }) => {
         const [stepNumber] = params;
         targetElement.textContent += ` Step ${stepNumber}`;
       });
 
-      window.Invoker.register('--step:success', ({ targetElement }) => {
+      invokerManager.register('--step:success', ({ targetElement }) => {
         targetElement.classList.add('success-step');
       });
 
-      window.Invoker.register('--step:error', ({ targetElement }) => {
+      invokerManager.register('--step:error', ({ targetElement }) => {
         throw new Error('Step failed');
       });
     });
@@ -297,23 +303,23 @@ describe('Pipeline Functionality', () => {
 
   describe('Template-Based Command Pipelines', () => {
     beforeEach(() => {
-      window.Invoker.register('--pipeline:step1', ({ targetElement }) => {
+      invokerManager.register('--pipeline:step1', ({ targetElement }) => {
         targetElement.textContent = 'Step 1 complete';
       });
 
-      window.Invoker.register('--pipeline:step2', ({ targetElement }) => {
+      invokerManager.register('--pipeline:step2', ({ targetElement }) => {
         targetElement.textContent += ' → Step 2 complete';
       });
 
-      window.Invoker.register('--pipeline:step3', ({ targetElement }) => {
+      invokerManager.register('--pipeline:step3', ({ targetElement }) => {
         targetElement.textContent += ' → Step 3 complete';
       });
 
-      window.Invoker.register('--pipeline:error', ({ targetElement }) => {
+      invokerManager.register('--pipeline:error', ({ targetElement }) => {
         throw new Error('Pipeline step failed');
       });
 
-      window.Invoker.register('--pipeline:recovery', ({ targetElement }) => {
+      invokerManager.register('--pipeline:recovery', ({ targetElement }) => {
         targetElement.textContent = 'Error recovery executed';
       });
     });
@@ -510,15 +516,15 @@ describe('Pipeline Functionality', () => {
 
   describe('Universal data-and-then Chaining', () => {
     beforeEach(() => {
-      window.Invoker.register('--chain:first', ({ targetElement }) => {
+      invokerManager.register('--chain:first', ({ targetElement }) => {
         targetElement.textContent = 'First command executed';
       });
 
-      window.Invoker.register('--chain:second', ({ targetElement }) => {
+      invokerManager.register('--chain:second', ({ targetElement }) => {
         targetElement.textContent += ' → Second command executed';
       });
 
-      window.Invoker.register('--chain:async', async ({ targetElement }) => {
+      invokerManager.register('--chain:async', async ({ targetElement }) => {
         await new Promise(resolve => setTimeout(resolve, 50));
         targetElement.textContent = 'Async command completed';
       });
@@ -596,7 +602,7 @@ describe('Pipeline Functionality', () => {
 
   describe('Command Lifecycle States', () => {
     beforeEach(() => {
-      window.Invoker.register('--state:test', ({ targetElement, invoker }) => {
+      invokerManager.register('--state:test', ({ targetElement, invoker }) => {
         const count = parseInt(targetElement.textContent || '0') + 1;
         targetElement.textContent = count.toString();
       });
@@ -667,12 +673,12 @@ describe('Pipeline Functionality', () => {
 
   describe('Complex Workflow Integration', () => {
     it('should combine all pipeline features in complex workflow', (done) => {
-      window.Invoker.register('--workflow:validate', ({ targetElement }) => {
+      invokerManager.register('--workflow:validate', ({ targetElement }) => {
         targetElement.dataset.validated = 'true';
         return true; // Success
       });
 
-      window.Invoker.register('--workflow:submit', ({ targetElement }) => {
+      invokerManager.register('--workflow:submit', ({ targetElement }) => {
         if (targetElement.dataset.validated === 'true') {
           targetElement.textContent = 'Form submitted successfully';
         } else {
@@ -680,7 +686,7 @@ describe('Pipeline Functionality', () => {
         }
       });
 
-      window.Invoker.register('--workflow:cleanup', ({ targetElement }) => {
+      invokerManager.register('--workflow:cleanup', ({ targetElement }) => {
         targetElement.classList.add('workflow-complete');
       });
 

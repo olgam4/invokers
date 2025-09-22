@@ -15,6 +15,9 @@
 // --- Polyfill Integration ---
 // Import and apply the polyfill to ensure CommandEvent and attributes are available
 import './polyfill';
+
+// *** FIX: Internalize the extended commands to prevent module resolution issues. ***
+import { commands as extendedCommands } from './invoker-commands';
 // Import Interest Invokers support
 import './interest-invokers';
 
@@ -95,6 +98,7 @@ export interface InvokerError extends Error {
   command?: string;
   context?: any;
   recovery?: string;
+  cause?: Error;
 }
 
 /**
@@ -203,14 +207,13 @@ export function sanitizeParams(params: readonly string[]): string[] {
     }
 
     // Remove potentially dangerous content
-    let sanitized = param
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
-      .replace(/javascript:/gi, '') // Remove javascript: URLs
-      .replace(/data:text\/html/gi, '') // Remove data URLs that could contain HTML
-      .replace(/vbscript:/gi, '') // Remove VBScript URLs
-      .replace(/on\w+\s*=/gi, '') // Remove event handlers
-      .replace(/expression\s*\(/gi, '') // Remove CSS expressions
-      .trim();
+  let sanitized = param
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+    .replace(/javascript:/gi, '') // Remove javascript: URLs
+    .replace(/data:text\/html/gi, '') // Remove data URLs that could contain HTML
+    .replace(/vbscript:/gi, '') // Remove VBScript URLs
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .replace(/expression\s*\(/gi, '') // Remove CSS expressions
 
     // Additional validation for URLs
     if (param.includes('://') || param.startsWith('//')) {
@@ -484,26 +487,25 @@ class PerformanceMonitor {
  */
 
 export class InvokerManager {
+  // --- Singleton Implementation ---
+  private static _instance: InvokerManager;
+
   private readonly commands = new Map<string, CommandCallback>();
   private sortedCommandKeys: string[] = [];
   private commandStates = new Map<string, CommandState>();
   private andThenManager: AndThenManager;
   private pipelineManager: PipelineManager;
-  private executionQueue: Promise<void> = Promise.resolve();
-
-  // Performance and debugging tracking
-  private executionCount = 0;
-  private maxExecutionsPerSecond = 100;
-  private executionTimes: number[] = [];
   private readonly performanceMonitor = new PerformanceMonitor();
 
-  constructor() {
+  // The constructor is now private to enforce the singleton pattern.
+  private constructor() {
     this.andThenManager = new AndThenManager(this);
     this.pipelineManager = new PipelineManager(this);
 
-    // Only initialize if this is the first instance to avoid duplicate listeners
+    // Initialize for both browser and test environments
     if (typeof window !== "undefined" && typeof document !== "undefined") {
       this.registerCoreLibraryCommands();
+      this.registerExtendedCommands();
       // Only add listeners if they haven't been added yet
       if (!(window as any).__invokerListenersAdded) {
         this.listen();
@@ -512,11 +514,22 @@ export class InvokerManager {
     } else if (typeof global !== "undefined" && (global as any).window && (global as any).document) {
       // Test environment with jsdom
       this.registerCoreLibraryCommands();
+      this.registerExtendedCommands();
       if (!(global as any).__invokerListenersAdded) {
         this.listen();
         (global as any).__invokerListenersAdded = true;
       }
     }
+  }
+
+  /**
+   * Gets the single, authoritative instance of the InvokerManager.
+   */
+  public static getInstance(): InvokerManager {
+    if (!InvokerManager._instance) {
+      InvokerManager._instance = new InvokerManager();
+    }
+    return InvokerManager._instance;
   }
 
   /**
@@ -609,6 +622,17 @@ export class InvokerManager {
         }
       );
       logInvokerError(invokerError);
+    }
+  }
+
+  /**
+   * Registers the internalized extended commands onto this instance.
+   */
+  public registerExtendedCommands(): void {
+    for (const name in extendedCommands) {
+      if (Object.prototype.hasOwnProperty.call(extendedCommands, name)) {
+        this.register(name, extendedCommands[name]);
+      }
     }
   }
 
@@ -941,7 +965,7 @@ export class InvokerManager {
   /**
    * Generates context-aware recovery suggestions for failed commands
    */
-  private generateRecoverySuggestion(command: string, error: Error, context: CommandContext): string {
+  private generateRecoverySuggestion(command: string, error: Error, _context: CommandContext): string {
     const errorMessage = error.message.toLowerCase();
 
     // Command-specific suggestions
@@ -986,7 +1010,7 @@ export class InvokerManager {
   /**
    * Attempts graceful degradation when a command fails
    */
-  private attemptGracefulDegradation(context: CommandContext, error: Error): void {
+  private attemptGracefulDegradation(context: CommandContext, _error: Error): void {
     try {
       // For UI commands, try to maintain accessibility state
       if (context.invoker && context.invoker.hasAttribute('aria-expanded')) {
@@ -1269,22 +1293,19 @@ export class InvokerManager {
       return;
     }
 
-    // Schedule the command to run after the current execution queue
-    this.executionQueue = this.executionQueue.then(async () => {
-      // For chained commands, directly execute the command instead of using synthetic buttons
-      // This avoids issues with event propagation in test environments
-      const targetElement = document.getElementById(targetId) || (primaryTarget && targetId === primaryTarget.id ? primaryTarget : null);
-      if (targetElement) {
-        const mockEvent = {
-          command,
-          source: null, // No source for chained commands
-          target: targetElement,
-          preventDefault: () => { },
-          type: 'command'
-        } as any;
-        await this.executeCustomCommand(command, mockEvent);
-      }
-    });
+    // For chained commands, directly execute the command instead of using synthetic buttons
+    // This avoids issues with event propagation in test environments
+    const targetElement = document.getElementById(targetId) || (primaryTarget && targetId === primaryTarget.id ? primaryTarget : null);
+    if (targetElement) {
+      const mockEvent = {
+        command,
+        source: null, // No source for chained commands
+        target: targetElement,
+        preventDefault: () => { },
+        type: 'command'
+      } as any;
+      await this.executeCustomCommand(command, mockEvent);
+    }
 
     // Update state after execution
     if (state === 'once') {
@@ -1421,7 +1442,7 @@ export class InvokerManager {
 
     this.register("--text", ({ invoker, getTargets, params }) => {
       const [action, ...valueParts] = params;
-      const value = valueParts.join(':'); // Rejoin in case value contained colons
+      const value = valueParts.join(' '); // Rejoin with spaces for text content
       const targets = getTargets();
 
       if (!action) {
@@ -1766,7 +1787,7 @@ class PipelineManager {
   /**
    * Executes a single pipeline step.
    */
-  private async executeStep(step: PipelineStep, context: CommandContext): Promise<CommandExecutionResult> {
+  private async executeStep(step: PipelineStep, _context: CommandContext): Promise<CommandExecutionResult> {
     try {
       // Create a synthetic invoker for the pipeline step
       const syntheticInvoker = document.createElement('button');
@@ -1993,69 +2014,42 @@ class AndThenManager {
 
 
 // --- Initialize and Expose API ---
-const invokerInstance = new InvokerManager();
+
+// Get the SINGLETON instance of the manager.
+const invokerInstance = InvokerManager.getInstance();
 
 if (typeof window !== "undefined") {
-  Object.defineProperty(window, "Invoker", {
-    value: {
-      register: invokerInstance.register.bind(invokerInstance),
-      executeCommand: invokerInstance.executeCommand.bind(invokerInstance),
-      parseCommandString,
-      createCommandString,
-      instance: invokerInstance, // Expose the instance for internal use
+  (window as any).Invoker = {
+    // Bind all public methods to the one true instance.
+    register: invokerInstance.register.bind(invokerInstance),
+    executeCommand: invokerInstance.executeCommand.bind(invokerInstance),
 
-      // Debugging and development utilities
-      get debug() { return isDebugMode; },
-      set debug(value: boolean) {
-        isDebugMode = value;
-        if (value) {
-          console.log('Invokers: Debug mode enabled. You will see detailed execution logs.');
-        } else {
-          console.log('Invokers: Debug mode disabled.');
-        }
-      },
-
-      // Performance monitoring
-      getStats() {
-        return invokerInstance['performanceMonitor'].getStats();
-      },
-
-      // Development utilities
-      getRegisteredCommands() {
-        return Array.from(invokerInstance['commands'].keys());
-      },
-
-      // Error handling utilities
-      validateElement,
-      createError: createInvokerError,
-      logError: logInvokerError,
-
-      // Reset functionality for development
-      reset() {
-        invokerInstance['commands'].clear();
-        invokerInstance['commandStates'].clear();
-        invokerInstance['sortedCommandKeys'] = [];
-        console.log('Invokers: Reset complete. All commands and states cleared.');
-      }
+    // *** FIX: Expose the new registration function on the global API. ***
+    registerAll: invokerInstance.registerExtendedCommands.bind(invokerInstance),
+    parseCommandString,
+    createCommandString,
+    instance: invokerInstance,
+    get debug() { return isDebugMode; },
+    set debug(value: boolean) {
+      isDebugMode = value;
+      console.log(`Invokers: Debug mode ${value ? 'enabled' : 'disabled'}.`);
     },
-    configurable: true,
-    writable: true,
-  });
+    getStats: () => invokerInstance['performanceMonitor'].getStats(),
+    getRegisteredCommands: () => Array.from(invokerInstance['commands'].keys()),
+    validateElement,
+    createError: createInvokerError,
+    logError: logInvokerError,
+    reset() {
+      invokerInstance['commands'].clear();
+      invokerInstance['commandStates'].clear();
+      invokerInstance['sortedCommandKeys'] = [];
+      console.log('Invokers: Reset complete.');
+    }
+  };
+
 }
 
-// Automatically register extended command set if available
-if (typeof window !== "undefined") {
-  try {
-    // Try to import and register extended commands
-    // import('./invoker-commands').then(({ registerAll }) => {
-    //   registerAll();
-    // }).catch(() => {
-    //   // Extended commands not available, continue with core commands only
-    // });
-  } catch (e) {
-    // Extended commands not available, continue with core commands only
-  }
-}
+
 
 // --- Export Interest Invokers functionality ---
 export { 

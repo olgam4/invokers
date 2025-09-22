@@ -213,7 +213,7 @@ class InterestInvokersPolyfill {
       enumerable: true,
       configurable: true,
       get(this: HTMLElement): Element | null {
-        return this.getInterestForTarget();
+        return (this as any).getInterestForTarget();
       },
       set(this: HTMLElement, value: Element | null) {
         if (value === null) {
@@ -336,7 +336,7 @@ class InterestInvokersPolyfill {
 
     if (source === this.Source.Hover || source === this.Source.Focus) {
       data.clearLostTask?.();
-      upstreamInvoker?.[this.dataField]?.clearLostTask?.();
+      (upstreamInvoker as any)?.[this.dataField]?.clearLostTask?.();
       this.scheduleInterestGainedTask(el, this.InterestState.FullInterest);
     } else {
       data.clearGainedTask?.();
@@ -344,7 +344,7 @@ class InterestInvokersPolyfill {
         this.scheduleInterestLostTask(el);
       }
       if (upstreamInvoker) {
-        upstreamInvoker[this.dataField]?.clearGainedTask?.();
+        (upstreamInvoker as any)[this.dataField]?.clearGainedTask?.();
         if (source === this.Source.Blur || !el.matches(":hover")) {
           this.scheduleInterestLostTask(upstreamInvoker);
         }
@@ -552,8 +552,8 @@ class InterestInvokersPolyfill {
     data: any
   ): void {
     const anchorName = `--interest-anchor-${Math.random().toString(36).substring(2)}`;
-    invoker.style.anchorName = anchorName;
-    target.style.positionAnchor = anchorName;
+    (invoker.style as any).anchorName = anchorName;
+    (target.style as any).positionAnchor = anchorName;
     data.anchorName = anchorName;
   }
 
@@ -566,8 +566,8 @@ class InterestInvokersPolyfill {
     data: any
   ): void {
     if (data.anchorName) {
-      invoker.style.anchorName = "";
-      target.style.positionAnchor = "";
+      (invoker.style as any).anchorName = "";
+      (target.style as any).positionAnchor = "";
       data.anchorName = null;
     }
   }
@@ -816,14 +816,16 @@ export function createInterestEvent(
   const event = new CustomEvent(type, {
     bubbles: false,
     cancelable: false
-  }) as InterestEvent;
+  }) as any;
 
   // Define source property
-  Object.defineProperty(event, 'source', { 
-    value: source || null, 
+  Object.defineProperty(event, 'source', {
+    value: source || null,
     writable: false,
     enumerable: true
   });
+
+  return event as InterestEvent;
 
   return event;
 }

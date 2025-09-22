@@ -7,9 +7,9 @@ describe('Clean Enhanced Attribute-Based Chaining', () => {
   beforeEach(() => {
     // Clean up DOM
     document.body.innerHTML = '';
-    
-    // Create fresh InvokerManager instance
-    invokerManager = new InvokerManager();
+
+    // Get singleton InvokerManager instance
+    invokerManager = InvokerManager.getInstance();
   });
 
   describe('Universal Chaining (data-and-then)', () => {

@@ -6,7 +6,7 @@ describe('Core Commands', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
-    invokerManager = new InvokerManager();
+    invokerManager = InvokerManager.getInstance();
   });
 
   describe('Text Commands', () => {

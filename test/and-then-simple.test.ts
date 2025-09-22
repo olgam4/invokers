@@ -6,7 +6,7 @@ describe('Simple And-Then Elements', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
-    invokerManager = new InvokerManager();
+    invokerManager = InvokerManager.getInstance();
   });
 
   it('should execute and-then element after primary command', async () => {

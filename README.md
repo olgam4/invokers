@@ -8,7 +8,7 @@
 
 # ✨ Invokers: Write Interactive HTML Without JavaScript
 
-**Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with extra commands for real-world needs like toggling, fetching, and chaining workflows. Think of it as **HTMX-lite**, but fully aligned with web standards.
+**Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with a comprehensive set of extended commands automatically included for real-world needs like toggling, fetching, media controls, and complex workflow chaining. Think of it as **HTMX-lite**, but fully aligned with web standards.
 
 Instead of writing event listeners and DOM manipulation code, you describe what should happen directly in your HTML. Your interfaces become self-documenting, accessible by default, and work without any build step.
 
@@ -23,6 +23,7 @@ Instead of writing event listeners and DOM manipulation code, you describe what 
 -   💡 **Interest Invokers:** Create hover cards, tooltips, and rich hints that work across mouse, keyboard, and touch with the `interestfor` attribute.
 -   🚀 **Zero Dependencies & Tiny:** A featherlight addition to any project, framework-agnostic, and ready to use in seconds.
 -   🎨 **View Transitions:** Built-in, automatic support for the [View Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API) for beautiful, animated UI changes with zero JS configuration.
+-   🔧 **Singleton Architecture:** Optimized internal architecture ensures consistent behavior and prevents duplicate registrations.
 
 ## 🚀 Quick Demo (30 seconds)
 
@@ -69,6 +70,7 @@ That's it! No event listeners, no DOM queries, no state management. The HTML des
 | Declarative in HTML   | ❌          | ✅       | ✅         | ✅            |
 | Standards-aligned     | ❌          | ❌       | ❌         | ✅            |
 | Zero dependencies     | ✅          | ❌       | ❌         | ✅            |
+| Extended commands     | ❌          | ❌       | ❌         | ✅ (Auto)     |
 | Workflow chaining     | ❌          | Limited | Limited   | ✅            |
 | Accessible by default | ❌          | ❌       | ❌         | ✅            |
 | Future-proof          | ❌          | ❌       | ❌         | ✅            |
@@ -159,6 +161,7 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `--text:set:message`   | Replace text content              | `command="--text:set:Hello World"`          |
 | `--attr:set:name:val`  | Set attribute                     | `command="--attr:set:disabled:true"`        |
 | `--fetch:get`          | Load HTML from server             | `command="--fetch:get" data-url="/api"`     |
+| `--fetch:send`         | Send form data to server          | `command="--fetch:send" commandfor="form"`  |
 | `show-modal`           | Open dialog modally               | `command="show-modal" commandfor="dialog"`  |
 | `close`                | Close dialog/popover              | `command="close" commandfor="dialog"`       |
 
@@ -193,7 +196,7 @@ Get up and running in seconds.
 
 ### 1. Quick Start via CDN
 
-The easiest way to start. Place this at the end of your `<body>`. It includes the polyfill and enables all features automatically.
+The easiest way to start. Place this at the end of your `<body>`. It includes the polyfill, core commands, and all extended commands automatically.
 
 ```html
 <script type="module" src="https://esm.sh/invokers"></script>
@@ -207,7 +210,7 @@ For projects with a build step, install the package from the npm registry:
 npm install invokers
 ```
 
-Then, import it into your main JavaScript file. This single import sets up the polyfill and the custom command manager.
+Then, import it into your main JavaScript file. This single import sets up the polyfill, core commands, and all extended commands automatically.
 
 ```javascript
 import 'invokers';
@@ -369,18 +372,12 @@ Now add interactivity with text, classes, and attributes.
 </button>
 ```
 
-#### Server Content (Requires Commands Module)
+#### Server Content
 
 ```html
-<!-- Import the commands module first -->
-<script type="module">
-  import { registerAll } from 'https://esm.sh/invokers/commands';
-  registerAll();
-</script>
-
 <!-- Fetch and display server content -->
-<button type="button" 
-  command="--fetch:get" 
+<button type="button"
+  command="--fetch:get"
   data-url="/api/latest-posts"
   commandfor="posts-container"
   data-loading-template="spinner">
@@ -392,6 +389,29 @@ Now add interactivity with text, classes, and attributes.
   <p>Loading posts...</p>
 </template>
 ```
+
+#### Form Submission
+
+```html
+<!-- Submit form data and update content dynamically -->
+<form id="contact-form" action="/api/contact" method="post">
+  <input type="text" name="name" required>
+  <button type="button"
+    command="--fetch:send"
+    commandfor="contact-form"
+    data-response-target="#result-area"
+    data-loading-template="spinner">
+    Submit Form
+  </button>
+</form>
+<div id="result-area">Response will appear here...</div>
+
+<template id="spinner">
+  <div>Loading...</div>
+</template>
+```
+
+The `data-response-target` attribute specifies where to display the server response, while `data-loading-template` shows a loading indicator during submission.
 
 ### 📚 Level 3: Advanced Workflows
 
@@ -446,22 +466,34 @@ Chain multiple commands together for complex interactions.
 <div id="workflow">Ready to start</div>
 ```
 
-## 🧰 Extended Commands Module
+## 🧰 Extended Commands
 
-For advanced features like server fetching, media control, and form handling, import the commands module:
+Invokers includes a comprehensive set of extended commands that are automatically available when you import the library. These provide advanced features for real-world applications:
+
+### Automatically Included Commands:
+- **Server Communication**: `--fetch:get`, `--fetch:send` - Load and send data to servers
+- **Media Controls**: `--media:toggle`, `--media:seek`, `--media:mute` - Full media player controls
+- **DOM Manipulation**: `--dom:remove`, `--dom:replace`, `--dom:swap`, `--dom:append`, `--dom:prepend` - Dynamic content updates
+- **Form Handling**: `--form:reset`, `--form:submit` - Form interactions
+- **Clipboard**: `--clipboard:copy` - Copy text to clipboard
+- **Navigation**: `--navigate:to` - Programmatic navigation
+- **Text Operations**: `--text:copy` - Copy element text content
+- **Carousel Controls**: `--carousel:nav` - Image carousel navigation
+- **Input Controls**: `--input:step` - Number input stepping
+- **Scroll Controls**: `--scroll:to` - Smooth scrolling to elements
+
+### Selective Command Registration (Advanced)
+
+For applications that only need specific commands, you can selectively register them:
 
 ```javascript
 import { registerAll } from 'https://esm.sh/invokers/commands';
-registerAll();
+
+// Register only media and fetch commands
+registerAll(['--media:toggle', '--media:seek', '--fetch:get']);
 ```
 
-This adds powerful commands like:
-- `--fetch:get`, `--fetch:send` - Server communication
-- `--media:toggle`, `--media:seek` - Media player controls  
-- `--clipboard:copy` - Copy text to clipboard
-- `--dom:remove`, `--dom:swap` - DOM manipulation
-- `--carousel:nav` - Image carousels
-- And many more!
+This can help reduce bundle size in applications with strict performance requirements.
 
 ## 🐞 Debugging & Common Issues
 
@@ -1139,6 +1171,9 @@ Invokers works in all modern browsers (Chrome, Firefox, Safari, Edge). It requir
 
 ### **Will this conflict with future HTML spec changes?**
 No. Invokers implements the official W3C/WHATWG proposal. When browsers add native support, Invokers will step aside automatically. Your HTML remains the same.
+
+### **Do I need to import anything extra for extended commands?**
+No! All extended commands (fetch, media controls, DOM manipulation, etc.) are automatically included when you import Invokers. Just use them directly in your HTML.
 
 ### **Can I use JSON APIs with `--fetch` commands?**
 No, `--fetch:get` expects HTML responses to inject into the page. For JSON APIs, you'll need to create a custom command or use the JSON data server-side to render HTML.

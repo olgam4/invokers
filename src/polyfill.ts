@@ -10,11 +10,12 @@
  */
 
 export function isSupported() {
+  const target = typeof window !== "undefined" ? window : globalThis;
   return (
     typeof HTMLButtonElement !== "undefined" &&
     "command" in HTMLButtonElement.prototype &&
     // @ts-ignore
-    "source" in ((globalThis!.CommandEvent || {}).prototype || {})
+    "source" in ((target.CommandEvent || {}).prototype || {})
   );
 }
 
@@ -729,8 +730,15 @@ function observeShadowRoots(ElementClass: typeof HTMLElement, callback: (shadowR
  * This should be called once to enable the `command`/`commandfor` attributes and `CommandEvent`.
  */
 export function apply() {
+  const target = typeof window !== "undefined" ? window : globalThis;
+
+  // If native support exists, do not apply the polyfill to prevent double-firing
+  if (isSupported()) {
+    return;
+  }
+
   // Ensure the polyfill is only applied once
-  if ((globalThis as any).CommandEvent === CommandEventPolyfill) {
+  if ((target as any).CommandEvent === CommandEventPolyfill) {
       return; // Already applied
   }
 
@@ -794,19 +802,19 @@ export function apply() {
 
 
   // Expose the polyfilled CommandEvent globally if not already defined
-  if (typeof (globalThis as any)['CommandEvent'] === 'undefined') {
-    Object.defineProperty(globalThis, "CommandEvent", {
+  if (typeof (target as any)['CommandEvent'] === 'undefined') {
+    Object.defineProperty(target, "CommandEvent", {
         value: CommandEventPolyfill,
         configurable: true,
         writable: true,
         enumerable: false,
     });
   } else {
-      console.warn("Invokers Polyfill: `globalThis.CommandEvent` already exists. The polyfill's CommandEvent will not overwrite it.");
+      console.warn("Invokers Polyfill: `CommandEvent` already exists. The polyfill's CommandEvent will not overwrite it.");
   }
   // Expose InvokeEvent globally (for deprecation warnings)
-  if (typeof (globalThis as any)['InvokeEvent'] === 'undefined') {
-      Object.defineProperty(globalThis, "InvokeEvent", {
+  if (typeof (target as any)['InvokeEvent'] === 'undefined') {
+      Object.defineProperty(target, "InvokeEvent", {
           value: InvokeEventPolyfill,
           configurable: true,
           writable: true,
