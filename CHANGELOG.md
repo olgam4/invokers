@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/doeixd/invokers/compare/v1.3.2...v1.4.0) (2025-09-22)
+
+
+### Features
+
+* Implement singleton pattern and enhance fetch commands ([1dd4aef](https://github.com/doeixd/invokers/commit/1dd4aefcf85052a5cd17d1bc835ad594eccbbfc4))
+
 ### [1.3.2](https://github.com/doeixd/invokers/compare/v1.3.1...v1.3.2) (2025-09-22)
 
 ### [1.3.1](https://github.com/doeixd/invokers/compare/v1.3.0...v1.3.1) (2025-09-22)
