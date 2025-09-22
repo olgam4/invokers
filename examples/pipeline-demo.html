@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Pipeline & Command Chaining Demo</title>
   <style>
     body {
@@ -275,9 +277,9 @@
     
     <div class="demo-box">
       <h3>User Registration Pipeline</h3>
-      <button type="button" command="--pipeline:execute:user-registration">
-        Complete Registration
-      </button>
+       <button type="button" command="--pipeline:execute:user-registration" commandfor="user-registration">
+         Complete Registration
+       </button>
 
       <template id="user-registration" data-pipeline="true">
         <pipeline-step command="--text:set:📝 Validating form..." target="registration-status" />
@@ -305,9 +307,9 @@
 
     <div class="demo-box">
       <h3>Error Handling Pipeline</h3>
-      <button type="button" command="--pipeline:execute:error-demo">
-        Trigger Error Pipeline
-      </button>
+       <button type="button" command="--pipeline:execute:error-demo" commandfor="error-demo">
+         Trigger Error Pipeline
+       </button>
 
       <template id="error-demo" data-pipeline="true">
         <pipeline-step command="--text:set:Starting process..." target="error-status" />
@@ -488,12 +490,34 @@
   </div>
 
   <!-- Load the Invokers library -->
-  <script type="module" src="../src/index.ts"></script>
+  <script type="module" src="../dist/esm/development/index.js"></script>
 
   <script>
     // Register custom commands for the demos
     window.addEventListener('load', () => {
       if (window.Invoker) {
+        // Register --fetch:get command manually
+        window.Invoker.register('--fetch:get', async ({ invoker, targetElement }) => {
+          const url = invoker.dataset.url;
+          if (!url) {
+            throw new Error('Fetch GET command requires a data-url attribute');
+          }
+
+          targetElement.setAttribute('aria-busy', 'true');
+          try {
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP Error: ${response.status}`);
+            }
+            const html = await response.text();
+            targetElement.innerHTML = html;
+          } catch (error) {
+            targetElement.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+          } finally {
+            targetElement.setAttribute('aria-busy', 'false');
+          }
+        });
+
         // Error simulation command
         window.Invoker.register('--error:simulate', ({ targetElement }) => {
           throw new Error('Simulated error for demo purposes');
@@ -509,7 +533,7 @@
         });
 
         console.log('Pipeline demo loaded with custom commands');
-        
+
         // Enable debug mode to see execution details
         window.Invoker.debug = true;
       }
