@@ -475,12 +475,14 @@ Invokers includes a comprehensive set of extended commands that are automaticall
 - **Media Controls**: `--media:toggle`, `--media:seek`, `--media:mute` - Full media player controls
 - **DOM Manipulation**: `--dom:remove`, `--dom:replace`, `--dom:swap`, `--dom:append`, `--dom:prepend` - Dynamic content updates
 - **Form Handling**: `--form:reset`, `--form:submit` - Form interactions
+- **Input Controls**: `--input:step`, `--value:set` - Control form input values and stepping
+- **Focus Management**: `--focus` - Programmatically focus elements
+- **State Management**: `--disabled:toggle` - Enable/disable form elements
+- **Scroll Controls**: `--scroll:into-view`, `--scroll:to` - Smooth scrolling to elements
 - **Clipboard**: `--clipboard:copy` - Copy text to clipboard
 - **Navigation**: `--navigate:to` - Programmatic navigation
 - **Text Operations**: `--text:copy` - Copy element text content
 - **Carousel Controls**: `--carousel:nav` - Image carousel navigation
-- **Input Controls**: `--input:step` - Number input stepping
-- **Scroll Controls**: `--scroll:to` - Smooth scrolling to elements
 
 ### Selective Command Registration (Advanced)
 

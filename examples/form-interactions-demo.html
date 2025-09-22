@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Form Interactions & Controls Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .demo-box {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e1e4e8;
+      border-radius: 8px;
+      background: #fafbfc;
+    }
+
+    button {
+      background: #0969da;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #0860ca;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 16px 0;
+      font-weight: 500;
+    }
+
+    .success {
+      background: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c2c7;
+    }
+
+    .form-group {
+      margin: 16px 0;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d9e0;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #0969da;
+      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+    }
+
+    .scroll-target {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid #d1d9e0;
+      padding: 16px;
+      margin: 16px 0;
+      background: #f8f9fa;
+    }
+
+    .highlight {
+      background: #fff3cd;
+      padding: 8px;
+      border-radius: 4px;
+      margin: 8px 0;
+    }
+
+    code {
+      background: #f6f8fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>📝 Form Interactions & Controls Demo</h1>
+  <p>This page demonstrates the new form interaction commands: <code>--value</code>, <code>--focus</code>, <code>--disabled</code>, and <code>--scroll</code>.</p>
+
+  <div class="demo-section">
+    <h2>Setting Form Values with --value</h2>
+    <p>Use <code>--value:new-value</code> to programmatically set the value of form inputs.</p>
+
+    <div class="demo-box">
+      <h3>Input Value Controls</h3>
+      <div class="form-group">
+        <label for="name-input">Name:</label>
+        <input type="text" id="name-input" placeholder="Enter your name">
+      </div>
+
+      <button type="button" command="--value:John Doe" commandfor="name-input">
+        Set to "John Doe"
+      </button>
+      <button type="button" command="--value:Jane Smith" commandfor="name-input">
+        Set to "Jane Smith"
+      </button>
+      <button type="button" command="--value:" commandfor="name-input">
+        Clear Value
+      </button>
+    </div>
+
+    <div class="demo-box">
+      <h3>Textarea Content</h3>
+      <div class="form-group">
+        <label for="message-textarea">Message:</label>
+        <textarea id="message-textarea" rows="3" placeholder="Enter your message"></textarea>
+      </div>
+
+      <button type="button" command="--value:Hello, this is a pre-filled message!" commandfor="message-textarea">
+        Pre-fill Message
+      </button>
+      <button type="button" command="--value:" commandfor="message-textarea">
+        Clear Message
+      </button>
+    </div>
+
+    <div class="demo-box">
+      <h3>Select Dropdown</h3>
+      <div class="form-group">
+        <label for="country-select">Country:</label>
+        <select id="country-select">
+          <option value="">Select a country</option>
+          <option value="us">United States</option>
+          <option value="ca">Canada</option>
+          <option value="uk">United Kingdom</option>
+          <option value="de">Germany</option>
+        </select>
+      </div>
+
+      <button type="button" command="--value:us" commandfor="country-select">
+        Select USA
+      </button>
+      <button type="button" command="--value:ca" commandfor="country-select">
+        Select Canada
+      </button>
+      <button type="button" command="--value:" commandfor="country-select">
+        Reset Selection
+      </button>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Focus Management with --focus</h2>
+    <p>Use <code>--focus</code> to programmatically focus form elements for better accessibility.</p>
+
+    <div class="demo-box">
+      <h3>Focus Controls</h3>
+      <div class="form-group">
+        <label for="focus-input-1">First Input:</label>
+        <input type="text" id="focus-input-1" placeholder="First field">
+      </div>
+
+      <div class="form-group">
+        <label for="focus-input-2">Second Input:</label>
+        <input type="text" id="focus-input-2" placeholder="Second field">
+      </div>
+
+      <div class="form-group">
+        <label for="focus-textarea">Textarea:</label>
+        <textarea id="focus-textarea" rows="2" placeholder="Textarea field"></textarea>
+      </div>
+
+      <button type="button" command="--focus" commandfor="focus-input-1">
+        Focus First Input
+      </button>
+      <button type="button" command="--focus" commandfor="focus-input-2">
+        Focus Second Input
+      </button>
+      <button type="button" command="--focus" commandfor="focus-textarea">
+        Focus Textarea
+      </button>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Disabling/Enabling Elements with --disabled</h2>
+    <p>Use <code>--disabled:toggle</code>, <code>--disabled:true</code>, or <code>--disabled:false</code> to control form element states.</p>
+
+    <div class="demo-box">
+      <h3>Form State Management</h3>
+      <div class="form-group">
+        <label for="username-input">Username:</label>
+        <input type="text" id="username-input" placeholder="Enter username">
+      </div>
+
+      <div class="form-group">
+        <label for="email-input">Email:</label>
+        <input type="email" id="email-input" placeholder="Enter email">
+      </div>
+
+      <button type="button" command="--disabled:toggle" commandfor="username-input">
+        Toggle Username Field
+      </button>
+      <button type="button" command="--disabled:disable" commandfor="username-input">
+        Disable Username
+      </button>
+      <button type="button" command="--disabled:enable" commandfor="username-input">
+        Enable Username
+      </button>
+
+      <br><br>
+
+      <button type="button" command="--disabled:toggle" commandfor="email-input">
+        Toggle Email Field
+      </button>
+      <button type="button" command="--disabled:disable" commandfor="email-input">
+        Disable Email
+      </button>
+      <button type="button" command="--disabled:enable" commandfor="email-input">
+        Enable Email
+      </button>
+    </div>
+
+    <div class="demo-box">
+      <h3>Button State Control</h3>
+      <button type="button" id="submit-btn">
+        Submit Form
+      </button>
+
+      <button type="button" command="--disabled:toggle" commandfor="submit-btn">
+        Toggle Submit Button
+      </button>
+      <button type="button" command="--disabled:disable" commandfor="submit-btn">
+        Disable Submit
+      </button>
+      <button type="button" command="--disabled:enable" commandfor="submit-btn">
+        Enable Submit
+      </button>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Smooth Scrolling with --scroll</h2>
+    <p>Use <code>--scroll:into-view</code>, <code>--scroll:top</code>, <code>--scroll:bottom</code>, or <code>--scroll:center</code> for smooth scrolling.</p>
+
+    <div class="demo-box">
+      <h3>Scroll Targets</h3>
+      <div class="scroll-target" id="scroll-container">
+        <div id="scroll-top" class="highlight">Top of content</div>
+        <p>This is a scrollable container with some content. You can scroll to different parts of it using the buttons below.</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+        <div id="scroll-middle" class="highlight">Middle of content</div>
+        <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+        <div id="scroll-bottom" class="highlight">Bottom of content</div>
+      </div>
+
+      <button type="button" command="--scroll:top" commandfor="scroll-container">
+        Scroll to Top
+      </button>
+      <button type="button" command="--scroll:center" commandfor="scroll-middle">
+        Scroll to Middle
+      </button>
+      <button type="button" command="--scroll:bottom" commandfor="scroll-container">
+        Scroll to Bottom
+      </button>
+      <button type="button" command="--scroll:into-view" commandfor="scroll-top">
+        Scroll Top Into View
+      </button>
+    </div>
+
+    <div class="demo-box">
+      <h3>Page-Level Scrolling</h3>
+      <p>Scroll to different sections of this page:</p>
+
+      <button type="button" command="--scroll:into-view" commandfor="value-section">
+        Scroll to Value Demo
+      </button>
+      <button type="button" command="--scroll:into-view" commandfor="focus-section">
+        Scroll to Focus Demo
+      </button>
+      <button type="button" command="--scroll:into-view" commandfor="disabled-section">
+        Scroll to Disabled Demo
+      </button>
+    </div>
+  </div>
+
+  <!-- Hidden anchors for page scrolling -->
+  <div id="value-section" style="position: absolute; top: 0;"></div>
+  <div id="focus-section" style="position: absolute; top: 400px;"></div>
+  <div id="disabled-section" style="position: absolute; top: 800px;"></div>
+
+  <!-- Load the Invokers library -->
+  <script type="module" src="../dist/esm/development/index.js"></script>
+
+  <script>
+    // Add some visual feedback
+    document.addEventListener('command', (e) => {
+      console.log('Command executed:', e.command, 'on:', e.target);
+    });
+  </script>
+</body>
+</html>
