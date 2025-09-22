@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/doeixd/invokers/compare/v1.2.0...v1.3.0) (2025-09-22)
+
+
+### Features
+
+* Add pipeline functionality ([c1a8e27](https://github.com/doeixd/invokers/commit/c1a8e27381f3a01b4a5c0687991a1c9974367fa1))
+
 ## [1.2.0](https://github.com/doeixd/invokers/compare/v0.0.5...v1.2.0) (2025-09-22)
 
 
