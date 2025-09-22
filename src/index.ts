@@ -1822,12 +1822,12 @@ export class InvokerManager {
       }
     });
 
-    // --storage command for localStorage and sessionStorage
+    // --storage command for localStorage and sessionStorage with enhanced features
     this.register("--storage", ({ invoker, getTargets, params }) => {
       const [storageType, action, key, ...valueParts] = params;
-      const value = valueParts.join(':'); // Rejoin with colons for complex values
       const targets = getTargets();
 
+      // Enhanced storage with JSON support, expiration, and better error handling
       if (!storageType || !['local', 'session'].includes(storageType)) {
         throw createInvokerError(
           `Invalid storage type "${storageType}". Must be "local" or "session"`,
@@ -1843,6 +1843,19 @@ export class InvokerManager {
 
       const storage = storageType === 'local' ? localStorage : sessionStorage;
 
+      // Check if storage is available
+      if (typeof Storage === 'undefined') {
+        throw createInvokerError(
+          'Web Storage API not supported in this browser',
+          ErrorSeverity.ERROR,
+          {
+            command: '--storage',
+            element: invoker,
+            recovery: 'Use a modern browser that supports localStorage/sessionStorage'
+          }
+        );
+      }
+
       try {
         switch (action) {
           case 'set':
@@ -1857,7 +1870,34 @@ export class InvokerManager {
                 }
               );
             }
-            storage.setItem(key, value);
+
+            let valueToStore = valueParts.join(':');
+
+            // Check for JSON flag
+            const isJson = invoker?.dataset?.storageJson === 'true' || valueToStore.startsWith('{') || valueToStore.startsWith('[');
+            if (isJson) {
+              try {
+                // If it's already JSON, validate it
+                JSON.parse(valueToStore);
+              } catch {
+                // If not valid JSON, try to stringify the value
+                valueToStore = JSON.stringify(valueToStore);
+              }
+            }
+
+            // Check for expiration
+            const expiresIn = invoker?.dataset?.storageExpires;
+            if (expiresIn) {
+              const expiresAt = Date.now() + (parseInt(expiresIn, 10) * 1000); // Convert seconds to ms
+              const data = {
+                value: valueToStore,
+                expiresAt,
+                isJson
+              };
+              storage.setItem(key, JSON.stringify(data));
+            } else {
+              storage.setItem(key, valueToStore);
+            }
             break;
 
           case 'get':
@@ -1872,12 +1912,33 @@ export class InvokerManager {
                 }
               );
             }
-            const storedValue = storage.getItem(key);
-            if (targets.length > 0 && storedValue !== null) {
+
+            let storedValue = storage.getItem(key);
+            let finalValue = storedValue;
+
+            if (storedValue !== null) {
+              try {
+                // Check if it's our enhanced storage format with expiration
+                const parsed = JSON.parse(storedValue);
+                if (parsed && typeof parsed === 'object' && 'value' in parsed && 'expiresAt' in parsed) {
+                  if (Date.now() > parsed.expiresAt) {
+                    // Expired, remove it
+                    storage.removeItem(key);
+                    finalValue = null;
+                  } else {
+                    finalValue = parsed.isJson ? JSON.stringify(parsed.value) : parsed.value;
+                  }
+                }
+              } catch {
+                // Not our format, use as-is
+              }
+            }
+
+            if (targets.length > 0 && finalValue !== null) {
               if ('value' in targets[0]) {
-                (targets[0] as HTMLInputElement).value = storedValue;
+                (targets[0] as HTMLInputElement).value = finalValue;
               } else {
-                targets[0].textContent = storedValue;
+                targets[0].textContent = finalValue;
               }
             }
             break;
@@ -1901,6 +1962,37 @@ export class InvokerManager {
             storage.clear();
             break;
 
+          case 'keys':
+            // Get all keys, optionally filtered by prefix
+            const prefix = key || '';
+            const allKeys = Object.keys(storage).filter(k => k.startsWith(prefix));
+            if (targets.length > 0) {
+              targets[0].textContent = JSON.stringify(allKeys);
+            }
+            break;
+
+          case 'has':
+            // Check if key exists
+            const exists = storage.getItem(key) !== null;
+            if (targets.length > 0) {
+              targets[0].textContent = exists.toString();
+            }
+            break;
+
+          case 'size':
+            // Get storage size in bytes
+            let size = 0;
+            for (let i = 0; i < storage.length; i++) {
+              const k = storage.key(i);
+              if (k) {
+                size += k.length + (storage.getItem(k)?.length || 0);
+              }
+            }
+            if (targets.length > 0) {
+              targets[0].textContent = size.toString();
+            }
+            break;
+
           default:
             throw createInvokerError(
               `Unknown storage action "${action}"`,
@@ -1908,12 +2000,26 @@ export class InvokerManager {
               {
                 command: '--storage',
                 element: invoker,
-                context: { action, availableActions: ['set', 'get', 'remove', 'clear'] },
-                recovery: 'Use set, get, remove, or clear actions'
+                context: { action, availableActions: ['set', 'get', 'remove', 'clear', 'keys', 'has', 'size'] },
+                recovery: 'Use set, get, remove, clear, keys, has, or size actions'
               }
             );
         }
       } catch (error) {
+        // Handle quota exceeded errors specifically
+        if (error instanceof Error && error.name === 'QuotaExceededError') {
+          throw createInvokerError(
+            'Storage quota exceeded. Cannot store more data.',
+            ErrorSeverity.ERROR,
+            {
+              command: '--storage',
+              element: invoker,
+              cause: error,
+              recovery: 'Clear some storage space or use sessionStorage instead of localStorage'
+            }
+          );
+        }
+
         throw createInvokerError(
           `Storage operation failed: ${(error as Error).message}`,
           ErrorSeverity.ERROR,
@@ -1921,15 +2027,15 @@ export class InvokerManager {
             command: '--storage',
             element: invoker,
             cause: error as Error,
-            recovery: 'Check storage availability and quota limits'
+            recovery: 'Check storage availability, quota limits, and data format'
           }
         );
       }
     });
 
-    // --animate command for CSS animations
+    // --animate command for CSS animations with enhanced options
     this.register("--animate", ({ invoker, getTargets, params }) => {
-      const [animation] = params;
+      const [animation, ...options] = params;
       const targets = getTargets();
 
       if (targets.length === 0) {
@@ -1948,7 +2054,8 @@ export class InvokerManager {
 
       const validAnimations = [
         'fade-in', 'fade-out', 'slide-up', 'slide-down', 'slide-left', 'slide-right',
-        'bounce', 'shake', 'pulse', 'flip', 'rotate-in', 'zoom-in', 'zoom-out'
+        'bounce', 'shake', 'pulse', 'flip', 'rotate-in', 'zoom-in', 'zoom-out',
+        'spin', 'wobble', 'jello', 'heartbeat', 'rubber-band'
       ];
 
       if (!validAnimations.includes(animation)) {
@@ -1964,6 +2071,30 @@ export class InvokerManager {
         );
       }
 
+      // Parse options: duration, delay, easing, iterations
+      let duration = '0.5s';
+      let delay = '0s';
+      let easing = 'ease-in-out';
+      let iterations = '1';
+
+      options.forEach(option => {
+        if (option.includes('duration:')) {
+          duration = option.split(':')[1] || '0.5s';
+        } else if (option.includes('delay:')) {
+          delay = option.split(':')[1] || '0s';
+        } else if (option.includes('easing:')) {
+          easing = option.split(':')[1] || 'ease-in-out';
+        } else if (option.includes('iterations:')) {
+          iterations = option.split(':')[1] || '1';
+        }
+      });
+
+      // Also check data attributes for options
+      if (invoker?.dataset?.animateDuration) duration = invoker.dataset.animateDuration;
+      if (invoker?.dataset?.animateDelay) delay = invoker.dataset.animateDelay;
+      if (invoker?.dataset?.animateEasing) easing = invoker.dataset.animateEasing;
+      if (invoker?.dataset?.animateIterations) iterations = invoker.dataset.animateIterations;
+
       try {
         targets.forEach(target => {
           if (!target.isConnected) {
@@ -1971,25 +2102,44 @@ export class InvokerManager {
             return;
           }
 
-          // Remove any existing animation classes
+          // Remove any existing animation classes and styles
           target.classList.forEach(className => {
             if (className.startsWith('invokers-animate-')) {
               target.classList.remove(className);
             }
           });
 
+          // Clear any existing animation styles
+          target.style.animation = '';
+
           // Force reflow to restart animation
           void target.offsetHeight;
 
-          // Add the animation class
-          target.classList.add(`invokers-animate-${animation}`);
+          // Create custom animation style
+          const animationName = `invokers-animate-${animation}`;
+          const animationValue = `${animationName} ${duration} ${easing} ${delay} ${iterations}`;
 
-          // Remove the class after animation completes
-          const handleAnimationEnd = () => {
-            target.classList.remove(`invokers-animate-${animation}`);
-            target.removeEventListener('animationend', handleAnimationEnd);
+          // Apply the animation
+          target.style.animation = animationValue;
+
+          // Handle animation end
+          const handleAnimationEnd = (e: AnimationEvent) => {
+            // Only remove if it's our animation
+            if (e.animationName === animationName) {
+              target.style.animation = '';
+              target.removeEventListener('animationend', handleAnimationEnd);
+            }
           };
+
           target.addEventListener('animationend', handleAnimationEnd);
+
+          // Fallback timeout in case animationend doesn't fire
+          setTimeout(() => {
+            if (target.style.animation.includes(animationName)) {
+              target.style.animation = '';
+              target.removeEventListener('animationend', handleAnimationEnd);
+            }
+          }, parseFloat(duration) * 1000 + parseFloat(delay) * 1000 + 100); // Add 100ms buffer
         });
       } catch (error) {
         throw createInvokerError(
@@ -1999,16 +2149,15 @@ export class InvokerManager {
             command: '--animate',
             element: invoker,
             cause: error as Error,
-            recovery: 'Ensure target elements support CSS animations'
+            recovery: 'Ensure target elements support CSS animations and check animation parameters'
           }
         );
       }
     });
 
-    // --emit command for dispatching custom events
+    // --emit command for dispatching events with enhanced options
     this.register("--emit", ({ invoker, getTargets, params }) => {
       const [eventType, ...detailParts] = params;
-      const detail = detailParts.length > 0 ? detailParts.join(':') : null;
       const targets = getTargets();
 
       if (!eventType) {
@@ -2023,52 +2172,106 @@ export class InvokerManager {
         );
       }
 
+      // Parse event options from data attributes
+      const bubbles = invoker?.dataset?.emitBubbles !== 'false'; // Default true
+      const cancelable = invoker?.dataset?.emitCancelable !== 'false'; // Default true
+      const composed = invoker?.dataset?.emitComposed === 'true'; // Default false
+
+      // Check if this is a built-in event type
+      const builtInEvents = [
+        'click', 'input', 'change', 'submit', 'focus', 'blur',
+        'keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'mousemove',
+        'scroll', 'resize', 'load', 'unload', 'beforeunload'
+      ];
+
+      const isBuiltInEvent = builtInEvents.includes(eventType);
+
       try {
-        const eventInit: CustomEventInit = {};
-        if (detail !== null) {
-          try {
-            eventInit.detail = JSON.parse(detail);
-          } catch {
-            eventInit.detail = detail;
+        let eventToDispatch: Event;
+
+        if (isBuiltInEvent) {
+          // Create built-in event
+          const eventClass = eventType === 'click' ? MouseEvent :
+                           eventType === 'input' || eventType === 'change' ? InputEvent :
+                           eventType === 'keydown' || eventType === 'keyup' || eventType === 'keypress' ? KeyboardEvent :
+                           Event;
+
+          if (eventClass === MouseEvent) {
+            eventToDispatch = new MouseEvent(eventType, { bubbles, cancelable });
+          } else if (eventClass === KeyboardEvent) {
+            eventToDispatch = new KeyboardEvent(eventType, { bubbles, cancelable });
+          } else if (eventClass === InputEvent) {
+            eventToDispatch = new InputEvent(eventType, { bubbles, cancelable });
+          } else {
+            eventToDispatch = new Event(eventType, { bubbles, cancelable });
           }
+        } else {
+          // Create custom event with detail
+          const detail = detailParts.length > 0 ? detailParts.join(':') : null;
+          const eventInit: CustomEventInit = { bubbles, cancelable };
+
+          if (detail !== null) {
+            try {
+              eventInit.detail = JSON.parse(detail);
+            } catch {
+              // Try to parse as number or boolean
+              if (detail === 'true') eventInit.detail = true;
+              else if (detail === 'false') eventInit.detail = false;
+              else if (!isNaN(Number(detail))) eventInit.detail = Number(detail);
+              else eventInit.detail = detail;
+            }
+          }
+
+          if (composed) {
+            (eventInit as any).composed = true;
+          }
+
+          eventToDispatch = new CustomEvent(eventType, eventInit);
         }
 
-        const customEvent = new CustomEvent(eventType, {
-          bubbles: true,
-          cancelable: true,
-          ...eventInit
-        });
-
         if (targets.length > 0) {
-          targets.forEach(target => target.dispatchEvent(customEvent));
+          targets.forEach(target => {
+            try {
+              target.dispatchEvent(eventToDispatch);
+            } catch (dispatchError) {
+              console.warn('Invokers: Failed to dispatch event on target:', target, dispatchError);
+            }
+          });
         } else {
           // If no targets, dispatch on the document
-          document.dispatchEvent(customEvent);
+          document.dispatchEvent(eventToDispatch);
+        }
+
+        // Dispatch success event for chaining
+        if (invoker) {
+          const successEvent = new CustomEvent('invoker:emit:success', {
+            detail: { eventType, targetCount: targets.length || 1 }
+          });
+          invoker.dispatchEvent(successEvent);
         }
       } catch (error) {
         throw createInvokerError(
-          'Failed to emit custom event',
+          'Failed to emit event',
           ErrorSeverity.ERROR,
           {
             command: '--emit',
             element: invoker,
             cause: error as Error,
-            recovery: 'Ensure event type is a valid string'
+            recovery: 'Check event type and target elements'
           }
         );
       }
     });
 
-    // --url command for URL manipulation
+    // --url command for URL manipulation with enhanced features
     this.register("--url", ({ invoker, getTargets, params }) => {
       const [action, ...valueParts] = params;
-      const value = valueParts.join(':');
       const targets = getTargets();
 
       try {
         switch (action) {
           case 'params:get':
-            if (!value) {
+            if (valueParts.length === 0) {
               throw createInvokerError(
                 'URL params:get requires a parameter name',
                 ErrorSeverity.ERROR,
@@ -2079,8 +2282,11 @@ export class InvokerManager {
                 }
               );
             }
+
+            const paramName = valueParts[0];
             const urlParams = new URLSearchParams(window.location.search);
-            const paramValue = urlParams.get(value) || '';
+            const paramValue = urlParams.get(paramName) || '';
+
             if (targets.length > 0) {
               if ('value' in targets[0]) {
                 (targets[0] as HTMLInputElement).value = paramValue;
@@ -2088,24 +2294,68 @@ export class InvokerManager {
                 targets[0].textContent = paramValue;
               }
             }
+
+            // Value is set on target element for chaining
             break;
 
           case 'params:set':
-            if (!value || !value.includes(':')) {
+            if (valueParts.length < 2) {
               throw createInvokerError(
-                'URL params:set requires param-name:value format',
+                'URL params:set requires param-name and value',
                 ErrorSeverity.ERROR,
                 {
                   command: '--url',
                   element: invoker,
-                  recovery: 'Use --url:params:set:param-name:new-value'
+                  recovery: 'Use --url:params:set:param-name:value'
                 }
               );
             }
-            const [paramName, newParamValue] = value.split(':', 2);
+
+            const [setParamName, ...setParamValueParts] = valueParts;
+            const setParamValue = setParamValueParts.join(':');
             const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set(paramName, newParamValue);
-            window.history.replaceState(null, '', currentUrl.toString());
+            currentUrl.searchParams.set(setParamName, setParamValue);
+
+            // Check for state preservation
+            const preserveState = invoker?.dataset?.urlPreserveState === 'true';
+            window.history.replaceState(
+              preserveState ? window.history.state : null,
+              '',
+              currentUrl.toString()
+            );
+            break;
+
+          case 'params:delete':
+            if (valueParts.length === 0) {
+              throw createInvokerError(
+                'URL params:delete requires a parameter name',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--url',
+                  element: invoker,
+                  recovery: 'Use --url:params:delete:param-name'
+                }
+              );
+            }
+
+            const deleteParamName = valueParts[0];
+            const deleteUrl = new URL(window.location.href);
+            deleteUrl.searchParams.delete(deleteParamName);
+            window.history.replaceState(null, '', deleteUrl.toString());
+            break;
+
+          case 'params:clear':
+            const clearUrl = new URL(window.location.href);
+            clearUrl.search = '';
+            window.history.replaceState(null, '', clearUrl.toString());
+            break;
+
+          case 'params:all':
+            const allParams = Object.fromEntries(new URLSearchParams(window.location.search));
+            const paramsJson = JSON.stringify(allParams);
+            if (targets.length > 0) {
+              targets[0].textContent = paramsJson;
+            }
             break;
 
           case 'hash:get':
@@ -2120,15 +2370,46 @@ export class InvokerManager {
             break;
 
           case 'hash:set':
-            window.location.hash = value ? `#${value}` : '';
+            const hashToSet = valueParts.join(':');
+            window.location.hash = hashToSet ? `#${hashToSet}` : '';
+            break;
+
+          case 'hash:clear':
+            window.location.hash = '';
+            break;
+
+          case 'pathname:get':
+            const pathname = window.location.pathname;
+            if (targets.length > 0) {
+              targets[0].textContent = pathname;
+            }
+            break;
+
+          case 'pathname:set':
+            if (valueParts.length === 0) {
+              throw createInvokerError(
+                'URL pathname:set requires a pathname',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--url',
+                  element: invoker,
+                  recovery: 'Use --url:pathname:set:/new-path'
+                }
+              );
+            }
+            const newPathname = valueParts[0];
+            const pathnameUrl = new URL(window.location.href);
+            pathnameUrl.pathname = newPathname;
+            window.history.replaceState(null, '', pathnameUrl.toString());
             break;
 
           case 'reload':
-            window.location.reload();
+            const forceReload = invoker?.dataset?.urlForceReload === 'true';
+            (window.location.reload as any)(forceReload);
             break;
 
           case 'replace':
-            if (!value) {
+            if (valueParts.length === 0) {
               throw createInvokerError(
                 'URL replace requires a URL',
                 ErrorSeverity.ERROR,
@@ -2139,7 +2420,38 @@ export class InvokerManager {
                 }
               );
             }
-            window.location.replace(value);
+            const replaceUrl = valueParts.join(':');
+            window.location.replace(replaceUrl);
+            break;
+
+          case 'navigate':
+            if (valueParts.length === 0) {
+              throw createInvokerError(
+                'URL navigate requires a URL',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--url',
+                  element: invoker,
+                  recovery: 'Use --url:navigate:new-url'
+                }
+              );
+            }
+            const navigateUrl = valueParts.join(':');
+            window.location.href = navigateUrl;
+            break;
+
+          case 'base':
+            const baseUrl = `${window.location.protocol}//${window.location.host}`;
+            if (targets.length > 0) {
+              targets[0].textContent = baseUrl;
+            }
+            break;
+
+          case 'full':
+            const fullUrl = window.location.href;
+            if (targets.length > 0) {
+              targets[0].textContent = fullUrl;
+            }
             break;
 
           default:
@@ -2149,7 +2461,15 @@ export class InvokerManager {
               {
                 command: '--url',
                 element: invoker,
-                context: { action, availableActions: ['params:get', 'params:set', 'hash:get', 'hash:set', 'reload', 'replace'] },
+                context: {
+                  action,
+                  availableActions: [
+                    'params:get', 'params:set', 'params:delete', 'params:clear', 'params:all',
+                    'hash:get', 'hash:set', 'hash:clear',
+                    'pathname:get', 'pathname:set',
+                    'reload', 'replace', 'navigate', 'base', 'full'
+                  ]
+                },
                 recovery: 'Use a valid URL action'
               }
             );
@@ -2162,47 +2482,75 @@ export class InvokerManager {
             command: '--url',
             element: invoker,
             cause: error as Error,
-            recovery: 'Check URL format and browser support'
+            recovery: 'Check URL format, parameter names, and browser support'
           }
         );
       }
     });
 
-    // --history command for browser history manipulation
-    this.register("--history", ({ invoker, params }) => {
+    // --history command for browser history manipulation with enhanced state management
+    this.register("--history", ({ invoker, getTargets, params }) => {
       const [action, ...valueParts] = params;
-      const value = valueParts.join(':');
+      const targets = getTargets();
 
       try {
         switch (action) {
           case 'push':
-            if (!value) {
+            if (valueParts.length === 0) {
               throw createInvokerError(
                 'History push requires a URL',
                 ErrorSeverity.ERROR,
                 {
                   command: '--history',
                   element: invoker,
-                  recovery: 'Use --history:push:new-url'
+                  recovery: 'Use --history:push:url or --history:push:url:title:state-data'
                 }
               );
             }
-            window.history.pushState(null, '', value);
+
+            const pushUrl = valueParts[0];
+            const pushTitle = valueParts[1] || '';
+            const pushState = valueParts.slice(2).join(':');
+
+            let state = null;
+            if (pushState) {
+              try {
+                state = JSON.parse(pushState);
+              } catch {
+                state = pushState;
+              }
+            }
+
+            window.history.pushState(state, pushTitle, pushUrl);
             break;
 
           case 'replace':
-            if (!value) {
+            if (valueParts.length === 0) {
               throw createInvokerError(
                 'History replace requires a URL',
                 ErrorSeverity.ERROR,
                 {
                   command: '--history',
                   element: invoker,
-                  recovery: 'Use --history:replace:new-url'
+                  recovery: 'Use --history:replace:url or --history:replace:url:title:state-data'
                 }
               );
             }
-            window.history.replaceState(null, '', value);
+
+            const replaceUrl = valueParts[0];
+            const replaceTitle = valueParts[1] || '';
+            const replaceState = valueParts.slice(2).join(':');
+
+            let replaceStateData = null;
+            if (replaceState) {
+              try {
+                replaceStateData = JSON.parse(replaceState);
+              } catch {
+                replaceStateData = replaceState;
+              }
+            }
+
+            window.history.replaceState(replaceStateData, replaceTitle, replaceUrl);
             break;
 
           case 'back':
@@ -2214,7 +2562,7 @@ export class InvokerManager {
             break;
 
           case 'go':
-            const delta = value ? parseInt(value, 10) : -1;
+            const delta = valueParts[0] ? parseInt(valueParts[0], 10) : -1;
             if (isNaN(delta)) {
               throw createInvokerError(
                 'History go requires a valid number',
@@ -2229,6 +2577,50 @@ export class InvokerManager {
             window.history.go(delta);
             break;
 
+          case 'state:get':
+            const currentState = window.history.state;
+            const stateJson = JSON.stringify(currentState);
+            if (targets.length > 0) {
+              targets[0].textContent = stateJson;
+            }
+            break;
+
+          case 'state:set':
+            if (valueParts.length === 0) {
+              throw createInvokerError(
+                'History state:set requires state data',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--history',
+                  element: invoker,
+                  recovery: 'Use --history:state:set:json-data'
+                }
+              );
+            }
+
+            const stateData = valueParts.join(':');
+            let newState;
+            try {
+              newState = JSON.parse(stateData);
+            } catch {
+              newState = stateData;
+            }
+
+            window.history.replaceState(newState, document.title);
+            break;
+
+          case 'length':
+            const historyLength = window.history.length;
+            if (targets.length > 0) {
+              targets[0].textContent = historyLength.toString();
+            }
+            break;
+
+          case 'clear':
+            // Clear state but keep URL
+            window.history.replaceState(null, document.title);
+            break;
+
           default:
             throw createInvokerError(
               `Unknown history action "${action}"`,
@@ -2236,7 +2628,13 @@ export class InvokerManager {
               {
                 command: '--history',
                 element: invoker,
-                context: { action, availableActions: ['push', 'replace', 'back', 'forward', 'go'] },
+                context: {
+                  action,
+                  availableActions: [
+                    'push', 'replace', 'back', 'forward', 'go',
+                    'state:get', 'state:set', 'length', 'clear'
+                  ]
+                },
                 recovery: 'Use a valid history action'
               }
             );
@@ -2249,22 +2647,34 @@ export class InvokerManager {
             command: '--history',
             element: invoker,
             cause: error as Error,
-            recovery: 'Check browser history support'
+            recovery: 'Check browser history support and parameters'
           }
         );
       }
     });
 
-    // --device command for device APIs
-    this.register("--device", ({ invoker, getTargets, params }) => {
+    // --device command for device APIs with enhanced permission handling
+    this.register("--device", async ({ invoker, getTargets, params }) => {
       const [action, ...valueParts] = params;
-      const value = valueParts.join(':');
       const targets = getTargets();
+
+      // Helper function to request permissions
+      const requestPermission = async (permissionName: string): Promise<boolean> => {
+        if ('permissions' in navigator) {
+          try {
+            const permission = await (navigator as any).permissions.query({ name: permissionName });
+            return permission.state === 'granted';
+          } catch {
+            return false;
+          }
+        }
+        return true; // Assume granted if permissions API not available
+      };
 
       try {
         switch (action) {
           case 'vibrate':
-            if (!value) {
+            if (valueParts.length === 0) {
               throw createInvokerError(
                 'Device vibrate requires a pattern',
                 ErrorSeverity.ERROR,
@@ -2275,11 +2685,17 @@ export class InvokerManager {
                 }
               );
             }
-            if ('vibrate' in navigator) {
-              const pattern = value.split(':').map(n => parseInt(n, 10));
-              (navigator as any).vibrate(pattern.length === 1 ? pattern[0] : pattern);
-            } else {
+
+            if (!('vibrate' in navigator)) {
               console.warn('Invokers: Vibration API not supported');
+              return;
+            }
+
+            const pattern = valueParts.map(n => parseInt(n, 10));
+            const vibrateResult = (navigator as any).vibrate(pattern.length === 1 ? pattern[0] : pattern);
+
+            if (!vibrateResult) {
+              console.warn('Invokers: Vibration failed - may be blocked or not supported');
             }
             break;
 
@@ -2288,18 +2704,31 @@ export class InvokerManager {
               console.warn('Invokers: Web Share API not supported');
               return;
             }
-            const shareData: any = {};
-            if (value) {
-              const parts = value.split(':');
-              for (let i = 0; i < parts.length; i += 2) {
-                const key = parts[i];
-                const val = parts[i + 1];
-                if (key && val) {
-                  shareData[key] = val;
+
+            const shareData: ShareData = {};
+            if (valueParts.length > 0) {
+              // Parse key:value pairs
+              for (let i = 0; i < valueParts.length; i += 2) {
+                const key = valueParts[i];
+                const val = valueParts[i + 1];
+                if (key && val !== undefined) {
+                  if (key === 'url') shareData.url = val;
+                  else if (key === 'text') shareData.text = val;
+                  else if (key === 'title') shareData.title = val;
                 }
               }
             }
-            (navigator as any).share(shareData);
+
+            try {
+              await (navigator as any).share(shareData);
+              // Dispatch success event
+              document.dispatchEvent(new CustomEvent('device:share:success'));
+            } catch (shareError) {
+              // User cancelled or error occurred
+              document.dispatchEvent(new CustomEvent('device:share:cancelled', {
+                detail: shareError
+              }));
+            }
             break;
 
           case 'geolocation:get':
@@ -2314,23 +2743,47 @@ export class InvokerManager {
                 }
               );
             }
+
+            const hasGeoPermission = await requestPermission('geolocation');
+            if (!hasGeoPermission) {
+              console.warn('Invokers: Geolocation permission not granted');
+              document.dispatchEvent(new CustomEvent('geolocation:denied'));
+              return;
+            }
+
+            const geoOptions: PositionOptions = {
+              enableHighAccuracy: invoker?.dataset?.geoHighAccuracy === 'true',
+              timeout: parseInt(invoker?.dataset?.geoTimeout || '10000'),
+              maximumAge: parseInt(invoker?.dataset?.geoMaxAge || '0')
+            };
+
             navigator.geolocation.getCurrentPosition(
               (position) => {
                 const data = {
                   latitude: position.coords.latitude,
                   longitude: position.coords.longitude,
-                  accuracy: position.coords.accuracy
+                  accuracy: position.coords.accuracy,
+                  altitude: position.coords.altitude,
+                  altitudeAccuracy: position.coords.altitudeAccuracy,
+                  heading: position.coords.heading,
+                  speed: position.coords.speed,
+                  timestamp: position.timestamp
                 };
                 if (targets.length > 0) {
                   targets[0].textContent = JSON.stringify(data);
                 }
                 // Dispatch success event
-                document.dispatchEvent(new CustomEvent('geolocation:success', { detail: data }));
+                document.dispatchEvent(new CustomEvent('device:geolocation:success', { detail: data }));
               },
               (error) => {
+                const errorData = {
+                  code: error.code,
+                  message: error.message
+                };
                 // Dispatch error event
-                document.dispatchEvent(new CustomEvent('geolocation:error', { detail: error }));
-              }
+                document.dispatchEvent(new CustomEvent('device:geolocation:error', { detail: errorData }));
+              },
+              geoOptions
             );
             break;
 
@@ -2339,10 +2792,46 @@ export class InvokerManager {
               console.warn('Invokers: Device Orientation API not supported');
               return;
             }
-            // This would need event listeners, but for simplicity, we'll just check support
-            const orientation = (window as any).screen?.orientation?.angle || 'unknown';
+
+            // Get current orientation if available
+            const orientation = (window as any).screen?.orientation || (window as any).orientation;
+            const orientationData = {
+              angle: orientation?.angle || 0,
+              type: orientation?.type || 'unknown'
+            };
+
             if (targets.length > 0) {
-              targets[0].textContent = orientation.toString();
+              targets[0].textContent = JSON.stringify(orientationData);
+            }
+
+            // Dispatch event
+            document.dispatchEvent(new CustomEvent('device:orientation:current', { detail: orientationData }));
+            break;
+
+          case 'motion:get':
+            if (!window.DeviceMotionEvent) {
+              console.warn('Invokers: Device Motion API not supported');
+              return;
+            }
+
+            // Request permission for iOS 13+
+            if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+              try {
+                const permission = await (DeviceMotionEvent as any).requestPermission();
+                if (permission !== 'granted') {
+                  console.warn('Invokers: Device motion permission denied');
+                  return;
+                }
+              } catch {
+                console.warn('Invokers: Failed to request device motion permission');
+                return;
+              }
+            }
+
+            // Note: Actual motion data requires event listeners, this just confirms support
+            const motionSupported = true;
+            if (targets.length > 0) {
+              targets[0].textContent = JSON.stringify({ supported: motionSupported });
             }
             break;
 
@@ -2351,7 +2840,9 @@ export class InvokerManager {
               console.warn('Invokers: Battery API not supported');
               return;
             }
-            (navigator as any).getBattery().then((battery: any) => {
+
+            try {
+              const battery = await (navigator as any).getBattery();
               const data = {
                 level: battery.level,
                 charging: battery.charging,
@@ -2361,7 +2852,87 @@ export class InvokerManager {
               if (targets.length > 0) {
                 targets[0].textContent = JSON.stringify(data);
               }
-            });
+              // Dispatch event
+              document.dispatchEvent(new CustomEvent('device:battery:status', { detail: data }));
+            } catch (batteryError) {
+              console.warn('Invokers: Failed to get battery status', batteryError);
+            }
+            break;
+
+          case 'clipboard:read':
+            if (!navigator.clipboard?.readText) {
+              console.warn('Invokers: Clipboard read not supported');
+              return;
+            }
+
+            try {
+              const clipboardText = await navigator.clipboard.readText();
+              if (targets.length > 0) {
+                if ('value' in targets[0]) {
+                  (targets[0] as HTMLInputElement).value = clipboardText;
+                } else {
+                  targets[0].textContent = clipboardText;
+                }
+              }
+              document.dispatchEvent(new CustomEvent('device:clipboard:read', { detail: clipboardText }));
+            } catch (clipboardError) {
+              console.warn('Invokers: Clipboard read failed', clipboardError);
+              document.dispatchEvent(new CustomEvent('device:clipboard:denied'));
+            }
+            break;
+
+          case 'clipboard:write':
+            if (!navigator.clipboard?.writeText) {
+              console.warn('Invokers: Clipboard write not supported');
+              return;
+            }
+
+            const textToWrite = valueParts.join(':');
+            if (!textToWrite) {
+              throw createInvokerError(
+                'Clipboard write requires text to copy',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--device',
+                  element: invoker,
+                  recovery: 'Use --device:clipboard:write:text-to-copy'
+                }
+              );
+            }
+
+            try {
+              await navigator.clipboard.writeText(textToWrite);
+              document.dispatchEvent(new CustomEvent('device:clipboard:written', { detail: textToWrite }));
+            } catch (clipboardError) {
+              console.warn('Invokers: Clipboard write failed', clipboardError);
+              document.dispatchEvent(new CustomEvent('device:clipboard:denied'));
+            }
+            break;
+
+          case 'wake-lock':
+            if (!('wakeLock' in navigator)) {
+              console.warn('Invokers: Wake Lock API not supported');
+              return;
+            }
+
+            try {
+              const wakeLock = await (navigator as any).wakeLock.request('screen');
+              // Store wake lock for potential release
+              (window as any)._invokersWakeLock = wakeLock;
+
+              document.dispatchEvent(new CustomEvent('device:wake-lock:acquired'));
+            } catch (wakeError) {
+              console.warn('Invokers: Wake lock request failed', wakeError);
+              document.dispatchEvent(new CustomEvent('device:wake-lock:denied'));
+            }
+            break;
+
+          case 'wake-lock:release':
+            if ((window as any)._invokersWakeLock) {
+              (window as any)._invokersWakeLock.release();
+              delete (window as any)._invokersWakeLock;
+              document.dispatchEvent(new CustomEvent('device:wake-lock:released'));
+            }
             break;
 
           default:
@@ -2371,7 +2942,13 @@ export class InvokerManager {
               {
                 command: '--device',
                 element: invoker,
-                context: { action, availableActions: ['vibrate', 'share', 'geolocation:get', 'orientation:get', 'battery:get'] },
+                context: {
+                  action,
+                  availableActions: [
+                    'vibrate', 'share', 'geolocation:get', 'orientation:get', 'motion:get',
+                    'battery:get', 'clipboard:read', 'clipboard:write', 'wake-lock', 'wake-lock:release'
+                  ]
+                },
                 recovery: 'Use a supported device action'
               }
             );
@@ -2384,13 +2961,13 @@ export class InvokerManager {
             command: '--device',
             element: invoker,
             cause: error as Error,
-            recovery: 'Check device API support and permissions'
+            recovery: 'Check device API support, permissions, and parameters'
           }
         );
       }
     });
 
-    // --a11y command for accessibility helpers
+    // --a11y command for comprehensive accessibility helpers
     this.register("--a11y", ({ invoker, getTargets, params }) => {
       const [action, ...valueParts] = params;
       const value = valueParts.join(':');
@@ -2410,12 +2987,16 @@ export class InvokerManager {
                 }
               );
             }
-            // Create or find an aria-live region
-            let liveRegion = document.getElementById('invokers-a11y-announcer');
+
+            // Determine announcement priority
+            const priority = invoker?.dataset?.announcePriority || 'polite'; // polite or assertive
+
+            // Create or find aria-live regions
+            let liveRegion = document.getElementById(`invokers-a11y-announcer-${priority}`);
             if (!liveRegion) {
               liveRegion = document.createElement('div');
-              liveRegion.id = 'invokers-a11y-announcer';
-              liveRegion.setAttribute('aria-live', 'polite');
+              liveRegion.id = `invokers-a11y-announcer-${priority}`;
+              liveRegion.setAttribute('aria-live', priority);
               liveRegion.setAttribute('aria-atomic', 'true');
               liveRegion.style.position = 'absolute';
               liveRegion.style.left = '-10000px';
@@ -2424,7 +3005,13 @@ export class InvokerManager {
               liveRegion.style.overflow = 'hidden';
               document.body.appendChild(liveRegion);
             }
-            liveRegion.textContent = value;
+
+            // Clear previous content and set new content
+            liveRegion.textContent = '';
+            // Use setTimeout to ensure screen readers pick up the change
+            setTimeout(() => {
+              liveRegion!.textContent = value;
+            }, 100);
             break;
 
           case 'focus':
@@ -2439,7 +3026,22 @@ export class InvokerManager {
                 }
               );
             }
-            targets[0].focus();
+
+            const focusTarget = targets[0] as HTMLElement;
+            if (focusTarget.focus) {
+              // Scroll into view first if needed
+              focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+              // Small delay to ensure scrolling is complete
+              setTimeout(() => {
+                focusTarget.focus();
+
+                // Announce focus for screen readers
+                document.dispatchEvent(new CustomEvent('a11y:focus:changed', {
+                  detail: { element: focusTarget, label: focusTarget.textContent || focusTarget.getAttribute('aria-label') }
+                }));
+              }, 300);
+            }
             break;
 
           case 'skip-to':
@@ -2454,10 +3056,18 @@ export class InvokerManager {
                 }
               );
             }
-            const targetElement = document.getElementById(value);
-            if (targetElement) {
-              targetElement.focus();
-              targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            const skipTarget = document.getElementById(value);
+            if (skipTarget) {
+              // Ensure the target is focusable
+              if (!skipTarget.hasAttribute('tabindex') && !['button', 'input', 'select', 'textarea', 'a'].includes(skipTarget.tagName.toLowerCase())) {
+                skipTarget.setAttribute('tabindex', '-1');
+              }
+
+              skipTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              setTimeout(() => {
+                (skipTarget as HTMLElement).focus();
+              }, 300);
             } else {
               throw createInvokerError(
                 `Element with id "${value}" not found`,
@@ -2483,40 +3093,160 @@ export class InvokerManager {
                 }
               );
             }
-            // Simple focus trap implementation
+
             if (value === 'enable' && targets.length > 0) {
-              const container = targets[0];
-              const focusableElements = container.querySelectorAll(
-                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-              );
+              const container = targets[0] as HTMLElement;
+
+              // Find all focusable elements within the container
+              const getFocusableElements = () => {
+                return container.querySelectorAll(
+                  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                );
+              };
+
+              const focusableElements = getFocusableElements();
               const firstElement = focusableElements[0] as HTMLElement;
-              const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
 
               const handleTabKey = (e: KeyboardEvent) => {
+                const currentFocusable = getFocusableElements();
+                const currentFirst = currentFocusable[0] as HTMLElement;
+                const currentLast = currentFocusable[currentFocusable.length - 1] as HTMLElement;
+
                 if (e.key === 'Tab') {
                   if (e.shiftKey) {
-                    if (document.activeElement === firstElement) {
-                      lastElement.focus();
+                    if (document.activeElement === currentFirst) {
+                      currentLast.focus();
                       e.preventDefault();
                     }
                   } else {
-                    if (document.activeElement === lastElement) {
-                      firstElement.focus();
+                    if (document.activeElement === currentLast) {
+                      currentFirst.focus();
                       e.preventDefault();
                     }
+                  }
+                }
+
+                // Handle Escape key to exit focus trap
+                if (e.key === 'Escape') {
+                  document.dispatchEvent(new CustomEvent('a11y:focus-trap:escape', {
+                    detail: { container }
+                  }));
+                }
+              };
+
+              const handleFocusIn = (e: FocusEvent) => {
+                const target = e.target as HTMLElement;
+                if (!container.contains(target)) {
+                  // Focus moved outside container, bring it back
+                  const focusableElements = getFocusableElements();
+                  if (focusableElements.length > 0) {
+                    (focusableElements[0] as HTMLElement).focus();
                   }
                 }
               };
 
               container.addEventListener('keydown', handleTabKey);
-              (container as any)._focusTrapHandler = handleTabKey;
+              document.addEventListener('focusin', handleFocusIn);
+
+              // Store handlers for cleanup
+              (container as any)._a11yFocusTrap = {
+                tabHandler: handleTabKey,
+                focusHandler: handleFocusIn
+              };
+
+              // Focus first element
               firstElement?.focus();
+
+              // Announce focus trap activation
+              document.dispatchEvent(new CustomEvent('a11y:focus-trap:enabled', {
+                detail: { container }
+              }));
+
             } else if (value === 'disable' && targets.length > 0) {
-              const container = targets[0];
-              if ((container as any)._focusTrapHandler) {
-                container.removeEventListener('keydown', (container as any)._focusTrapHandler);
-                delete (container as any)._focusTrapHandler;
+              const container = targets[0] as HTMLElement;
+              const handlers = (container as any)._a11yFocusTrap;
+
+              if (handlers) {
+                container.removeEventListener('keydown', handlers.tabHandler);
+                document.removeEventListener('focusin', handlers.focusHandler);
+                delete (container as any)._a11yFocusTrap;
               }
+
+              document.dispatchEvent(new CustomEvent('a11y:focus-trap:disabled', {
+                detail: { container }
+              }));
+            }
+            break;
+
+          case 'aria:set':
+            if (!value || !value.includes(':')) {
+              throw createInvokerError(
+                'A11y aria:set requires attribute:value format',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use --a11y:aria:set:attribute:value'
+                }
+              );
+            }
+
+            const [ariaAttr, ariaValue] = value.split(':', 2);
+            if (targets.length > 0) {
+              targets.forEach(target => {
+                target.setAttribute(`aria-${ariaAttr}`, ariaValue);
+              });
+            }
+            break;
+
+          case 'aria:remove':
+            if (!value) {
+              throw createInvokerError(
+                'A11y aria:remove requires an attribute name',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use --a11y:aria:remove:attribute'
+                }
+              );
+            }
+
+            if (targets.length > 0) {
+              targets.forEach(target => {
+                target.removeAttribute(`aria-${value}`);
+              });
+            }
+            break;
+
+          case 'heading-level':
+            if (!value || !['1', '2', '3', '4', '5', '6'].includes(value)) {
+              throw createInvokerError(
+                'A11y heading-level requires a level 1-6',
+                ErrorSeverity.ERROR,
+                {
+                  command: '--a11y',
+                  element: invoker,
+                  recovery: 'Use --a11y:heading-level:1-6'
+                }
+              );
+            }
+
+            if (targets.length > 0) {
+              targets.forEach(target => {
+                if (target.tagName.match(/^H[1-6]$/)) {
+                  // Change heading level by changing tag
+                  const newTag = `H${value}`;
+                  const newElement = document.createElement(newTag);
+                  Array.from(target.attributes).forEach(attr => {
+                    newElement.setAttribute(attr.name, attr.value);
+                  });
+                  newElement.innerHTML = target.innerHTML;
+                  target.parentNode?.replaceChild(newElement, target);
+                } else {
+                  target.setAttribute('aria-level', value);
+                }
+              });
             }
             break;
 
@@ -2527,7 +3257,13 @@ export class InvokerManager {
               {
                 command: '--a11y',
                 element: invoker,
-                context: { action, availableActions: ['announce', 'focus', 'skip-to', 'focus-trap'] },
+                context: {
+                  action,
+                  availableActions: [
+                    'announce', 'focus', 'skip-to', 'focus-trap',
+                    'aria:set', 'aria:remove', 'heading-level'
+                  ]
+                },
                 recovery: 'Use a valid accessibility action'
               }
             );
@@ -2931,36 +3667,57 @@ class AndThenManager {
 // Get the SINGLETON instance of the manager.
 const invokerInstance = InvokerManager.getInstance();
 
-if (typeof window !== "undefined") {
-  (window as any).Invoker = {
-    // Bind all public methods to the one true instance.
-    register: invokerInstance.register.bind(invokerInstance),
-    executeCommand: invokerInstance.executeCommand.bind(invokerInstance),
+// Set up global API
+const setupGlobalAPI = () => {
+  let targetWindow = null;
 
-    // *** FIX: Expose the new registration function on the global API. ***
-    registerAll: invokerInstance.registerExtendedCommands.bind(invokerInstance),
-    parseCommandString,
-    createCommandString,
-    instance: invokerInstance,
-    get debug() { return isDebugMode; },
-    set debug(value: boolean) {
-      isDebugMode = value;
-      console.log(`Invokers: Debug mode ${value ? 'enabled' : 'disabled'}.`);
-    },
-    getStats: () => invokerInstance['performanceMonitor'].getStats(),
-    getRegisteredCommands: () => Array.from(invokerInstance['commands'].keys()),
-    validateElement,
-    createError: createInvokerError,
-    logError: logInvokerError,
-    reset() {
-      invokerInstance['commands'].clear();
-      invokerInstance['commandStates'].clear();
-      invokerInstance['sortedCommandKeys'] = [];
-      console.log('Invokers: Reset complete.');
-    }
-  };
+  // Try globalThis.window (browser)
+  if (typeof globalThis !== "undefined" && (globalThis as any).window) {
+    targetWindow = (globalThis as any).window;
+  }
 
-}
+  // Try global.window (Node.js with jsdom)
+  if (!targetWindow && typeof global !== "undefined" && (global as any).window) {
+    targetWindow = (global as any).window;
+  }
+
+  // Try window directly
+  if (!targetWindow && typeof window !== "undefined") {
+    targetWindow = window;
+  }
+
+  if (targetWindow) {
+    targetWindow.Invoker = {
+      // Bind all public methods to the one true instance.
+      register: invokerInstance.register.bind(invokerInstance),
+      executeCommand: invokerInstance.executeCommand.bind(invokerInstance),
+
+      // *** FIX: Expose the new registration function on the global API. ***
+      registerAll: invokerInstance.registerExtendedCommands.bind(invokerInstance),
+      parseCommandString,
+      createCommandString,
+      instance: invokerInstance,
+      get debug() { return isDebugMode; },
+      set debug(value: boolean) {
+        isDebugMode = value;
+        console.log(`Invokers: Debug mode ${value ? 'enabled' : 'disabled'}.`);
+      },
+      getStats: () => invokerInstance['performanceMonitor'].getStats(),
+      getRegisteredCommands: () => Array.from(invokerInstance['commands'].keys()),
+      validateElement,
+      createError: createInvokerError,
+      logError: logInvokerError,
+      reset() {
+        invokerInstance['commands'].clear();
+        invokerInstance['commandStates'].clear();
+        invokerInstance['sortedCommandKeys'] = [];
+        console.log('Invokers: Reset complete.');
+      }
+    };
+  }
+};
+
+setupGlobalAPI();
 
 
 

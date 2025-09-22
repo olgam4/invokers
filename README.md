@@ -158,16 +158,134 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `--hide`               | Hide element                      | `command="--hide" commandfor="alert"`       |
 | `--class:add:name`     | Add CSS class                     | `command="--class:add:active"`              |
 | `--class:remove:name`  | Remove CSS class                  | `command="--class:remove:loading"`          |
+| `--class:toggle:name`  | Toggle CSS class                  | `command="--class:toggle:dark-mode"`        |
 | `--text:set:message`   | Replace text content              | `command="--text:set:Hello World"`          |
+| `--text:append:text`   | Append to text content            | `command="--text:append: more text"`        |
+| `--text:prepend:text`  | Prepend to text content           | `command="--text:prepend:Prefix "`          |
+| `--text:clear`         | Clear text content                | `command="--text:clear"`                    |
 | `--attr:set:name:val`  | Set attribute                     | `command="--attr:set:disabled:true"`        |
-| `--fetch:get`          | Load HTML from server             | `command="--fetch:get" data-url="/api"`     |
-| `--fetch:send`         | Send form data to server          | `command="--fetch:send" commandfor="form"`  |
-| `show-modal`           | Open dialog modally               | `command="show-modal" commandfor="dialog"`  |
-| `close`                | Close dialog/popover              | `command="close" commandfor="dialog"`       |
+| `--attr:remove:name`   | Remove attribute                  | `command="--attr:remove:disabled"`          |
+| `--attr:toggle:name`   | Toggle attribute presence         | `command="--attr:toggle:hidden"`            |
+| `--value:set`          | Set input value                   | `command="--value:set:new-value"`           |
+| `--focus`              | Focus element                     | `command="--focus" commandfor="input"`      |
+| `--disabled:toggle`    | Toggle disabled state             | `command="--disabled:toggle"`               |
+| `--scroll:into-view`   | Scroll element into view          | `command="--scroll:into-view"`              |
+| `--scroll:top`         | Scroll to top of element          | `command="--scroll:top"`                    |
+| `--scroll:bottom`      | Scroll to bottom of element       | `command="--scroll:bottom"`                 |
+| `--scroll:center`      | Scroll to center of element       | `command="--scroll:center"`                 |
 
-### Future Native Commands (Polyfilled)
+### Storage Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--storage:local:set:key:val` | Store in localStorage         | `command="--storage:local:set:user:name"`   |
+| `--storage:session:set:key:val` | Store in sessionStorage     | `command="--storage:session:set:temp:data"` |
+| `--storage:local:get:key` | Get from localStorage          | `command="--storage:local:get:user"`         |
+| `--storage:local:remove:key` | Remove from localStorage     | `command="--storage:local:remove:user"`      |
+| `--storage:local:clear` | Clear all localStorage          | `command="--storage:local:clear"`            |
+| `--storage:local:keys` | Get all localStorage keys       | `command="--storage:local:keys"`             |
+| `--storage:local:has:key` | Check if key exists           | `command="--storage:local:has:user"`         |
+| `--storage:local:size` | Get localStorage size in bytes  | `command="--storage:local:size"`             |
+
+### Animation Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--animate:fade-in`    | Fade element in                   | `command="--animate:fade-in"`                |
+| `--animate:fade-out`   | Fade element out                  | `command="--animate:fade-out"`               |
+| `--animate:slide-up`   | Slide up animation                | `command="--animate:slide-up"`               |
+| `--animate:slide-down` | Slide down animation              | `command="--animate:slide-down"`             |
+| `--animate:bounce`     | Bounce animation                  | `command="--animate:bounce"`                 |
+| `--animate:spin`       | Spin animation                    | `command="--animate:spin"`                   |
+
+### Event Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--emit:event-name`    | Dispatch custom event             | `command="--emit:my-event:detail-data"`     |
+
+### URL Manipulation Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--url:params:get:key` | Get URL parameter                 | `command="--url:params:get:id"`              |
+| `--url:params:set:key:val` | Set URL parameter             | `command="--url:params:set:page:2"`          |
+| `--url:params:delete:key` | Delete URL parameter          | `command="--url:params:delete:id"`           |
+| `--url:params:clear`   | Clear all URL parameters         | `command="--url:params:clear"`               |
+| `--url:params:all`     | Get all URL parameters as JSON   | `command="--url:params:all"`                 |
+| `--url:hash:get`       | Get URL hash                     | `command="--url:hash:get"`                   |
+| `--url:hash:set:value` | Set URL hash                     | `command="--url:hash:set:section-1"`         |
+| `--url:hash:clear`     | Clear URL hash                   | `command="--url:hash:clear"`                 |
+| `--url:pathname:get`   | Get current pathname             | `command="--url:pathname:get"`               |
+| `--url:pathname:set:path` | Set pathname                  | `command="--url:pathname:set:/new-page"`     |
+| `--url:reload`         | Reload the page                  | `command="--url:reload"`                     |
+| `--url:replace:url`    | Replace current URL              | `command="--url:replace:/new-page"`          |
+| `--url:navigate:url`   | Navigate to URL                  | `command="--url:navigate:/new-page"`         |
+| `--url:base`           | Get base URL (protocol+host)     | `command="--url:base"`                       |
+| `--url:full`           | Get full current URL             | `command="--url:full"`                       |
+
+### History Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--history:push:url`   | Push new history entry            | `command="--history:push:/new-page"`         |
+| `--history:replace:url`| Replace current history entry     | `command="--history:replace:/new-page"`      |
+| `--history:back`       | Go back in history                | `command="--history:back"`                   |
+| `--history:forward`    | Go forward in history             | `command="--history:forward"`                |
+| `--history:go:delta`   | Go to specific history position   | `command="--history:go:-2"`                  |
+| `--history:state:get`  | Get current history state         | `command="--history:state:get"`              |
+| `--history:state:set:data` | Set history state            | `command="--history:state:set:json-data"`    |
+| `--history:length`     | Get history length                | `command="--history:length"`                 |
+| `--history:clear`      | Clear history state               | `command="--history:clear"`                  |
+
+### Device API Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--device:vibrate:pattern` | Vibrate device               | `command="--device:vibrate:200:100:200"`     |
+| `--device:share:url:text:title` | Share content            | `command="--device:share:url:http://ex.com"` |
+| `--device:geolocation:get` | Get device location         | `command="--device:geolocation:get"`         |
+| `--device:battery:get` | Get battery status              | `command="--device:battery:get"`             |
+| `--device:clipboard:read` | Read from clipboard          | `command="--device:clipboard:read"`          |
+| `--device:clipboard:write:text` | Write to clipboard     | `command="--device:clipboard:write:hello"`   |
+| `--device:wake-lock`   | Request wake lock                | `command="--device:wake-lock"`               |
+| `--device:wake-lock:release` | Release wake lock         | `command="--device:wake-lock:release"`       |
+
+### Accessibility Commands
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--a11y:announce:text` | Announce to screen readers        | `command="--a11y:announce:Item saved"`       |
+| `--a11y:focus`         | Focus element with announcement   | `command="--a11y:focus" commandfor="input"`  |
+| `--a11y:skip-to:id`    | Skip navigation to element        | `command="--a11y:skip-to:main-content"`      |
+| `--a11y:focus-trap:enable` | Enable focus trap            | `command="--a11y:focus-trap:enable"`         |
+| `--a11y:aria:set:attr:val` | Set ARIA attribute          | `command="--a11y:aria:set:label:Save button"`|
+| `--a11y:aria:remove:attr` | Remove ARIA attribute       | `command="--a11y:aria:remove:label"`         |
+| `--a11y:heading-level:level` | Set heading level          | `command="--a11y:heading-level:2"`           |
+
+### Extended Commands (Auto-Included)
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `--media:toggle`       | Toggle play/pause                 | `command="--media:toggle" commandfor="video"`|
+| `--media:seek:seconds` | Seek media by seconds             | `command="--media:seek:10"`                  |
+| `--media:mute`         | Toggle media mute                 | `command="--media:mute"`                     |
+| `--carousel:nav:next`  | Navigate carousel                 | `command="--carousel:nav:next"`              |
+| `--clipboard:copy`     | Copy text to clipboard            | `command="--clipboard:copy"`                 |
+| `--form:reset`         | Reset form                        | `command="--form:reset"`                     |
+| `--form:submit`        | Submit form                       | `command="--form:submit"`                    |
+| `--input:step:amount`  | Step number input                 | `command="--input:step:1"`                   |
+| `--dom:remove`         | Remove element from DOM           | `command="--dom:remove"`                     |
+| `--dom:replace`        | Replace with template content     | `command="--dom:replace" data-template-id="tpl"` |
+| `--dom:swap`           | Swap inner content with template  | `command="--dom:swap" data-template-id="tpl"`|
+| `--dom:append`         | Append template content           | `command="--dom:append" data-template-id="tpl"` |
+| `--dom:prepend`        | Prepend template content          | `command="--dom:prepend" data-template-id="tpl"` |
+| `--text:copy`          | Copy text between elements        | `command="--text:copy" data-copy-from="#source"` |
+| `--fetch:get`          | Fetch HTML and update element     | `command="--fetch:get" data-url="/api/data"` |
+| `--fetch:send`         | Send form data via fetch          | `command="--fetch:send"`                     |
+| `--navigate:to:url`    | Navigate using History API        | `command="--navigate:to:/new-page"`          |
+
+### Native/Polyfilled Commands (No -- Prefix)
 | Command                | Target Element        | Purpose                                      |
 | ---------------------- | -------------------- | -------------------------------------------- |
+| `show-modal`           | `<dialog>`           | Open dialog modally                          |
+| `close`                | `<dialog>`, `<popover>` | Close dialog/popover                      |
+| `request-close`        | `<dialog>`           | Request dialog close (allows cancel)         |
+| `toggle-popover`       | `<popover>`          | Toggle popover visibility                    |
+| `show-popover`         | `<popover>`          | Show popover                                 |
+| `hide-popover`         | `<popover>`          | Hide popover                                 |
 | `toggle`               | `<details>`          | Toggle details open/closed                   |
 | `open`                 | `<details>`          | Open details element                         |
 | `show-picker`          | `<input>`, `<select>`| Show native picker (date, file, etc.)      |
@@ -182,6 +300,9 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `share`                | Any element          | Share element's text or URL                  |
 | `step-up`              | `<input type=number>`| Increment number input                       |
 | `step-down`            | `<input type=number>`| Decrement number input                       |
+| `toggle-openable`      | Openable elements    | Toggle open/close state                      |
+| `open-openable`        | Openable elements    | Open element                                 |
+| `close-openable`       | Openable elements    | Close element                                |
 
 ### Pipeline Commands
 | Command                | Purpose                                      | Example                                      |
@@ -189,6 +310,92 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `--pipeline:execute:id`| Execute template-based command pipeline     | `command="--pipeline:execute:user-flow"`    |
 
 💡 **Tip:** Commands starting with `--` are Invokers extensions. Commands without prefixes are native/future browser commands.
+
+## 🔧 Command Syntax Guide
+
+### Parameter Syntax
+Commands use colon (`:`) separated parameters:
+```html
+<!-- Basic parameter -->
+<button command="--text:set:Hello World">Set Text</button>
+
+<!-- Multiple parameters -->
+<button command="--storage:local:set:user:John">Save User</button>
+
+<!-- Numeric parameters -->
+<button command="--media:seek:30">Skip 30s</button>
+```
+
+### Data Attributes for Enhanced Control
+Many commands support additional configuration via `data-*` attributes:
+
+#### Fetch Commands
+```html
+<button type="button"
+  command="--fetch:get"
+  data-url="/api/data"
+  data-loading-template="spinner"
+  data-error-template="error-msg"
+  data-response-target="#result"
+  commandfor="content-area">
+  Load Data
+</button>
+```
+
+#### Animation Commands
+```html
+<button type="button"
+  command="--animate:fade-in"
+  data-animate-duration="2s"
+  data-animate-delay="500ms"
+  data-animate-easing="ease-out"
+  data-animate-iterations="3">
+  Animate
+</button>
+```
+
+#### Storage Commands
+```html
+<button type="button"
+  command="--storage:local:set:settings"
+  data-storage-json="true"
+  data-storage-expires="3600">
+  Save Settings (JSON, expires in 1 hour)
+</button>
+```
+
+#### Device Commands
+```html
+<button type="button"
+  command="--device:geolocation:get"
+  data-geo-high-accuracy="true"
+  data-geo-timeout="10000"
+  data-geo-max-age="300000">
+  Get Location
+</button>
+```
+
+### Error Handling
+Commands include comprehensive error handling with helpful messages:
+- **Validation errors** for incorrect parameters
+- **Permission errors** for device APIs requiring user consent
+- **Network errors** for fetch operations
+- **Browser support warnings** for unsupported features
+
+Errors are logged to console with recovery suggestions. Use browser dev tools to see detailed error information.
+
+### Command States
+Control command execution behavior with `data-state`:
+```html
+<!-- Execute once, then disable -->
+<button command="--show" commandfor="welcome" data-state="once">Show Welcome</button>
+
+<!-- Currently disabled -->
+<button command="--toggle" commandfor="menu" data-state="disabled">Menu</button>
+
+<!-- Completed, won't execute again -->
+<button command="--fetch:get" data-url="/api" data-state="completed">Load Data</button>
+```
 
 ## 🚀 Installation
 
@@ -355,8 +562,8 @@ Now add interactivity with text, classes, and attributes.
 
 ```html
 <!-- Change text and add visual feedback -->
-<button type="button" 
-  command="--text:set:✅ Saved!" 
+<button type="button"
+  command="--text:set:✅ Saved!"
   commandfor="status"
   data-and-then="--class:add:success">
   Save Document
@@ -364,12 +571,37 @@ Now add interactivity with text, classes, and attributes.
 <div id="status" class="status-message">Ready to save</div>
 
 <!-- Toggle dark mode -->
-<button type="button" 
-  command="--class:toggle:dark-theme" 
+<button type="button"
+  command="--class:toggle:dark-theme"
   commandfor="body"
   data-and-then="--text:set:Theme toggled!">
   🌙 Toggle Theme
 </button>
+
+<!-- Animate elements with custom timing -->
+<button type="button"
+  command="--animate:bounce"
+  data-animate-duration="1s"
+  data-animate-delay="200ms"
+  data-animate-iterations="2">
+  Celebrate!
+</button>
+
+<!-- Store user preferences -->
+<button type="button"
+  command="--storage:local:set:theme:dark"
+  data-storage-expires="86400"
+  data-and-then="--text:set:Preference saved!">
+  Save Dark Theme
+</button>
+
+<!-- Focus management -->
+<button type="button" command="--a11y:focus" commandfor="search-input">Focus Search</button>
+<input type="text" id="search-input" placeholder="Search...">
+
+<!-- URL manipulation -->
+<button type="button" command="--url:params:set:page:2">Go to Page 2</button>
+<button type="button" command="--url:hash:set:section-about">Jump to About</button>
 ```
 
 #### Server Content
@@ -452,7 +684,7 @@ Chain multiple commands together for complex interactions.
 <!-- Multi-step workflow with branching logic -->
 <button type="button" command="--text:set:Starting..." commandfor="workflow">
   Start Complex Workflow
-  
+
   <!-- Success path -->
   <and-then command="--class:add:processing" commandfor="workflow" data-condition="success" data-delay="500">
     <and-then command="--text:append: → Step 2 complete" commandfor="workflow" data-delay="1000">
@@ -464,6 +696,67 @@ Chain multiple commands together for complex interactions.
   </and-then>
 </button>
 <div id="workflow">Ready to start</div>
+```
+
+#### Device Integration Workflows
+
+```html
+<!-- Location-based features -->
+<button type="button"
+  command="--device:geolocation:get"
+  data-and-then="--storage:local:set:last-location"
+  data-after-success="--text:set:Location saved!"
+  data-after-error="--text:set:Location access denied">
+  Save My Location
+</button>
+
+<!-- Vibration feedback -->
+<button type="button"
+  command="--device:vibrate:100:200:100"
+  data-and-then="--text:set:Vibration sent!">
+  Send Haptic Feedback
+</button>
+
+<!-- Battery-aware features -->
+<button type="button" command="--device:battery:get" commandfor="battery-status">
+  Check Battery
+</button>
+<div id="battery-status">Battery info will appear here</div>
+```
+
+#### Advanced URL and History Management
+
+```html
+<!-- URL parameter manipulation -->
+<button type="button" command="--url:params:set:filter:active">Show Active Items</button>
+<button type="button" command="--url:params:delete:filter">Clear Filter</button>
+
+<!-- History navigation -->
+<button type="button" command="--history:push:/settings">Go to Settings</button>
+<button type="button" command="--history:back">Go Back</button>
+
+<!-- Hash-based navigation -->
+<button type="button" command="--url:hash:set:contact">Jump to Contact</button>
+```
+
+#### Accessibility-Enhanced Interactions
+
+```html
+<!-- Screen reader announcements -->
+<button type="button"
+  command="--fetch:get"
+  data-url="/api/data"
+  data-after-success="--a11y:announce:Data loaded successfully"
+  data-after-error="--a11y:announce:Failed to load data">
+  Load Data
+</button>
+
+<!-- Focus management -->
+<button type="button" command="--a11y:focus-trap:enable" commandfor="modal">Open Modal</button>
+<div id="modal" role="dialog">
+  <p>Modal content</p>
+  <button type="button" command="--a11y:focus-trap:disable">Close</button>
+</div>
 ```
 
 ## 🧰 Extended Commands
@@ -503,6 +796,745 @@ registerAll(['--media:toggle', '--media:seek', '--fetch:get']);
 ```
 
 This can help reduce bundle size in applications with strict performance requirements.
+
+## 📚 Detailed Command Reference
+
+### Storage Commands
+
+The `--storage` commands provide comprehensive localStorage and sessionStorage management with advanced features like JSON support, expiration, and metadata.
+
+#### Basic Storage Operations
+
+```html
+<!-- Store simple values -->
+<button type="button" command="--storage:local:set:username:john">Save Username</button>
+<button type="button" command="--storage:session:set:temp-data:123">Save Temp Data</button>
+
+<!-- Retrieve values -->
+<button type="button" command="--storage:local:get:username" commandfor="username-display">Load Username</button>
+<div id="username-display">Username will appear here</div>
+
+<!-- Remove specific keys -->
+<button type="button" command="--storage:local:remove:username">Clear Username</button>
+
+<!-- Clear all storage -->
+<button type="button" command="--storage:local:clear">Clear All Local Data</button>
+```
+
+#### Advanced Features
+
+```html
+<!-- JSON storage with automatic serialization -->
+<button type="button"
+  command="--storage:local:set:user-settings"
+  data-storage-json="true">
+  Save Settings Object
+</button>
+
+<!-- Expiring data (in seconds) -->
+<button type="button"
+  command="--storage:local:set:session-token:abc123"
+  data-storage-expires="3600">
+  Save Token (expires in 1 hour)
+</button>
+
+<!-- Check if key exists -->
+<button type="button" command="--storage:local:has:username" commandfor="status">Check Username</button>
+
+<!-- Get storage size -->
+<button type="button" command="--storage:local:size" commandfor="size-display">Show Storage Size</button>
+
+<!-- List all keys -->
+<button type="button" command="--storage:local:keys" commandfor="keys-list">List All Keys</button>
+```
+
+#### JavaScript Integration
+
+```javascript
+// Programmatic storage access
+const settings = { theme: 'dark', lang: 'en' };
+localStorage.setItem('user-prefs', JSON.stringify(settings));
+
+// Then retrieve in HTML
+<button command="--storage:local:get:user-prefs" commandfor="prefs-display">Load Preferences</button>
+```
+
+### Animation Commands
+
+The `--animate` command provides CSS-based animations with customizable timing and effects.
+
+#### Basic Animations
+
+```html
+<button type="button" command="--animate:fade-in">Fade In</button>
+<button type="button" command="--animate:fade-out">Fade Out</button>
+<button type="button" command="--animate:slide-up">Slide Up</button>
+<button type="button" command="--animate:slide-down">Slide Down</button>
+<button type="button" command="--animate:bounce">Bounce</button>
+<button type="button" command="--animate:spin">Spin</button>
+```
+
+#### Custom Animation Properties
+
+```html
+<button type="button"
+  command="--animate:fade-in"
+  data-animate-duration="2s"
+  data-animate-delay="500ms"
+  data-animate-easing="ease-out"
+  data-animate-iterations="3">
+  Custom Fade In
+</button>
+```
+
+#### Available Animations
+- `fade-in`, `fade-out`
+- `slide-up`, `slide-down`, `slide-left`, `slide-right`
+- `bounce`, `shake`, `pulse`, `flip`
+- `rotate-in`, `zoom-in`, `zoom-out`
+- `spin`, `wobble`, `jello`, `heartbeat`, `rubber-band`
+
+### Event Commands
+
+The `--emit` command dispatches custom events with optional detail data and configurable event properties.
+
+#### Basic Event Dispatch
+
+```html
+<!-- Dispatch simple custom event -->
+<button command="--emit:my-event">Trigger Event</button>
+
+<!-- Event with detail data -->
+<button command="--emit:user-action:login">User Logged In</button>
+<button command="--emit:data-updated:{\"id\":123,\"status\":\"saved\"}">Data Saved</button>
+```
+
+#### Event Configuration
+
+```html
+<!-- Configurable event properties -->
+<button type="button"
+  command="--emit:modal-opened:settings"
+  data-emit-bubbles="true"
+  data-emit-cancelable="true"
+  data-emit-composed="true">
+  Open Settings Modal
+</button>
+```
+
+#### JavaScript Event Handling
+
+```javascript
+// Listen for custom events
+document.addEventListener('my-event', (event) => {
+  console.log('Event triggered!', event.detail);
+});
+
+// Handle emitted events
+document.addEventListener('user-action', (event) => {
+  console.log('Action:', event.detail); // "login"
+});
+
+document.addEventListener('data-updated', (event) => {
+  console.log('Data:', event.detail); // {id: 123, status: "saved"}
+});
+```
+
+#### Built-in Event Types
+
+The command automatically handles built-in DOM events with appropriate event classes:
+
+```html
+<!-- Dispatches MouseEvent -->
+<button command="--emit:click">Simulate Click</button>
+
+<!-- Dispatches KeyboardEvent -->
+<button command="--emit:keydown:Enter">Simulate Enter Key</button>
+
+<!-- Dispatches InputEvent -->
+<button command="--emit:input:new-value">Simulate Input</button>
+```
+
+### Pipeline Commands
+
+The `--pipeline` command executes complex, template-based command sequences with conditional logic and error handling.
+
+#### Basic Pipeline Execution
+
+```html
+<button type="button" command="--pipeline:execute:user-onboarding">
+  Start User Onboarding
+</button>
+
+<template id="user-onboarding" data-pipeline="true">
+  <pipeline-step command="--text:set:Welcome!" target="status" />
+  <pipeline-step command="--class:add:welcome" target="app" delay="500" />
+  <pipeline-step command="--show" target="tutorial-step-1" delay="1000" />
+</template>
+```
+
+#### Conditional Pipeline Steps
+
+```html
+<template id="data-processing" data-pipeline="true">
+  <!-- Always execute -->
+  <pipeline-step command="--text:set:Processing..." target="status" />
+
+  <!-- Only on success -->
+  <pipeline-step command="--fetch:get" target="data-container"
+                 data-url="/api/data" condition="success" />
+  <pipeline-step command="--class:add:loaded" target="data-container"
+                 condition="success" />
+
+  <!-- Only on error -->
+  <pipeline-step command="--text:set:Failed to load data" target="status"
+                 condition="error" />
+  <pipeline-step command="--class:add:error" target="status"
+                 condition="error" />
+</template>
+```
+
+#### Advanced Pipeline Features
+
+```html
+<template id="complex-workflow" data-pipeline="true">
+  <!-- One-time initialization -->
+  <pipeline-step command="--storage:local:set:initialized:true"
+                 once="true" />
+
+  <!-- Delayed execution -->
+  <pipeline-step command="--animate:fade-in" target="content"
+                 delay="2000" />
+
+  <!-- Data passing -->
+  <pipeline-step command="--fetch:get" target="user-data"
+                 data-url="/api/user" data-response-target="#profile" />
+
+  <!-- Cleanup (always runs) -->
+  <pipeline-step command="--attr:set:aria-busy:false" target="app"
+                 condition="always" />
+</template>
+```
+
+#### Pipeline Step Attributes
+
+| Attribute | Description | Example |
+|-----------|-------------|---------|
+| `command` | Command to execute | `command="--text:set:Done"` |
+| `target` | Target element ID | `target="status"` |
+| `condition` | When to execute: `success`, `error`, `always` | `condition="success"` |
+| `delay` | Delay in milliseconds | `delay="1000"` |
+| `once` | Execute only once, then remove from template | `once="true"` |
+| `data-*` | Pass data attributes to command | `data-url="/api/data"` |
+
+#### Error Handling in Pipelines
+
+Pipelines automatically handle errors and can continue with error-specific steps:
+
+```html
+<template id="robust-operation" data-pipeline="true">
+  <pipeline-step command="--fetch:get" target="content" data-url="/api/data" />
+
+  <!-- Success path -->
+  <pipeline-step command="--class:add:success" target="content"
+                 condition="success" />
+
+  <!-- Error recovery -->
+  <pipeline-step command="--text:set:Using cached data" target="content"
+                 condition="error" />
+  <pipeline-step command="--storage:local:get:cached-data" target="content"
+                 condition="error" />
+</template>
+```
+
+### Media Commands
+
+Control HTML5 video and audio elements with advanced playback features.
+
+#### Basic Media Controls
+
+```html
+<!-- Toggle play/pause with visual feedback -->
+<button type="button"
+  command="--media:toggle"
+  commandfor="my-video"
+  data-play-text="Pause"
+  data-pause-text="Play">
+  Play
+</button>
+
+<video id="my-video" src="movie.mp4"></video>
+```
+
+#### Advanced Media Controls
+
+```html
+<!-- Seek forward/backward -->
+<button command="--media:seek:10" commandfor="my-video">+10s</button>
+<button command="--media:seek:-5" commandfor="my-video">-5s</button>
+
+<!-- Mute/unmute -->
+<button command="--media:mute" commandfor="my-video">Toggle Mute</button>
+```
+
+### Carousel Commands
+
+Navigate image or content carousels with smooth transitions.
+
+```html
+<div id="image-carousel">
+  <div>Image 1</div>
+  <div hidden>Image 2</div>
+  <div hidden>Image 3</div>
+</div>
+
+<button command="--carousel:nav:next" commandfor="image-carousel">Next</button>
+<button command="--carousel:nav:prev" commandfor="image-carousel">Previous</button>
+```
+
+### DOM Manipulation Commands
+
+Dynamically update page content with template-based operations.
+
+#### Template-Based Content
+
+```html
+<!-- Templates for content -->
+<template id="new-item-template">
+  <div class="item">New Item Content</div>
+</template>
+
+<template id="loading-template">
+  <div class="loading">Loading...</div>
+</template>
+```
+
+#### DOM Operations
+
+```html
+<!-- Replace element content -->
+<button command="--dom:replace" commandfor="old-content" data-template-id="new-item-template">
+  Replace Content
+</button>
+
+<!-- Swap inner content -->
+<button command="--dom:swap" commandfor="container" data-template-id="new-item-template">
+  Swap Content
+</button>
+
+<!-- Add content -->
+<button command="--dom:append" commandfor="list" data-template-id="new-item-template">
+  Add Item
+</button>
+
+<button command="--dom:prepend" commandfor="list" data-template-id="new-item-template">
+  Add to Top
+</button>
+
+<!-- Remove element -->
+<button command="--dom:remove" commandfor="temp-element">Remove</button>
+```
+
+### Form Commands
+
+Enhanced form interaction and validation.
+
+```html
+<form id="my-form">
+  <input type="text" name="username" required>
+  <input type="email" name="email" required>
+</form>
+
+<!-- Form actions -->
+<button command="--form:reset" commandfor="my-form">Reset Form</button>
+<button command="--form:submit" commandfor="my-form">Submit Form</button>
+```
+
+### Input Commands
+
+Control number inputs and form values.
+
+```html
+<!-- Number input stepping -->
+<button command="--input:step:1" commandfor="quantity">+</button>
+<input type="number" id="quantity" value="1" min="1" max="10">
+<button command="--input:step:-1" commandfor="quantity">-</button>
+
+<!-- Set input values -->
+<button command="--value:set:new-value" commandfor="text-input">Set Value</button>
+```
+
+### Text Commands
+
+Advanced text manipulation and copying.
+
+```html
+<!-- Text operations -->
+<button command="--text:set:Hello World" commandfor="message">Set Text</button>
+<button command="--text:append: more text" commandfor="message">Append Text</button>
+<button command="--text:prepend:Prefix: " commandfor="message">Prepend Text</button>
+<button command="--text:clear" commandfor="message">Clear Text</button>
+
+<!-- Copy text between elements -->
+<div id="source">Text to copy</div>
+<button command="--text:copy" data-copy-from="#source" commandfor="destination">Copy Text</button>
+<div id="destination"></div>
+```
+
+### Clipboard Commands
+
+Copy text content to clipboard with feedback.
+
+```html
+<code id="code-snippet">npm install invokers</code>
+
+<button type="button"
+  command="--clipboard:copy"
+  commandfor="code-snippet"
+  data-feedback-text="Copied!"
+  data-error-text="Copy failed">
+  Copy Code
+</button>
+```
+
+### Fetch Commands
+
+Load and send data to servers with loading states and error handling.
+
+#### GET Requests
+
+```html
+<button type="button"
+  command="--fetch:get"
+  data-url="/api/latest-posts"
+  commandfor="posts-container"
+  data-loading-template="spinner"
+  data-error-template="error-msg"
+  data-response-target="#posts-container">
+  Load Posts
+</button>
+
+<div id="posts-container">Posts will load here...</div>
+
+<template id="spinner">
+  <div>Loading posts...</div>
+</template>
+
+<template id="error-msg">
+  <div>Failed to load posts</div>
+</template>
+```
+
+#### POST Requests (Form Submission)
+
+```html
+<form id="contact-form" action="/api/contact" method="post">
+  <input name="name" required>
+  <input name="email" required>
+  <textarea name="message"></textarea>
+</form>
+
+<button type="button"
+  command="--fetch:send"
+  commandfor="contact-form"
+  data-response-target="#result"
+  data-loading-template="sending">
+  Send Message
+</button>
+
+<div id="result"></div>
+```
+
+### Navigation Commands
+
+Programmatic navigation using the History API.
+
+```html
+<button command="--navigate:to:/about">Go to About</button>
+<button command="--navigate:to:/products?category=electronics">Go to Products</button>
+```
+
+### Native/Polyfilled Commands
+
+These commands work in all modern browsers through Invokers' polyfill. They implement upcoming web standards and provide fallbacks for older browsers.
+
+#### Dialog and Modal Commands
+
+```html
+<!-- Modal dialogs -->
+<button type="button" command="show-modal" commandfor="settings-dialog">
+  Open Settings
+</button>
+
+<dialog id="settings-dialog">
+  <h2>Settings</h2>
+  <p>Settings content...</p>
+  <button type="button" command="close" commandfor="settings-dialog">Close</button>
+</dialog>
+
+<!-- Request close (allows cancel) -->
+<button type="button" command="request-close" commandfor="confirm-dialog">
+  Cancel Action
+</button>
+```
+
+#### Popover Commands
+
+```html
+<!-- Popover toggles -->
+<button type="button" command="toggle-popover" commandfor="user-menu">
+  User Menu
+</button>
+
+<div id="user-menu" popover>
+  <a href="/profile">Profile</a>
+  <a href="/settings">Settings</a>
+  <a href="/logout">Logout</a>
+</div>
+
+<!-- Direct show/hide -->
+<button type="button" command="show-popover" commandfor="tooltip">Show Help</button>
+<button type="button" command="hide-popover" commandfor="tooltip">Hide Help</button>
+```
+
+#### Details/Summary Commands
+
+```html
+<!-- Expandable content -->
+<button type="button" command="toggle" commandfor="faq-1">Toggle FAQ</button>
+<details id="faq-1">
+  <summary>What is Invokers?</summary>
+  <p>Invokers is a library for declarative HTML interactions...</p>
+</details>
+
+<button type="button" command="open" commandfor="faq-2">Open FAQ</button>
+<details id="faq-2">
+  <summary>How does it work?</summary>
+  <p>It uses HTML attributes to describe interactions...</p>
+</details>
+```
+
+#### Media Element Commands
+
+```html
+<video id="main-video" src="demo.mp4" controls></video>
+
+<!-- Playback controls -->
+<button type="button" command="play-pause" commandfor="main-video">⏯️</button>
+<button type="button" command="play" commandfor="main-video">▶️</button>
+<button type="button" command="pause" commandfor="main-video">⏸️</button>
+<button type="button" command="toggle-muted" commandfor="main-video">🔇</button>
+```
+
+#### Fullscreen Commands
+
+```html
+<div id="fullscreen-target">
+  <h1>Fullscreen Content</h1>
+  <p>This can go fullscreen</p>
+</div>
+
+<button type="button" command="toggle-fullscreen" commandfor="fullscreen-target">
+  Toggle Fullscreen
+</button>
+
+<button type="button" command="request-fullscreen" commandfor="fullscreen-target">
+  Enter Fullscreen
+</button>
+
+<button type="button" command="exit-fullscreen">
+  Exit Fullscreen
+</button>
+```
+
+#### Picker Commands
+
+```html
+<!-- File picker -->
+<button type="button" command="show-picker" commandfor="file-input">Choose File</button>
+<input type="file" id="file-input" hidden>
+
+<!-- Date/time picker -->
+<button type="button" command="show-picker" commandfor="date-input">Pick Date</button>
+<input type="date" id="date-input">
+
+<!-- Number stepper -->
+<button type="button" command="step-up" commandfor="quantity">Increase</button>
+<input type="number" id="quantity" value="1" min="1" max="10">
+<button type="button" command="step-down" commandfor="quantity">Decrease</button>
+```
+
+#### Clipboard and Sharing Commands
+
+```html
+<!-- Copy text -->
+<code id="install-cmd">npm install invokers</code>
+<button type="button" command="copy-text" commandfor="install-cmd">Copy</button>
+
+<!-- Share content -->
+<span id="share-content">Check out Invokers: https://invokers.dev</span>
+<button type="button" command="share" commandfor="share-content">Share</button>
+```
+
+#### Openable Elements Commands
+
+```html
+<!-- Custom openable elements -->
+<div id="custom-panel" closed>
+  <h3>Panel Content</h3>
+  <p>This panel can be opened/closed</p>
+</div>
+
+<button type="button" command="toggle-openable" commandfor="custom-panel">Toggle Panel</button>
+<button type="button" command="open-openable" commandfor="custom-panel">Open Panel</button>
+<button type="button" command="close-openable" commandfor="custom-panel">Close Panel</button>
+```
+
+#### Browser Support Notes
+
+- **Dialog commands**: Work in all modern browsers; polyfilled for older ones
+- **Popover commands**: Native in Chrome/Edge; polyfilled in Firefox/Safari
+- **Media commands**: Full support in all browsers with HTML5 media elements
+- **Fullscreen commands**: Supported in all modern browsers
+- **Picker commands**: Native support varies; Invokers provides fallbacks
+- **Clipboard commands**: Requires secure context (HTTPS) in modern browsers
+
+### URL Manipulation Commands
+
+Control browser URL parameters, hash, and navigation programmatically.
+
+#### URL Parameters
+
+```html
+<!-- Set URL parameters -->
+<button command="--url:params:set:page:2">Go to Page 2</button>
+<button command="--url:params:set:sort:name">Sort by Name</button>
+
+<!-- Get parameter values -->
+<button command="--url:params:get:id" commandfor="item-id">Get Item ID</button>
+
+<!-- Delete parameters -->
+<button command="--url:params:delete:filter">Clear Filter</button>
+<button command="--url:params:clear">Clear All Params</button>
+
+<!-- Get all parameters as JSON -->
+<button command="--url:params:all" commandfor="params-display">Show All Params</button>
+```
+
+#### Hash Navigation
+
+```html
+<button command="--url:hash:set:section-about">Jump to About</button>
+<button command="--url:hash:get" commandfor="current-hash">Get Current Hash</button>
+<button command="--url:hash:clear">Clear Hash</button>
+```
+
+#### Navigation and History
+
+```html
+<button command="--url:reload">Reload Page</button>
+<button command="--url:replace:/new-page">Replace URL</button>
+<button command="--url:navigate:/new-page">Navigate to Page</button>
+```
+
+### History Commands
+
+Manipulate browser history with state management.
+
+```html
+<!-- Push new history entries -->
+<button command="--history:push:/settings">Go to Settings</button>
+<button command="--history:push:/profile:John:admin">Go to Profile with State</button>
+
+<!-- Navigate history -->
+<button command="--history:back">Go Back</button>
+<button command="--history:forward">Go Forward</button>
+<button command="--history:go:-2">Go Back 2 Pages</button>
+
+<!-- State management -->
+<button command="--history:state:get" commandfor="state-display">Get Current State</button>
+<button command="--history:state:set:{\"page\":1}">Set State</button>
+```
+
+### Device API Commands
+
+Access device features like geolocation, vibration, and battery status.
+
+#### Geolocation
+
+```html
+<button type="button"
+  command="--device:geolocation:get"
+  data-geo-high-accuracy="true"
+  data-geo-timeout="10000"
+  data-geo-max-age="300000">
+  Get My Location
+</button>
+```
+
+#### Vibration and Haptics
+
+```html
+<!-- Simple vibration -->
+<button command="--device:vibrate:200">Vibrate 200ms</button>
+
+<!-- Pattern vibration -->
+<button command="--device:vibrate:100:200:100">Vibrate Pattern</button>
+```
+
+#### Battery Status
+
+```html
+<button command="--device:battery:get" commandfor="battery-info">Check Battery</button>
+<div id="battery-info">Battery status will appear here</div>
+```
+
+#### Clipboard Operations
+
+```html
+<button command="--device:clipboard:read" commandfor="clipboard-content">Read Clipboard</button>
+<button command="--device:clipboard:write:Hello World">Write to Clipboard</button>
+```
+
+#### Wake Lock
+
+```html
+<button command="--device:wake-lock">Keep Screen On</button>
+<button command="--device:wake-lock:release">Allow Screen Off</button>
+```
+
+### Accessibility Commands
+
+Enhance accessibility with screen reader support and focus management.
+
+#### Screen Reader Announcements
+
+```html
+<button command="--a11y:announce:Item saved successfully">Save Item</button>
+<button command="--a11y:announce:Error: Invalid input" data-announce-priority="assertive">Submit Form</button>
+```
+
+#### Focus Management
+
+```html
+<button command="--a11y:focus" commandfor="search-input">Focus Search</button>
+<button command="--a11y:skip-to:main-content">Skip to Main Content</button>
+```
+
+#### Focus Trapping
+
+```html
+<button command="--a11y:focus-trap:enable" commandfor="modal">Open Modal</button>
+<button command="--a11y:focus-trap:disable">Close Modal</button>
+```
+
+#### ARIA Attributes
+
+```html
+<button command="--a11y:aria:set:label:Save document">Set Label</button>
+<button command="--a11y:aria:remove:label">Remove Label</button>
+<button command="--a11y:heading-level:2" commandfor="heading">Make H2</button>
+```
 
 ## 🐞 Debugging & Common Issues
 
