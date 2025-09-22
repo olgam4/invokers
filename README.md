@@ -75,7 +75,7 @@ That's it! No event listeners, no DOM queries, no state management. The HTML des
 | Accessible by default | ❌          | ❌       | ❌         | ✅            |
 | Future-proof          | ❌          | ❌       | ❌         | ✅            |
 
----
+<br />
 
 ## The Vision: A More Declarative Web
 
@@ -116,7 +116,7 @@ With Invokers, your HTML becomes the single source of truth. It's clean, readabl
 <script type="module" src="https://esm.sh/invokers"></script>
 ```
 
----
+<br />
 
 ## 💡 Core Concepts
 
@@ -425,7 +425,7 @@ import 'invokers';
 // Your page now understands the Invoker Commands API and all of Invokers' custom commands.
 ```
 
----
+<br />
 
 ## 📖 Progressive Learning Guide
 
@@ -2338,7 +2338,7 @@ Use your custom commands in HTML:
 
 💡 **Best Practice:** Encapsulate complex logic in custom commands to keep your HTML clean and reusable.
 
----
+<br />
 
 ## 🛠️ Frequently Asked Questions
 
