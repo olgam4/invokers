@@ -1633,6 +1633,195 @@ export class InvokerManager {
       }
     });
 
+    // --value command for setting form input values
+    this.register("--value", ({ invoker, getTargets, params }) => {
+      const [value] = params;
+      const targets = getTargets();
+
+      if (targets.length === 0) {
+        const error = createInvokerError(
+          'No target elements found for --value command',
+          ErrorSeverity.WARNING,
+          {
+            command: '--value',
+            element: invoker,
+            recovery: 'Ensure commandfor points to a valid form input element'
+          }
+        );
+        logInvokerError(error);
+        return;
+      }
+
+      try {
+        targets.forEach(target => {
+          if ('value' in target) {
+            (target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value = value || '';
+          } else {
+            console.warn('Invokers: --value command target does not support value property', target);
+          }
+        });
+      } catch (error) {
+        throw createInvokerError(
+          'Failed to set value on target elements',
+          ErrorSeverity.ERROR,
+          {
+            command: '--value',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Ensure target elements are form inputs that support the value property'
+          }
+        );
+      }
+    });
+
+    // --focus command for focusing elements
+    this.register("--focus", ({ invoker, getTargets }) => {
+      const targets = getTargets();
+
+      if (targets.length === 0) {
+        const error = createInvokerError(
+          'No target elements found for --focus command',
+          ErrorSeverity.WARNING,
+          {
+            command: '--focus',
+            element: invoker,
+            recovery: 'Ensure commandfor points to a focusable element'
+          }
+        );
+        logInvokerError(error);
+        return;
+      }
+
+      try {
+        // Focus the first target element
+        if (typeof targets[0].focus === 'function') {
+          targets[0].focus();
+        } else {
+          console.warn('Invokers: Target element does not support focus', targets[0]);
+        }
+      } catch (error) {
+        throw createInvokerError(
+          'Failed to focus target element',
+          ErrorSeverity.ERROR,
+          {
+            command: '--focus',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Ensure the target element is focusable and visible'
+          }
+        );
+      }
+    });
+
+    // --disabled command for toggling disabled state
+    this.register("--disabled", ({ invoker, getTargets, params }) => {
+      const [action] = params;
+      const targets = getTargets();
+
+      if (targets.length === 0) {
+        const error = createInvokerError(
+          'No target elements found for --disabled command',
+          ErrorSeverity.WARNING,
+          {
+            command: '--disabled',
+            element: invoker,
+            recovery: 'Ensure commandfor points to an element that supports the disabled property'
+          }
+        );
+        logInvokerError(error);
+        return;
+      }
+
+      try {
+        targets.forEach(target => {
+          if ('disabled' in target) {
+            const element = target as HTMLInputElement | HTMLButtonElement | HTMLTextAreaElement | HTMLSelectElement;
+            switch (action) {
+              case 'toggle':
+                element.disabled = !element.disabled;
+                break;
+              case 'true':
+              case 'enable':
+                element.disabled = false;
+                break;
+              case 'false':
+              case 'disable':
+                element.disabled = true;
+                break;
+              default:
+                console.warn(`Invokers: Unknown action "${action}" for --disabled command. Use "toggle", "true", "false", "enable", or "disable".`);
+            }
+          } else {
+            console.warn('Invokers: --disabled command target does not support disabled property', target);
+          }
+        });
+      } catch (error) {
+        throw createInvokerError(
+          'Failed to update disabled state on target elements',
+          ErrorSeverity.ERROR,
+          {
+            command: '--disabled',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Ensure target elements support the disabled property'
+          }
+        );
+      }
+    });
+
+    // --scroll command for scrolling elements into view
+    this.register("--scroll", ({ invoker, getTargets, params }) => {
+      const [action] = params;
+      const targets = getTargets();
+
+      if (targets.length === 0) {
+        const error = createInvokerError(
+          'No target elements found for --scroll command',
+          ErrorSeverity.WARNING,
+          {
+            command: '--scroll',
+            element: invoker,
+            recovery: 'Ensure commandfor points to a valid element'
+          }
+        );
+        logInvokerError(error);
+        return;
+      }
+
+      try {
+        targets.forEach(target => {
+          switch (action) {
+            case 'into-view':
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              break;
+            case 'top':
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              break;
+            case 'bottom':
+              target.scrollIntoView({ behavior: 'smooth', block: 'end' });
+              break;
+            case 'center':
+              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              break;
+            default:
+              console.warn(`Invokers: Unknown action "${action}" for --scroll command. Use "into-view", "top", "bottom", or "center".`);
+              target.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+      } catch (error) {
+        throw createInvokerError(
+          'Failed to scroll target elements into view',
+          ErrorSeverity.ERROR,
+          {
+            command: '--scroll',
+            element: invoker,
+            cause: error as Error,
+            recovery: 'Ensure target elements are valid DOM elements'
+          }
+        );
+      }
+    });
+
     // Pipeline command for template-based workflows
     this.register("--pipeline", async ({ invoker, params }) => {
       const [action, pipelineId] = params;
