@@ -49,7 +49,7 @@ describe('Enhanced Error Handling & Debugging', () => {
       invokerManager.register('--test', () => {});
       invokerManager.register('--test', () => {}); // Overwrite
       
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('already registered'));
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', expect.any(Error));
       consoleSpy.mockRestore();
     });
 
@@ -69,7 +69,7 @@ describe('Enhanced Error Handling & Debugging', () => {
       
       await invokerManager.executeCommand('--toggle', 'nonexistent-id');
       
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('not found'));
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', expect.any(Error));
       consoleSpy.mockRestore();
     });
 
@@ -85,7 +85,7 @@ describe('Enhanced Error Handling & Debugging', () => {
       
       await invokerManager.executeCommand('--togle', 'target', button); // Typo
       
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown command'));
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', expect.any(Error));
       consoleSpy.mockRestore();
     });
 

@@ -126,7 +126,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should execute complete commands regardless of success/error', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -168,7 +168,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
   describe('Declarative <and-then> Elements', () => {
     it('should execute and-then element after primary command', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -213,7 +213,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should execute and-then element with conditional success', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -259,7 +259,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should execute and-then element with conditional error', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -305,7 +305,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should handle nested and-then elements', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -361,7 +361,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should handle once state for and-then elements', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -409,7 +409,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
   describe('Command Lifecycle States', () => {
     it('should handle "once" state correctly', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -456,7 +456,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should handle "disabled" state correctly', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -492,7 +492,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
   describe('Target Override', () => {
     it('should allow overriding target for chained commands', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -541,7 +541,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
   describe('Declarative <and-then> Elements', () => {
     it('should execute and-then element after primary command', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -586,7 +586,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should execute and-then element with conditional success', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -632,7 +632,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should execute and-then element with conditional error', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -678,7 +678,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should handle nested and-then elements', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');
@@ -734,7 +734,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
     });
 
     it('should handle once state for and-then elements', async () => {
-      const invokerManager = new InvokerManager();
+      const invokerManager = InvokerManager.getInstance();
 
       // Create mock DOM elements
       const testButton = document.createElement('button');

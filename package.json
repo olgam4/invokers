@@ -76,6 +76,15 @@
       },
       "require": "./dist/cjs/production/commands.js",
       "import": "./dist/esm/production/commands.js"
+    },
+    "./interest": {
+      "types": "./dist/types/interest-invokers.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/interest.js",
+        "import": "./dist/esm/development/interest.js"
+      },
+      "require": "./dist/cjs/production/interest.js",
+      "import": "./dist/esm/production/interest.js"
     }
   },
   "scripts": {
@@ -106,6 +115,9 @@
     "*": {
       "commands": [
         "./dist/types/invoker-commands.d.ts"
+      ],
+      "interest": [
+        "./dist/types/interest-invokers.d.ts"
       ]
     }
   }

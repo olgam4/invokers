@@ -450,7 +450,7 @@ describe('Pipeline Functionality', () => {
     });
 
     it('should handle data attributes in pipeline steps', (done) => {
-      window.Invoker.register('--pipeline:data-test', ({ targetElement, invoker }) => {
+      invokerManager.register('--pipeline:data-test', ({ targetElement, invoker }) => {
         const value = invoker.dataset.testValue || 'no value';
         targetElement.textContent = `Data test: ${value}`;
       });
@@ -608,7 +608,7 @@ describe('Pipeline Functionality', () => {
       });
     });
 
-    it('should handle once state correctly', () => {
+    it('should handle once state correctly', (done) => {
       document.body.innerHTML = `
         <button type="button"
                 id="once-state-trigger"
@@ -625,11 +625,18 @@ describe('Pipeline Functionality', () => {
 
       // First click
       button.click();
-      expect(output.textContent).toBe('1');
 
-      // Second click should not execute
-      button.click();
-      expect(output.textContent).toBe('1'); // Should still be 1
+      setTimeout(() => {
+        expect(output.textContent).toBe('1');
+
+        // Second click should not execute
+        button.click();
+
+        setTimeout(() => {
+          expect(output.textContent).toBe('1'); // Should still be 1
+          done();
+        }, 50);
+      }, 50);
     });
 
     it('should handle disabled state correctly', () => {

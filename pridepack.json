@@ -2,6 +2,7 @@
   "target": "es2018",
   "entrypoints": {
     ".": "./src/index.ts",
-    "./commands": "./src/invoker-commands.ts"
+    "./commands": "./src/invoker-commands.ts",
+    "./interest": "./src/interest-invokers.ts"
   }
 }
