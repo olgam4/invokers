@@ -1,7 +1,7 @@
 {
   "name": "invokers",
-  "version": "0.0.5",
-  "description": "A powerful, platform-first JavaScript library for creating modern user interfaces with declarative HTML. Use the native `command` attribute with ARIA properties like `aria-controls` to build accessible tabs, accordions, and menus with little to no custom JS. Includes View Transition API support.",
+  "version": "1.1.0",
+  "description": "A powerful, platform-first JavaScript library for creating modern user interfaces with declarative HTML. Features universal command chaining, conditional execution, and declarative workflow orchestration via `data-and-then` attributes and `<and-then>` elements. Use the native `command` attribute to build accessible, interactive UIs with sophisticated multi-step workflows, all with zero custom JavaScript. Includes View Transition API support and Interest Invokers (hover cards, tooltips) polyfill.",
   "author": "Patrick Glenn",
   "license": "MIT",
   "private": false,
@@ -35,7 +35,18 @@
     "web-components",
     "progressive-enhancement",
     "unobtrusive-javascript",
-    "micro-library"
+    "micro-library",
+    "command-chaining",
+    "workflow-orchestration",
+    "conditional-execution",
+    "lifecycle-management",
+    "multi-step",
+    "declarative-workflows",
+    "interest-invokers",
+    "hover-cards",
+    "tooltips",
+    "popover",
+    "interestfor"
   ],
   "engines": {
     "node": ">=16"
@@ -65,6 +76,15 @@
       },
       "require": "./dist/cjs/production/commands.js",
       "import": "./dist/esm/production/commands.js"
+    },
+    "./interest": {
+      "types": "./dist/types/interest-invokers.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/interest-invokers.js",
+        "import": "./dist/esm/development/interest-invokers.js"
+      },
+      "require": "./dist/cjs/production/interest-invokers.js",
+      "import": "./dist/esm/production/interest-invokers.js"
     }
   },
   "scripts": {
@@ -76,10 +96,12 @@
     "watch": "pridepack watch",
     "start": "pridepack start",
     "dev": "pridepack dev",
-    "test": "vitest"
+    "test": "vitest --run"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.10.2",
+    "jsdom": "^27.0.0",
     "pridepack": "2.6.4",
     "standard-version": "^9.5.0",
     "tslib": "^2.8.1",
@@ -93,6 +115,9 @@
     "*": {
       "commands": [
         "./dist/types/invoker-commands.d.ts"
+      ],
+      "interest": [
+        "./dist/types/interest-invokers.d.ts"
       ]
     }
   }

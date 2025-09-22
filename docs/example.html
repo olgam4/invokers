@@ -45,6 +45,14 @@
     #dynamic-content-area { border-style: dashed; border-color: var(--brand-accent); transition: all 0.3s; }
     .success-message { background-color: var(--success-bg); border: 1px solid var(--success-border); color: #1b5e20; text-align: center; }
 
+    /* Enhanced chaining demo styles */
+    .processing { background-color: #fff3cd; border-color: #ffeaa7; }
+    .success { background-color: var(--success-bg); border-color: var(--success-border); color: #1b5e20; }
+    .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+    .primary { background-color: #e3f2fd; border-color: #2196f3; }
+    .secondary { background-color: #f3e5f5; border-color: #9c27b0; }
+    .tutorial-active { box-shadow: 0 0 15px rgba(106, 13, 173, 0.5); transform: scale(1.02); }
+
     /* View Transition API Support */
     @keyframes fade-in { from { opacity: 0; } }
     @keyframes fade-out { to { opacity: 0; } }
@@ -56,7 +64,7 @@
 
   <main>
     <h1>Invokers.js Interactive Cookbook</h1>
-    <p style="text-align: center;">A showcase of declarative UI patterns using the future of HTML. Open your console to see helpful warnings!</p>
+    <p style="text-align: center;">A comprehensive showcase of declarative UI patterns, command chaining, and workflow orchestration using the future of HTML. Open your console to see helpful warnings!</p>
 
     <!-- =================================================================== -->
     <h2 id="live-demo">Live Demo: Infinite Swaps & Forms</h2>
@@ -215,6 +223,390 @@
       </button>
     </div>
 
+    <!-- =================================================================== -->
+    <h2 id="chaining">Part 4: Universal Command Chaining</h2>
+    <!-- =================================================================== -->
+    <p>The <code>data-and-then</code> attribute allows you to chain commands together, creating powerful sequences. This works for <strong>all</strong> commands, both synchronous and asynchronous.</p>
+
+    <h3>Chaining Synchronous Commands</h3>
+    <div class="demo-box">
+        <div id="sync-chain-target" style="padding: 1rem; border: 2px dashed var(--border-color); border-radius: 4px; transition: all 0.3s;">
+            Initial State
+        </div>
+        <p style="margin-top: 1rem;">
+            This button will first add a highlight class, and then immediately update the text content.
+        </p>
+        <button type="button"
+            command="--class:add:is-active"
+            commandfor="sync-chain-target"
+            data-and-then="--text:set"
+            data-text-value="✅ Highlighted and Updated!">
+            Run Synchronous Chain
+        </button>
+    </div>
+
+    <h3>Chaining Asynchronous Commands (e.g., after Fetch)</h3>
+    <div class="demo-box">
+        <p>This button will fetch content and, only upon successful completion, run a second command to add a 'loaded' class, triggering a CSS animation.</p>
+        <div id="async-chain-target" class="content-box"></div>
+        <button type="button"
+            command="--fetch:get"
+            data-url="https://jsonplaceholder.typicode.com/posts/2"
+            commandfor="async-chain-target"
+            data-loading-template="spinner-template"
+            data-and-then="--class:add:loaded">
+            Fetch and Animate on Complete
+        </button>
+        <style>
+            .content-box.loaded { animation: fadeIn 0.5s ease-out; }
+        </style>
+    </div>
+
+    <!-- =================================================================== -->
+    <h2 id="core-commands">Part 5: Enhanced Core Commands</h2>
+    <!-- =================================================================== -->
+    <p>The core library now includes powerful commands for text and attribute manipulation, all with full chaining support.</p>
+
+    <h3>Text Manipulation Commands</h3>
+    <div class="demo-box">
+        <div id="text-demo-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px; min-height: 3rem;">
+            Initial text content
+        </div>
+        <p style="margin-top: 1rem;">
+            <!-- Text commands with chaining -->
+            <button type="button"
+                command="--text:set:Hello World!"
+                commandfor="text-demo-target"
+                data-and-then="--class:add:success">
+                Set Text + Add Class
+            </button>
+
+            <button type="button"
+                command="--text:append: (appended text)"
+                commandfor="text-demo-target">
+                Append Text
+            </button>
+
+            <button type="button"
+                command="--text:prepend:URGENT: "
+                commandfor="text-demo-target"
+                data-and-then="--class:add:error">
+                Prepend Text + Add Error Class
+            </button>
+
+            <button type="button"
+                command="--text:clear"
+                commandfor="text-demo-target"
+                data-and-then="--class:remove:success,--class:remove:error">
+                Clear Text + Reset Classes
+            </button>
+        </p>
+    </div>
+
+    <h3>Attribute Manipulation Commands</h3>
+    <div class="demo-box">
+        <input type="text" id="attr-demo-input" placeholder="Type here..." style="width: 100%; padding: 0.5rem;">
+        <div id="attr-demo-status" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 4px; background: #f9f9f9;">
+            Input status will appear here
+        </div>
+        <p style="margin-top: 1rem;">
+            <!-- Attribute commands with chaining -->
+            <button type="button"
+                command="--attr:set:disabled:true"
+                commandfor="attr-demo-input"
+                data-and-then="--text:set:Input disabled!"
+                data-then-target="attr-demo-status">
+                Disable Input
+            </button>
+
+            <button type="button"
+                command="--attr:remove:disabled"
+                commandfor="attr-demo-input"
+                data-and-then="--text:set:Input enabled!"
+                data-then-target="attr-demo-status">
+                Enable Input
+            </button>
+
+            <button type="button"
+                command="--attr:toggle:readonly"
+                commandfor="attr-demo-input"
+                data-and-then="--text:set:Read-only toggled!"
+                data-then-target="attr-demo-status">
+                Toggle Read-Only
+            </button>
+        </p>
+        <style>
+            #attr-demo-input:disabled { background: #f0f0f0; }
+            #attr-demo-input[readonly] { background: #fff3cd; }
+        </style>
+    </div>
+
+    <!-- =================================================================== -->
+    <h2 id="enhanced-chaining">Part 6: Enhanced Attribute-Based Chaining</h2>
+    <!-- =================================================================== -->
+    <p>Use conditional chaining attributes to execute different commands based on success or failure states.</p>
+
+    <h3>Conditional Chaining (Success/Error Handling)</h3>
+    <div class="demo-box">
+        <div id="conditional-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px; transition: all 0.3s;">
+            Status: Ready for operation
+        </div>
+        <p style="margin-top: 1rem;">
+            These buttons demonstrate conditional chaining based on success/error states.
+        </p>
+        <button type="button"
+            command="--text:set:Processing..."
+            commandfor="conditional-target"
+            data-after-success="--class:add:success,--text:append: ✅ Success!"
+            data-after-error="--class:add:error,--text:append: ❌ Failed!"
+            data-after-complete="--attr:set:data-processed:true">
+            Simulate Success Operation
+        </button>
+
+        <button type="button"
+            command="--text:set:Processing..."
+            commandfor="conditional-target"
+            data-after-success="--class:add:success,--text:append: ✅ Success!"
+            data-after-error="--class:add:error,--text:append: ❌ Failed!"
+            data-after-complete="--attr:set:data-processed:true"
+            style="margin-left: 1rem;">
+            Simulate Error Operation
+        </button>
+
+        <button type="button"
+            command="--text:set:Status: Ready for operation"
+            commandfor="conditional-target"
+            data-and-then="--class:remove:success,--class:remove:error"
+            style="margin-left: 1rem;">
+            Reset Demo
+        </button>
+    </div>
+
+    <h3>Command Lifecycle States</h3>
+    <div class="demo-box">
+        <div id="lifecycle-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">
+            Click the buttons below to see different lifecycle behaviors.
+        </div>
+        <p style="margin-top: 1rem;">
+            <button type="button"
+                command="--text:set:🎉 This button only works once!"
+                commandfor="lifecycle-target"
+                data-state="once">
+                One-Time Button
+            </button>
+
+            <button type="button"
+                command="--text:append: (added text) "
+                commandfor="lifecycle-target"
+                data-state="disabled"
+                style="margin-left: 1rem;">
+                Disabled Button
+            </button>
+
+            <button type="button"
+                command="--text:clear"
+                commandfor="lifecycle-target"
+                data-and-then="--text:set:Reset complete"
+                style="margin-left: 1rem;">
+                Reset Target
+            </button>
+        </p>
+    </div>
+
+    <h3>Target Override for Chained Commands</h3>
+    <div class="demo-box">
+        <div id="primary-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">
+            Primary Target
+        </div>
+        <div id="secondary-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px; margin-top: 1rem;">
+            Secondary Target  
+        </div>
+        <p style="margin-top: 1rem;">
+            This button affects the primary target, but the chained command affects the secondary target.
+        </p>
+        <button type="button"
+            command="--text:set:Primary updated!"
+            commandfor="primary-target"
+            data-and-then="--text:set:Secondary updated via chain!"
+            data-then-target="secondary-target">
+            Chain to Different Target
+        </button>
+    </div>
+
+    <!-- =================================================================== -->
+    <h2 id="declarative-andthen">Part 7: Declarative &lt;and-then&gt; Elements</h2>
+    <!-- =================================================================== -->
+    <p>Create visual, tree-structured command chains using declarative <code>&lt;and-then&gt;</code> elements.</p>
+
+    <h3>Basic Nested Chaining</h3>
+    <div class="demo-box">
+        <div id="andthen-basic-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px; transition: all 0.3s;">
+            Ready for multi-step process
+        </div>
+        <p style="margin-top: 1rem;">
+            This button creates a complex, multi-step workflow using nested <code>&lt;and-then&gt;</code> elements:
+        </p>
+        <button type="button" 
+            command="--text:set:Step 1: Started"
+            commandfor="andthen-basic-target">
+            Start Multi-Step Process
+            <and-then command="--class:add:processing" commandfor="andthen-basic-target" data-delay="500">
+                <and-then command="--text:append: → Step 2: Processing" commandfor="andthen-basic-target" data-delay="800">
+                    <and-then command="--class:remove:processing" commandfor="andthen-basic-target" data-delay="500">
+                        <and-then command="--class:add:success" commandfor="andthen-basic-target">
+                            <and-then command="--text:append: → Step 3: Complete!" commandfor="andthen-basic-target">
+                            </and-then>
+                        </and-then>
+                    </and-then>
+                </and-then>
+            </and-then>
+        </button>
+
+        <button type="button"
+            command="--text:set:Ready for multi-step process"
+            commandfor="andthen-basic-target"
+            data-and-then="--class:remove:processing,--class:remove:success"
+            style="margin-left: 1rem;">
+            Reset Demo
+        </button>
+    </div>
+
+    <h3>Conditional Execution with &lt;and-then&gt;</h3>
+    <div class="demo-box">
+        <div id="andthen-conditional-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">
+            Ready for conditional workflow
+        </div>
+        <div id="andthen-status" style="margin-top: 1rem; padding: 0.5rem; background: #f9f9f9; border-radius: 4px;">
+            Status updates will appear here
+        </div>
+        <p style="margin-top: 1rem;">
+            This button demonstrates conditional execution based on success/error states:
+        </p>
+        <button type="button" 
+            command="--text:set:Attempting operation..."
+            commandfor="andthen-conditional-target">
+            Simulate Successful Operation
+            
+            <!-- Success flow -->
+            <and-then command="--class:add:success" commandfor="andthen-conditional-target" data-condition="success" data-delay="500">
+                <and-then command="--text:set:✅ Success path executed" commandfor="andthen-status">
+                    <and-then command="--text:append: → All cleanup complete" commandfor="andthen-conditional-target">
+                    </and-then>
+                </and-then>
+            </and-then>
+            
+            <!-- Error flow (won't execute in this case) -->
+            <and-then command="--class:add:error" commandfor="andthen-conditional-target" data-condition="error">
+                <and-then command="--text:set:❌ Error path executed" commandfor="andthen-status">
+                </and-then>
+            </and-then>
+            
+            <!-- Always executes -->
+            <and-then command="--attr:set:data-operation-complete:true" commandfor="andthen-conditional-target" data-condition="always">
+            </and-then>
+        </button>
+
+        <button type="button"
+            command="--text:set:Ready for conditional workflow"
+            commandfor="andthen-conditional-target"
+            data-and-then="--class:remove:success,--class:remove:error"
+            style="margin-left: 1rem;">
+            Reset Demo
+        </button>
+    </div>
+
+    <h3>One-Time Execution Elements</h3>
+    <div class="demo-box">
+        <div id="andthen-once-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">
+            Tutorial system ready
+        </div>
+        <p style="margin-top: 1rem;">
+            This button contains <code>&lt;and-then&gt;</code> elements with <code>data-once="true"</code> that remove themselves after execution:
+        </p>
+        <button type="button" id="tutorial-button"
+            command="--text:set:Tutorial started!"
+            commandfor="andthen-once-target">
+            Start Tutorial (Check DOM After Click)
+            <and-then command="--class:add:tutorial-active" commandfor="andthen-once-target" data-once="true" data-delay="500">
+                <and-then command="--text:append: → Welcome message shown" commandfor="andthen-once-target" data-once="true">
+                    <and-then command="--text:append: → Tutorial complete!" commandfor="andthen-once-target" data-once="true">
+                    </and-then>
+                </and-then>
+            </and-then>
+        </button>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+            <strong>Tip:</strong> Inspect the button element in DevTools after clicking to see the <code>&lt;and-then&gt;</code> elements have been removed!
+        </p>
+    </div>
+
+    <!-- =================================================================== -->
+    <h2 id="complete-workflow">Part 8: Complete Workflow Example</h2>
+    <!-- =================================================================== -->
+    <p>A comprehensive example showing how all chaining features work together in a realistic scenario.</p>
+
+    <h3>User Registration Workflow</h3>
+    <div class="demo-box">
+        <div id="registration-form-container" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">
+            <h4>Create Account</h4>
+            <form id="demo-registration-form">
+                <label for="reg-email">Email:</label>
+                <input type="email" id="reg-email" value="user@example.com" required>
+                <label for="reg-password" style="margin-top: 1rem;">Password:</label>
+                <input type="password" id="reg-password" value="password123" required>
+            </form>
+        </div>
+
+        <div id="welcome-screen" hidden style="padding: 1rem; border: 2px solid var(--success-border); border-radius: 4px; background: var(--success-bg);">
+            <h4>Welcome!</h4>
+            <p id="welcome-message">Registration successful!</p>
+        </div>
+
+        <div id="error-details" hidden style="padding: 1rem; border: 2px solid #f5c6cb; border-radius: 4px; background: #f8d7da; color: #721c24;">
+            <p>Please check your information and try again.</p>
+        </div>
+
+        <div id="registration-status" role="alert" style="margin-top: 1rem; min-height: 1.5rem; padding: 0.5rem; background: #f9f9f9; border-radius: 4px;">
+            Ready to register
+        </div>
+
+        <p style="margin-top: 1rem;">
+            This complex workflow demonstrates multiple chaining approaches working together:
+        </p>
+        <button type="button" 
+            command="--text:set:Processing registration..."
+            commandfor="registration-status"
+            data-state="once"
+            data-after-success="--class:add:success,--text:set:✅ Registration successful!"
+            data-after-error="--class:add:error,--text:set:❌ Registration failed"
+            data-after-complete="--attr:set:aria-busy:false">
+            
+            Complete Registration
+            
+            <!-- Success flow -->
+            <and-then command="--show" commandfor="welcome-screen" data-condition="success" data-delay="1000">
+                <and-then command="--hide" commandfor="registration-form-container" data-once="true">
+                    <and-then command="--text:set:Welcome! Your account has been created." commandfor="welcome-message">
+                    </and-then>
+                </and-then>
+            </and-then>
+            
+            <!-- Error flow -->
+            <and-then command="--text:set:Registration failed. Please try again." commandfor="registration-status" data-condition="error">
+                <and-then command="--show" commandfor="error-details" data-delay="300">
+                </and-then>
+            </and-then>
+        </button>
+
+        <button type="button"
+            command="--hide"
+            commandfor="welcome-screen"
+            data-and-then="--show,--class:remove:success,--class:remove:error"
+            data-then-target="registration-form-container"
+            style="margin-left: 1rem;">
+            Reset Registration Demo
+        </button>
+    </div>
+
   </main>
 
   <!-- =================================================================== -->
@@ -273,10 +665,10 @@
   <script type="module">
     // 1. Import the core library. This automatically applies the polyfill
     //    and sets up the listener for custom `--` commands.
-    import 'https://esm.sh/invokers@0.0.5';
+    import 'https://esm.sh/invokers@1.1.0';
 
     // 2. Import the `registerAll` function from the optional commands module.
-    import { registerAll } from 'https://esm.sh/invokers@0.0.5/commands';
+    import { registerAll } from 'https://esm.sh/invokers@1.1.0/commands';
 
     // 3. Register all the extra commands to make them available.
     registerAll();

@@ -131,6 +131,8 @@ class InvokeEventPolyfill extends Event {
   }
 }
 
+
+
 const invokerAssociatedElements = new WeakMap<HTMLElement, Element>();
 
 /**
@@ -243,12 +245,44 @@ function applyInvokerMixin(ElementClass: typeof HTMLElement) {
         // Built-in commands are normalized to lowercase
         const valueLower = value.toLowerCase();
         switch (valueLower) {
+          // Core commands (already implemented)
           case "show-modal":
           case "close":
-          case "request-close": // Added from explainer
+          case "request-close":
           case "toggle-popover":
           case "hide-popover":
           case "show-popover":
+          
+          // Future commands - Openable elements
+          case "toggle-openable":
+          case "close-openable":
+          case "open-openable":
+          
+          // Details elements
+          case "toggle":
+          case "open":
+          
+          // Picker elements
+          case "show-picker":
+          
+          // Media elements
+          case "play-pause":
+          case "pause":
+          case "play":
+          case "toggle-muted":
+          
+          // Fullscreen elements
+          case "toggle-fullscreen":
+          case "request-fullscreen":
+          case "exit-fullscreen":
+          
+          // Clipboard and sharing
+          case "copy-text":
+          case "share":
+          
+          // Number input elements
+          case "step-up":
+          case "step-down":
             return valueLower;
         }
         return ""; // Invalid command if not built-in or custom
@@ -267,7 +301,7 @@ function applyInvokerMixin(ElementClass: typeof HTMLElement) {
           `invokeAction is deprecated. It has been renamed to command`,
         );
       },
-      set(value: string): never {
+      set(_value: string): never {
         throw new Error(
           `invokeAction is deprecated. It has been renamed to command`,
         );
@@ -282,7 +316,7 @@ function applyInvokerMixin(ElementClass: typeof HTMLElement) {
           `invokeTargetElement is deprecated. It has been renamed to command`,
         );
       },
-      set(value: Element | null): never {
+      set(_value: Element | null): never {
         throw new Error(
           `invokeTargetElement is deprecated. It has been renamed to command`,
         );
@@ -297,6 +331,10 @@ const onHandlers = new WeakMap<HTMLElement, EventListenerOrEventListenerObject>(
 declare global {
   interface HTMLElement {
     oncommand: EventListenerOrEventListenerObject | null;
+    /**
+     * Gets or sets the element controlled by the interest invoker.
+     */
+    interestForElement: Element | null;
   }
   interface HTMLButtonElement {
     /**
@@ -307,6 +345,22 @@ declare global {
      * Gets or sets the element controlled by the button.
      */
     commandForElement: Element | null;
+    /**
+     * Gets or sets the element controlled by the interest invoker.
+     */
+    interestForElement: Element | null;
+  }
+  interface HTMLAnchorElement {
+    /**
+     * Gets or sets the element controlled by the interest invoker.
+     */
+    interestForElement: Element | null;
+  }
+  interface HTMLAreaElement {
+    /**
+     * Gets or sets the element controlled by the interest invoker.
+     */
+    interestForElement: Element | null;
   }
 }
 
@@ -348,6 +402,7 @@ Object.defineProperties(HTMLElement.prototype, {
  */
 function applyOnCommandHandler(els: Iterable<Element>) {
   for (const el of els) {
+    if (typeof Element !== "undefined" && !(el instanceof Element)) continue; // Skip if not an Element
     const oncommandAttr = el.getAttribute("oncommand");
     if (oncommandAttr !== null && (el as any).oncommand !== null) { // Only set if not already set by JS
         try {
@@ -365,8 +420,10 @@ const oncommandObserver = new MutationObserver((records) => {
   for (const record of records) {
     const { target } = record;
     if (record.type === "childList") {
-      if (target instanceof Element) {
+      if (typeof Element !== "undefined" && target instanceof Element) {
         applyOnCommandHandler(Array.from(target.querySelectorAll("[oncommand]")));
+      } else if (target && typeof (target as any).querySelectorAll === "function") {
+        applyOnCommandHandler(Array.from((target as Element).querySelectorAll("[oncommand]")));
       }
     } else { // attributeChanged
       if (target instanceof HTMLElement && target.hasAttribute("oncommand")) {
@@ -462,7 +519,8 @@ function handleInvokerActivation(event: MouseEvent | KeyboardEvent) {
   // 2. Perform default actions for built-in commands
   const command = commandEvent.command.toLowerCase(); // Use the normalized command from the event
 
-  if (invokee.matches('[popover]')) { // Check if target is a popover
+  // Handle popover commands
+  if (invokee.matches('[popover]')) {
     const isPopoverOpen = invokee.matches(":popover-open");
     if (command === "toggle-popover") {
         (invokee as HTMLElement & { showPopover?: (options?: any) => void; hidePopover?: (options?: any) => void; })[isPopoverOpen ? 'hidePopover' : 'showPopover']?.({ source });
@@ -471,20 +529,167 @@ function handleInvokerActivation(event: MouseEvent | KeyboardEvent) {
     } else if (command === "show-popover" && !isPopoverOpen) {
         (invokee as HTMLElement & { showPopover?: (options?: any) => void }).showPopover?.({ source });
     }
-  } else if (invokee.localName === "dialog") { // Check if target is a dialog
+  }
+  
+  // Handle dialog commands
+  if (invokee.localName === "dialog") {
     const isDialogOpen = invokee.hasAttribute("open");
     if (command === "show-modal" && !isDialogOpen) {
         (invokee as HTMLDialogElement).showModal();
     } else if (command === "close" && isDialogOpen) {
-        // The spec implies the button's value could be used for returnValue
         (invokee as HTMLDialogElement).close(source.value);
     } else if (command === "request-close" && isDialogOpen) {
-        // Similar to close, but dispatches a 'cancel' event first
         const cancelEvent = new Event('cancel', { cancelable: true });
         invokee.dispatchEvent(cancelEvent);
         if (!cancelEvent.defaultPrevented) {
              (invokee as HTMLDialogElement).close(source.value);
         }
+    }
+  }
+  
+  // Handle details commands
+  if (invokee.localName === "details") {
+    const isOpen = (invokee as HTMLDetailsElement).open;
+    if (command === "toggle") {
+      (invokee as HTMLDetailsElement).open = !isOpen;
+    } else if (command === "open" && !isOpen) {
+      (invokee as HTMLDetailsElement).open = true;
+    } else if (command === "close" && isOpen) {
+      (invokee as HTMLDetailsElement).open = false;
+    }
+  }
+  
+  // Handle openable elements (elements with toggleOpenable method)
+  if (command.includes("openable") && typeof (invokee as any).toggleOpenable === "function") {
+    if (command === "toggle-openable") {
+      (invokee as any).toggleOpenable();
+    } else if (command === "open-openable") {
+      (invokee as any).openOpenable?.();
+    } else if (command === "close-openable") {
+      (invokee as any).closeOpenable?.();
+    }
+  }
+  
+  // Handle picker commands for select and input elements
+  if ((invokee.localName === "select" || invokee.localName === "input") && command === "show-picker") {
+    try {
+      if (typeof (invokee as any).showPicker === "function") {
+        // Check if we're in a secure context and have user activation
+        if (document.hasFocus() && source.ownerDocument.hasFocus()) {
+          (invokee as any).showPicker();
+        }
+      }
+    } catch (e) {
+      // showPicker can throw for various security reasons, fail silently
+      console.warn("Invokers: showPicker failed:", e);
+    }
+  }
+  
+  // Handle media element commands
+  if (invokee.localName === "video" || invokee.localName === "audio") {
+    const media = invokee as HTMLMediaElement;
+    if (command === "play-pause") {
+      if (media.paused) {
+        media.play().catch(() => {
+          // Autoplay policy might prevent play, fail silently
+        });
+      } else {
+        media.pause();
+      }
+    } else if (command === "play" && media.paused) {
+      media.play().catch(() => {
+        // Autoplay policy might prevent play, fail silently
+      });
+    } else if (command === "pause" && !media.paused) {
+      media.pause();
+    } else if (command === "toggle-muted") {
+      media.muted = !media.muted;
+    }
+  }
+  
+  // Handle fullscreen commands
+  if (command.includes("fullscreen")) {
+    try {
+      if (command === "toggle-fullscreen") {
+        if (document.fullscreenElement === invokee) {
+          document.exitFullscreen();
+        } else {
+          (invokee as any).requestFullscreen?.();
+        }
+      } else if (command === "request-fullscreen" && document.fullscreenElement !== invokee) {
+        (invokee as any).requestFullscreen?.();
+      } else if (command === "exit-fullscreen" && document.fullscreenElement === invokee) {
+        document.exitFullscreen();
+      }
+    } catch (e) {
+      // Fullscreen operations can fail for various reasons
+      console.warn("Invokers: Fullscreen operation failed:", e);
+    }
+  }
+  
+  // Handle clipboard and sharing commands
+  if (command === "copy-text") {
+    try {
+      let textToCopy = "";
+      if (invokee === source) {
+        // Self-referencing: use value attribute if available
+        textToCopy = (source as any).value || source.textContent || "";
+      } else {
+        textToCopy = invokee.textContent || "";
+      }
+      
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy.trim());
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy.trim();
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    } catch (e) {
+      console.warn("Invokers: Copy operation failed:", e);
+    }
+  }
+  
+  if (command === "share") {
+    try {
+      let textToShare = "";
+      if (invokee === source) {
+        textToShare = (source as any).value || source.textContent || "";
+      } else {
+        textToShare = invokee.textContent || "";
+      }
+      
+      if (navigator.share) {
+        // Check if the text looks like a URL
+        const trimmedText = textToShare.trim();
+        if (trimmedText.startsWith('http://') || trimmedText.startsWith('https://')) {
+          navigator.share({ url: trimmedText });
+        } else {
+          navigator.share({ text: trimmedText });
+        }
+      }
+    } catch (e) {
+      console.warn("Invokers: Share operation failed:", e);
+    }
+  }
+  
+  // Handle number input step commands
+  if (invokee.localName === "input" && (invokee as HTMLInputElement).type === "number") {
+    const input = invokee as HTMLInputElement;
+    try {
+      if (command === "step-up") {
+        input.stepUp();
+      } else if (command === "step-down") {
+        input.stepDown();
+      }
+    } catch (e) {
+      console.warn("Invokers: Step operation failed:", e);
     }
   }
 }

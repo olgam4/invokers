@@ -17,6 +17,7 @@
  */
 
 import type { CommandContext, CommandCallback } from "./index";
+import { createInvokerError, logInvokerError, ErrorSeverity, validateElement, sanitizeHTML } from "./index";
 
 type CommandRegistry = Record<string, CommandCallback>;
 
@@ -47,28 +48,62 @@ export const commands: CommandRegistry = {
    * <video id="my-video" src="..."></video>
    * ```
    */
-  "--media:toggle": (context: CommandContext) => {
+  "--media:toggle": async (context: CommandContext) => {
     const { invoker, targetElement } = context;
-    const media = targetElement as HTMLMediaElement;
-    if (!(media instanceof HTMLMediaElement)) {
-        console.warn('Invokers: `--media:toggle` target is not a valid <video> or <audio> element.', invoker);
-        return;
+    
+    // Validate target element
+    const validationErrors = validateElement(targetElement, {
+      tagName: ['video', 'audio']
+    });
+    
+    if (validationErrors.length > 0) {
+      throw createInvokerError(
+        `Media toggle command failed: ${validationErrors.join(', ')}`,
+        ErrorSeverity.ERROR,
+        {
+          command: '--media:toggle',
+          element: invoker,
+          context: { 
+            targetTag: targetElement?.tagName,
+            validationErrors 
+          },
+          recovery: 'Ensure commandfor points to a <video> or <audio> element'
+        }
+      );
     }
 
+    const media = targetElement as HTMLMediaElement;
     const playText = invoker.dataset.playText || "Pause";
     const pauseText = invoker.dataset.pauseText || "Play";
 
-    if (media.paused) {
-      media.play()
-        .then(() => {
-          invoker.textContent = playText;
-          invoker.setAttribute("aria-pressed", "true");
-        })
-        .catch((err) => console.error("Invokers: Media play failed. This may be due to browser autoplay policies.", err, invoker));
-    } else {
-      media.pause();
-      invoker.textContent = pauseText;
-      invoker.setAttribute("aria-pressed", "false");
+    try {
+      if (media.paused) {
+        await media.play();
+        invoker.textContent = playText;
+        invoker.setAttribute("aria-pressed", "true");
+      } else {
+        media.pause();
+        invoker.textContent = pauseText;
+        invoker.setAttribute("aria-pressed", "false");
+      }
+    } catch (error) {
+      throw createInvokerError(
+        'Failed to toggle media playback',
+        ErrorSeverity.ERROR,
+        {
+          command: '--media:toggle',
+          element: invoker,
+          cause: error as Error,
+          context: { 
+            mediaSrc: media.src,
+            mediaState: media.paused ? 'paused' : 'playing',
+            mediaReadyState: media.readyState
+          },
+          recovery: error.name === 'NotAllowedError' 
+            ? 'Media autoplay blocked by browser. User interaction may be required.'
+            : 'Check that the media element has a valid source and is ready to play'
+        }
+      );
     }
   },
 
@@ -393,7 +428,7 @@ export const commands: CommandRegistry = {
   /**
    * `--fetch:get`: Performs a GET request to the URL in `data-url` and swaps the
    * response HTML into the target element. Supports loading/error states via
-   * templates and can chain another command on success via `data-then-command`.
+   * templates. Chaining is now handled by the core library via the `data-and-then` attribute.
    *
    * @example
    * ```html
@@ -403,7 +438,7 @@ export const commands: CommandRegistry = {
    *   commandfor="content-area"
    *   data-loading-template="spinner-template"
    *   data-error-template="error-template"
-   *   data-then-command="--class:add:loaded"
+   *   data-and-then="--class:add:loaded"
    * >
    *   Load Content
    * </button>
@@ -413,32 +448,152 @@ export const commands: CommandRegistry = {
   "--fetch:get": async (context: CommandContext) => {
     const { invoker, targetElement } = context;
     const url = invoker.dataset.url;
+    
+    // Comprehensive input validation
     if (!url) {
-      console.warn("Invokers: `--fetch:get` requires a `data-url` attribute.", invoker);
-      return;
+      throw createInvokerError(
+        'Fetch GET command requires a data-url attribute',
+        ErrorSeverity.ERROR,
+        {
+          command: '--fetch:get',
+          element: invoker,
+          recovery: 'Add data-url="/your/endpoint" to the button element'
+        }
+      );
+    }
+
+    // Validate URL format
+    try {
+      new URL(url, window.location.href); // This will throw if URL is invalid
+    } catch (urlError) {
+      throw createInvokerError(
+        `Invalid URL provided: "${url}"`,
+        ErrorSeverity.ERROR,
+        {
+          command: '--fetch:get',
+          element: invoker,
+          cause: urlError as Error,
+          context: { url },
+          recovery: 'Provide a valid URL like "/api/content" or "https://example.com/data"'
+        }
+      );
+    }
+
+    // Validate target element
+    if (!targetElement || !targetElement.isConnected) {
+      throw createInvokerError(
+        'Target element for fetch command is missing or disconnected',
+        ErrorSeverity.ERROR,
+        {
+          command: '--fetch:get',
+          element: invoker,
+          context: { targetId: targetElement?.id },
+          recovery: 'Ensure the target element exists and is connected to the DOM'
+        }
+      );
     }
 
     setBusyState(invoker, true);
     showFeedbackState(invoker, targetElement, "data-loading-template");
 
     try {
+      const startTime = Date.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(url, {
         method: "GET",
         headers: { Accept: "text/html", ...getHeadersFromAttributes(invoker) },
+        signal: controller.signal
       });
 
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+      clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+
+      if (!response.ok) {
+        throw createInvokerError(
+          `HTTP Error: ${response.status} ${response.statusText}`,
+          ErrorSeverity.ERROR,
+          {
+            command: '--fetch:get',
+            element: invoker,
+            context: { 
+              url, 
+              status: response.status, 
+              statusText: response.statusText,
+              duration 
+            },
+            recovery: response.status === 404 
+              ? 'Check that the URL endpoint exists on your server'
+              : response.status === 403 
+              ? 'Check authentication and permissions for this endpoint'
+              : response.status >= 500
+              ? 'Server error - check your backend logs'
+              : 'Check the server response and network conditions'
+          }
+        );
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
+        console.warn(`Invokers: Fetch response content-type is "${contentType}". Expected HTML content for DOM injection.`, invoker);
+      }
 
       const html = await response.text();
-      const newContent = parseHTML(html);
+      if (!html.trim()) {
+        console.warn('Invokers: Fetch response is empty. Target element will be cleared.', invoker);
+      }
 
+      const newContent = parseHTML(html);
       const updateDOM = () => targetElement.replaceChildren(newContent);
       await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
-
-      triggerFollowup(invoker, targetElement);
+      
     } catch (error) {
-      console.error("Invokers: `--fetch:get` failed.", error, invoker);
       showFeedbackState(invoker, targetElement, "data-error-template");
+      
+      if (error.name === 'AbortError') {
+        throw createInvokerError(
+          'Fetch request timeout after 30 seconds',
+          ErrorSeverity.ERROR,
+          {
+            command: '--fetch:get',
+            element: invoker,
+            context: { url },
+            recovery: 'Check network connection and server response time'
+          }
+        );
+      }
+
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw createInvokerError(
+          'Network error: Failed to fetch content',
+          ErrorSeverity.ERROR,
+          {
+            command: '--fetch:get',
+            element: invoker,
+            cause: error as Error,
+            context: { url },
+            recovery: 'Check network connection and ensure the URL is reachable'
+          }
+        );
+      }
+
+      // Re-throw InvokerErrors as-is, wrap other errors
+      if ('severity' in error) {
+        throw error;
+      } else {
+        throw createInvokerError(
+          `Fetch GET failed: ${error.message}`,
+          ErrorSeverity.ERROR,
+          {
+            command: '--fetch:get',
+            element: invoker,
+            cause: error as Error,
+            context: { url },
+            recovery: 'Check the URL, network connection, and server response'
+          }
+        );
+      }
     } finally {
       setBusyState(invoker, false);
     }
@@ -448,6 +603,7 @@ export const commands: CommandRegistry = {
    * `--fetch:send`: Submits the target `<form>` via a POST/PUT/DELETE request.
    * The response HTML is swapped into the element specified by `data-response-target`,
    * or the form itself if omitted. `commandfor` MUST point to the `<form>`.
+   * Chaining is now handled by the core library via the `data-and-then` attribute.
    *
    * @example
    * ```html
@@ -456,6 +612,7 @@ export const commands: CommandRegistry = {
    *   command="--fetch:send"
    *   commandfor="my-form"
    *   data-response-target="#response-area"
+   *   data-and-then="--class:add:submitted"
    * >
    *   Submit via Fetch
    * </button>
@@ -500,8 +657,6 @@ export const commands: CommandRegistry = {
 
       const updateDOM = () => responseTarget.replaceChildren(newContent);
       await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
-
-      triggerFollowup(invoker, responseTarget);
     } catch (error) {
       console.error(`Invokers: \`--fetch:send\` (${method}) failed.`, error, invoker);
       showFeedbackState(invoker, responseTarget, "data-error-template");
@@ -764,36 +919,24 @@ function showFeedbackState(invoker: HTMLButtonElement, target: HTMLElement, temp
 }
 
 function parseHTML(html: string): DocumentFragment {
+  // Sanitize HTML before parsing
+  const sanitizedHTML = sanitizeHTML(html);
+  
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
+  const doc = parser.parseFromString(sanitizedHTML, "text/html");
+  
+  // Check for parsing errors
+  const parserErrors = doc.querySelectorAll('parsererror');
+  if (parserErrors.length > 0) {
+    console.warn('Invokers: HTML parsing errors detected:', parserErrors);
+  }
+  
   const fragment = document.createDocumentFragment();
   fragment.append(...Array.from(doc.body.childNodes));
   return fragment;
 }
 
-function triggerFollowup(originalInvoker: HTMLButtonElement, primaryTarget: HTMLElement): void {
-  const followupCommand = originalInvoker.dataset.thenCommand;
-  if (!followupCommand || !primaryTarget.id) {
-      if(followupCommand) console.warn("Invokers: Follow-up command requires the target to have an ID.", primaryTarget);
-      return;
-  }
 
-  const syntheticInvoker = document.createElement("button");
-  syntheticInvoker.setAttribute("type", "button");
-  syntheticInvoker.setAttribute("command", followupCommand.startsWith('--') ? followupCommand : `--${followupCommand}`);
-  syntheticInvoker.setAttribute("commandfor", primaryTarget.id);
-
-  for (const attr in originalInvoker.dataset) {
-    if (attr.startsWith("then") && attr !== "thenCommand") {
-      const newAttrName = attr.charAt(4).toLowerCase() + attr.slice(5);
-      syntheticInvoker.dataset[newAttrName] = originalInvoker.dataset[attr];
-    }
-  }
-  
-  // Appending and removing is a robust way to ensure it's in the DOM to be "clicked"
-  // but this is an implementation detail that might be fragile. A direct click can work.
-  syntheticInvoker.click();
-}
 
 function getHeadersFromAttributes(invoker: HTMLButtonElement): HeadersInit {
   const headers: Record<string, string> = {};

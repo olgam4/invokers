@@ -1,4 +1,379 @@
-This is an excellent and powerful feature request. Making command chaining a universal, core feature of the library dramatically increases its declarative power and simplifies the mental model for developers.
+
+# Invokers Command Chaining & Lifecycle Implementation Spec
+
+## Overview
+
+This specification defines extensions to the Invokers library to support command chaining, lifecycle management, and stateful command sequences. These features address the current limitation where only simple `data-then-command` chaining is possible.
+
+## Core Concepts
+
+### 1. Command Lifecycle States
+Commands can have execution states that determine their behavior:
+- `active` - Command is ready to execute (default)
+- `completed` - Command has executed and should not run again
+- `disabled` - Command is temporarily disabled
+- `once` - Command will self-destruct after first execution
+
+### 2. Command Chaining Methods
+Three primary approaches for chaining commands:
+
+#### A. Enhanced Attribute-Based Chaining
+#### B. Declarative `<and-then>` Elements  
+#### C. Template-Based Command Pipelines
+
+---
+
+## Method A: Enhanced Attribute-Based Chaining
+
+### Syntax Extensions
+
+```html
+<!-- Multiple commands with conditional execution -->
+<button command="--fetch:get" 
+        commandfor="content"
+        data-after-success="--class:add:loaded,--dom:remove:spinner"
+        data-after-error="--text:set:Error loading content"
+        data-after-complete="--attr:set:aria-busy:false">
+  Load Content
+</button>
+
+<!-- State-aware chaining -->
+<button command="--show" 
+        commandfor="step-2"
+        data-then-command="--class:add:completed"
+        data-then-target="step-1"
+        data-then-state="once">
+  Next Step
+</button>
+```
+
+### New Attributes
+
+| Attribute | Purpose | Values |
+|-----------|---------|---------|
+| `data-after-success` | Commands to run on successful completion | Comma-separated command list |
+| `data-after-error` | Commands to run on error/failure | Comma-separated command list |
+| `data-after-complete` | Commands to run after any completion | Comma-separated command list |
+| `data-then-target` | Override target for chained command | Element ID |
+| `data-then-state` | Execution state for chained command | `once`, `disabled`, `active` |
+
+### Implementation in `CommandContext`
+
+```typescript
+interface CommandContext {
+  // ... existing properties
+  
+  /**
+   * Execute a follow-up command after the current command completes
+   */
+  executeAfter: (command: string, target?: string, state?: CommandState) => void;
+  
+  /**
+   * Execute different commands based on success/error state
+   */
+  executeConditional: (options: {
+    onSuccess?: string[];
+    onError?: string[];
+    onComplete?: string[];
+  }) => void;
+}
+
+type CommandState = 'active' | 'completed' | 'disabled' | 'once';
+```
+
+---
+
+## Method B: Declarative `<and-then>` Elements
+
+### Basic Syntax
+
+```html
+<button command="--fetch:get" commandfor="content">
+  Load Data
+  <and-then command="--class:add:loaded" commandfor="content" data-state="active">
+    <and-then command="--dom:remove" commandfor="loading-spinner" data-once="true">
+    </and-then>
+  </and-then>
+</button>
+```
+
+### `<and-then>` Element Specification
+
+#### Attributes
+- `command` - The command to execute (required)
+- `commandfor` - Target element ID (defaults to parent's target)
+- `data-state` - Current execution state (`active`, `completed`, `disabled`, `once`)
+- `data-once` - Boolean, removes element after execution
+- `data-condition` - Conditional execution (`success`, `error`, `always`)
+- `data-delay` - Delay in milliseconds before execution
+
+#### Behavior
+1. `<and-then>` elements are inert until their parent command executes
+2. Tree traversal searches for the closest `<and-then>[data-state="active"]` going up the DOM
+3. After execution, state can change or element can self-destruct
+4. Nested `<and-then>` elements create sequential chains
+
+### Tree Traversal Algorithm
+
+```typescript
+function executeAndThen(invokerElement: HTMLButtonElement, context: CommandExecutionResult) {
+  let current: Element | null = invokerElement;
+  
+  while (current) {
+    const andThen = current.querySelector(':scope > and-then[data-state="active"]');
+    if (andThen) {
+      const condition = andThen.getAttribute('data-condition') || 'always';
+      
+      if (shouldExecuteCondition(condition, context)) {
+        executeAndThenCommand(andThen as HTMLElement, context);
+        
+        // Handle state transitions
+        if (andThen.hasAttribute('data-once')) {
+          andThen.remove();
+        } else {
+          andThen.setAttribute('data-state', 'completed');
+        }
+        
+        return; // Stop after first match
+      }
+    }
+    current = current.parentElement;
+  }
+}
+
+function shouldExecuteCondition(condition: string, context: CommandExecutionResult): boolean {
+  switch (condition) {
+    case 'success': return context.success === true;
+    case 'error': return context.success === false;
+    case 'always': 
+    default: return true;
+  }
+}
+```
+
+### Complex Example
+
+```html
+<div class="multi-step-process">
+  <button command="--fetch:post" commandfor="api-endpoint" data-url="/submit">
+    Submit Form
+    
+    <!-- Success chain -->
+    <and-then command="--class:add:success" commandfor="form-container" data-condition="success">
+      <and-then command="--text:set" commandfor="status-message" 
+                data-text-value="Submitted successfully!" data-delay="500">
+        <and-then command="--show" commandfor="success-panel" data-once="true">
+        </and-then>
+      </and-then>
+    </and-then>
+    
+    <!-- Error chain -->
+    <and-then command="--class:add:error" commandfor="form-container" data-condition="error">
+      <and-then command="--text:set" commandfor="error-message" 
+                data-text-value="Submission failed. Please try again.">
+      </and-then>
+    </and-then>
+  </button>
+</div>
+```
+
+---
+
+## Method C: Template-Based Command Pipelines
+
+### Syntax
+
+```html
+<button command="--pipeline:execute" data-pipeline="user-registration">
+  Register User
+</button>
+
+<template id="user-registration" data-pipeline="true">
+  <pipeline-step command="--form:validate" target="registration-form" />
+  <pipeline-step command="--fetch:post" target="api-endpoint" data-url="/register" 
+                  condition="success" />
+  <pipeline-step command="--class:add:registered" target="user-profile" 
+                  condition="success" once="true" />
+  <pipeline-step command="--text:set" target="error-display" 
+                  data-text-value="Registration failed" condition="error" />
+</template>
+```
+
+### Pipeline Execution Engine
+
+```typescript
+interface PipelineStep {
+  command: string;
+  target: string;
+  condition?: 'success' | 'error' | 'always';
+  once?: boolean;
+  delay?: number;
+}
+
+class PipelineManager {
+  async executePipeline(pipelineId: string, context: CommandContext): Promise<void> {
+    const template = document.getElementById(pipelineId) as HTMLTemplateElement;
+    if (!template?.hasAttribute('data-pipeline')) return;
+    
+    const steps = this.parsePipelineSteps(template);
+    let previousResult = { success: true };
+    
+    for (const step of steps) {
+      if (this.shouldExecuteStep(step, previousResult)) {
+        if (step.delay) {
+          await new Promise(resolve => setTimeout(resolve, step.delay));
+        }
+        
+        previousResult = await this.executeStep(step, context);
+        
+        if (step.once) {
+          this.removeStepFromTemplate(template, step);
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+## Integration with Existing Architecture
+
+### Extending `InvokerManager`
+
+```typescript
+export class InvokerManager {
+  private pipelineManager = new PipelineManager();
+  private andThenManager = new AndThenManager();
+  
+  private createContext(event: CommandEvent, fullCommand: string, params: readonly string[]): CommandContext {
+    // ... existing implementation
+    
+    const executeAfter = (command: string, target?: string, state: CommandState = 'active') => {
+      this.scheduleCommand(command, target || targetElement.id, state, event);
+    };
+    
+    const executeConditional = (options: ConditionalCommands) => {
+      this.conditionalExecutor.schedule(options, event);
+    };
+    
+    return {
+      // ... existing properties
+      executeAfter,
+      executeConditional
+    };
+  }
+  
+  private async executeCustomCommand(commandStr: string, event: CommandEvent): Promise<CommandExecutionResult> {
+    // ... existing implementation
+    
+    const result = await this.executeCommand(callback, context);
+    
+    // Process and-then elements
+    await this.andThenManager.processAndThen(event.source as HTMLButtonElement, result);
+    
+    // Process attribute-based chaining
+    await this.processAttributeChaining(event.source as HTMLButtonElement, result);
+    
+    return result;
+  }
+}
+```
+
+### New Command Registration
+
+```typescript
+// Pipeline command
+window.Invoker.register('--pipeline', async ({ params, invoker }) => {
+  const [action, pipelineId] = params;
+  if (action === 'execute' && pipelineId) {
+    await pipelineManager.executePipeline(pipelineId, context);
+  }
+});
+```
+
+---
+
+## Backward Compatibility
+
+All existing functionality remains unchanged:
+- Current `data-then-command` continues to work
+- Existing command syntax is preserved
+- No breaking changes to the API
+
+The new features are additive and opt-in.
+
+---
+
+## Use Cases & Examples
+
+### 1. Multi-Step Form Wizard
+
+```html
+<div class="wizard">
+  <button command="--show" commandfor="step-2">
+    Continue to Step 2
+    <and-then command="--class:add:completed" commandfor="step-1" data-once="true">
+      <and-then command="--attr:set" commandfor="progress-bar" 
+                data-attr-name="value" data-attr-value="2">
+      </and-then>
+    </and-then>
+  </button>
+</div>
+```
+
+### 2. Progressive Data Loading
+
+```html
+<button command="--fetch:get" 
+        commandfor="content"
+        data-after-success="--class:remove:loading,--class:add:loaded"
+        data-after-error="--text:set:Failed to load data">
+  Load More Content
+</button>
+```
+
+### 3. One-Time Tutorial Steps
+
+```html
+<button command="--show" commandfor="tutorial-step-1">
+  Start Tutorial
+  <and-then command="--class:add:tutorial-active" commandfor="app" data-once="true">
+    <and-then command="--dom:remove" commandfor="self" data-once="true">
+    </and-then>
+  </and-then>
+</button>
+```
+
+### 4. Complex API Workflow
+
+```html
+<button command="--pipeline:execute" data-pipeline="user-onboarding">
+  Complete Registration
+</button>
+
+<template id="user-onboarding" data-pipeline="true">
+  <pipeline-step command="--form:validate" target="registration-form" />
+  <pipeline-step command="--fetch:post" target="user-endpoint" condition="success" />
+  <pipeline-step command="--fetch:post" target="profile-endpoint" condition="success" />
+  <pipeline-step command="--show" target="welcome-screen" condition="success" once="true" />
+  <pipeline-step command="--text:set" target="error-display" condition="error" />
+</template>
+```
+
+---
+
+## Implementation Priority
+
+1. **Phase 1**: Enhanced attribute-based chaining (`data-after-success`, etc.)
+2. **Phase 2**: Basic `<and-then>` element support
+3. **Phase 3**: Full tree traversal and state management
+4. **Phase 4**: Template-based pipeline system
+
+This approach allows incremental implementation while providing immediate value to users who need more sophisticated command chaining.
+
+
+## Version 0
 
 Here is the complete, fully-detailed implementation that brings universal `data-and-then` chaining to **every single command**, both synchronous and asynchronous.
 

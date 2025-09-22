@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interest Invokers Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 20px;
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+    }
+
+    .user-mention {
+      color: #0969da;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .user-mention:hover {
+      text-decoration: underline;
+    }
+
+    .user-card {
+      max-width: 320px;
+      padding: 16px;
+      border: 1px solid #d1d9e0;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #0969da;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      margin-right: 12px;
+    }
+
+    .user-stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      font-size: 0.875em;
+      color: #656d76;
+    }
+
+    .api-method {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+      background: #f6f8fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.875em;
+    }
+
+    .quick-ref {
+      max-width: 400px;
+      padding: 16px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+      font-size: 0.875em;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .quick-ref h4 { 
+      color: #569cd6; 
+      margin-top: 0; 
+      font-size: 1em;
+    }
+
+    .quick-ref .param { color: #9cdcfe; }
+    .quick-ref .type { color: #4ec9b0; }
+
+    .reference-link {
+      color: #0645ad;
+      font-size: 0.8em;
+      vertical-align: super;
+      text-decoration: none;
+    }
+
+    .reference-tooltip {
+      max-width: 400px;
+      padding: 12px;
+      font-size: 0.9em;
+      line-height: 1.4;
+      background: #f8f9fa;
+      border-left: 4px solid #0645ad;
+      border-radius: 4px;
+    }
+
+    .help-button {
+      background: #0969da;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .help-button:hover {
+      background: #0860ca;
+    }
+
+    .tooltip-content {
+      background: #1b1f24;
+      color: #f0f6fc;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      max-width: 280px;
+    }
+
+    /* Interest state indicators */
+    .interest-source {
+      background-color: rgba(9, 105, 218, 0.1) !important;
+      outline: 2px solid #0969da;
+      outline-offset: 2px;
+    }
+
+    .interest-target {
+      animation: fadeInScale 0.15s ease-out;
+    }
+
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Custom delay example */
+    .slow-interest {
+      --interest-delay-start: 1s;
+      --interest-delay-end: 500ms;
+    }
+
+    .fast-interest {
+      --interest-delay-start: 100ms;
+      --interest-delay-end: 100ms;
+    }
+  </style>
+</head>
+<body>
+  <h1>Interest Invokers Demo</h1>
+  <p>This page demonstrates various Interest Invokers patterns working seamlessly with the Invokers library.</p>
+
+  <div class="demo-section">
+    <h2>GitHub-Style Profile Hover Cards</h2>
+    <p>
+      Great work on the PR, 
+      <a href="/users/alice" interestfor="alice-card" class="user-mention">@alice</a>! 
+      The changes look solid. Also thanks to 
+      <a href="/users/bob" interestfor="bob-card" class="user-mention">@bob</a> 
+      for the code review.
+    </p>
+
+    <div id="alice-card" popover="auto" class="user-card">
+      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <div class="user-avatar">A</div>
+        <div>
+          <h3 style="margin: 0; font-size: 1.1em;">Alice Johnson</h3>
+          <p style="margin: 0; color: #656d76; font-size: 0.9em;">Senior Frontend Developer</p>
+        </div>
+      </div>
+      <p style="margin: 8px 0; font-size: 0.9em; color: #656d76;">
+        Building beautiful, accessible web experiences. React, TypeScript, and modern CSS enthusiast.
+      </p>
+      <div class="user-stats">
+        <span><strong>127</strong> followers</span>
+        <span><strong>43</strong> repos</span>
+        <span><strong>1.2k</strong> contributions</span>
+      </div>
+      <button type="button" 
+              command="--text:set:Following Alice!"
+              commandfor="follow-status"
+              style="margin-top: 12px; padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        Follow
+      </button>
+    </div>
+
+    <div id="bob-card" popover="auto" class="user-card">
+      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <div class="user-avatar">B</div>
+        <div>
+          <h3 style="margin: 0; font-size: 1.1em;">Bob Smith</h3>
+          <p style="margin: 0; color: #656d76; font-size: 0.9em;">Backend Engineer</p>
+        </div>
+      </div>
+      <p style="margin: 8px 0; font-size: 0.9em; color: #656d76;">
+        Node.js, PostgreSQL, and distributed systems. Performance optimization specialist.
+      </p>
+      <div class="user-stats">
+        <span><strong>89</strong> followers</span>
+        <span><strong>67</strong> repos</span>
+        <span><strong>890</strong> contributions</span>
+      </div>
+      <button type="button" 
+              command="--text:set:Following Bob!"
+              commandfor="follow-status"
+              style="margin-top: 12px; padding: 6px 12px; background: #238636; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        Follow
+      </button>
+    </div>
+
+    <div id="follow-status" style="margin-top: 16px; color: #238636; font-weight: 500;"></div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Documentation Quick Reference</h2>
+    <p>
+      Use the <code interestfor="fetch-ref" class="api-method">fetch()</code> API to make HTTP requests,
+      or the <code interestfor="query-ref" class="api-method">querySelector()</code> method to find elements.
+      The <code interestfor="event-ref" class="api-method">addEventListener()</code> method handles events.
+    </p>
+
+    <div id="fetch-ref" popover="auto" class="quick-ref">
+      <h4>fetch(url, options)</h4>
+      <p><span class="param">url</span>: <span class="type">string</span> - The resource URL</p>
+      <p><span class="param">options</span>: <span class="type">RequestInit</span> - Request configuration</p>
+      <p><strong>Returns:</strong> <span class="type">Promise&lt;Response&gt;</span></p>
+      <hr style="border: none; border-top: 1px solid #333; margin: 12px 0;">
+      <p><strong>Example:</strong></p>
+      <code>fetch('/api/data').then(r => r.json())</code>
+    </div>
+
+    <div id="query-ref" popover="auto" class="quick-ref">
+      <h4>querySelector(selector)</h4>
+      <p><span class="param">selector</span>: <span class="type">string</span> - CSS selector</p>
+      <p><strong>Returns:</strong> <span class="type">Element | null</span></p>
+      <hr style="border: none; border-top: 1px solid #333; margin: 12px 0;">
+      <p><strong>Example:</strong></p>
+      <code>document.querySelector('.my-class')</code>
+    </div>
+
+    <div id="event-ref" popover="auto" class="quick-ref">
+      <h4>addEventListener(type, listener)</h4>
+      <p><span class="param">type</span>: <span class="type">string</span> - Event type</p>
+      <p><span class="param">listener</span>: <span class="type">EventListener</span> - Event handler</p>
+      <p><strong>Returns:</strong> <span class="type">void</span></p>
+      <hr style="border: none; border-top: 1px solid #333; margin: 12px 0;">
+      <p><strong>Example:</strong></p>
+      <code>button.addEventListener('click', handler)</code>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Wikipedia-Style Reference Tooltips</h2>
+    <p>
+      The Web was invented by Tim Berners-Lee in 1989<a href="#ref1" interestfor="ref1-tooltip" class="reference-link">[1]</a>
+      at CERN. It was built on existing Internet protocols<a href="#ref2" interestfor="ref2-tooltip" class="reference-link">[2]</a>
+      and introduced the concept of hypertext<a href="#ref3" interestfor="ref3-tooltip" class="reference-link">[3]</a>.
+    </p>
+
+    <div id="ref1-tooltip" popover="hint" class="reference-tooltip">
+      <strong>Berners-Lee, Tim.</strong> "Information Management: A Proposal." CERN, March 1989.
+      <br>The original proposal document that outlined the concept of the World Wide Web.
+    </div>
+
+    <div id="ref2-tooltip" popover="hint" class="reference-tooltip">
+      <strong>Leiner, Barry M., et al.</strong> "Brief History of the Internet." Internet Society, 1997.
+      <br>Comprehensive overview of Internet development from ARPANET to the modern web.
+    </div>
+
+    <div id="ref3-tooltip" popover="hint" class="reference-tooltip">
+      <strong>Nelson, Ted.</strong> "Computer Lib/Dream Machines." 1974.
+      <br>Early work introducing the concept of hypertext and non-linear document systems.
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Interactive Help System</h2>
+    <p>
+      <button type="button" interestfor="help-general" class="help-button">Help</button>
+      <button type="button" interestfor="help-shortcuts" class="help-button slow-interest">Keyboard Shortcuts</button>
+      <button type="button" interestfor="help-accessibility" class="help-button fast-interest">Accessibility</button>
+    </p>
+
+    <div id="help-general" popover="auto" class="tooltip-content">
+      <h4 style="margin-top: 0;">Getting Started</h4>
+      <p>Welcome to the Interest Invokers demo! Hover over elements to see contextual information.</p>
+      <ul style="margin: 8px 0; padding-left: 16px;">
+        <li>Hover over user mentions to see profile cards</li>
+        <li>Hover over code snippets for API documentation</li>
+        <li>Hover over reference links for citations</li>
+      </ul>
+      <button type="button" 
+              command="--text:set:Help viewed!"
+              commandfor="help-status"
+              style="background: #238636; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 12px;">
+        Mark as Read
+      </button>
+    </div>
+
+    <div id="help-shortcuts" popover="hint" class="tooltip-content">
+      <h4 style="margin-top: 0;">Keyboard Shortcuts</h4>
+      <ul style="margin: 8px 0; padding-left: 16px; font-size: 12px;">
+        <li><kbd>Tab</kbd> - Navigate between interactive elements</li>
+        <li><kbd>Enter/Space</kbd> - Activate buttons and links</li>
+        <li><kbd>Escape</kbd> - Close all open hover cards</li>
+        <li><kbd>Focus + Hold</kbd> - Show interest via keyboard</li>
+      </ul>
+      <p style="font-size: 11px; color: #8b949e; margin: 8px 0 0 0;">
+        <em>This tooltip has slower timing (1s delay)</em>
+      </p>
+    </div>
+
+    <div id="help-accessibility" popover="hint" class="tooltip-content">
+      <h4 style="margin-top: 0;">Accessibility Features</h4>
+      <ul style="margin: 8px 0; padding-left: 16px; font-size: 12px;">
+        <li>All hover cards work with keyboard focus</li>
+        <li>Screen readers announce content appropriately</li>
+        <li>Touch devices use long-press gestures</li>
+        <li>High contrast and reduced motion respected</li>
+      </ul>
+      <p style="font-size: 11px; color: #8b949e; margin: 8px 0 0 0;">
+        <em>This tooltip appears quickly (100ms delay)</em>
+      </p>
+    </div>
+
+    <div id="help-status" style="margin-top: 12px; color: #238636; font-weight: 500; font-size: 14px;"></div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Integration with Command Invokers</h2>
+    <p>Interest Invokers work seamlessly alongside regular command invokers:</p>
+    
+    <button type="button" 
+            command="--toggle" 
+            commandfor="integration-demo"
+            interestfor="integration-hint"
+            class="help-button">
+      Toggle Content (Dual Functionality)
+    </button>
+
+    <div id="integration-hint" popover="hint" class="tooltip-content">
+      This button has both <code>command</code> and <code>interestfor</code> attributes.
+      <br><strong>Click:</strong> Toggles the content below
+      <br><strong>Hover:</strong> Shows this tooltip
+    </div>
+
+    <div id="integration-demo" hidden style="margin-top: 16px; padding: 16px; background: #f6f8fa; border-radius: 8px;">
+      <h4>Content Panel</h4>
+      <p>This content was toggled using a regular command invoker. The same button also shows a hover tooltip using Interest Invokers!</p>
+      
+      <button type="button" 
+              command="--text:set:Both systems work together perfectly!"
+              commandfor="integration-status"
+              interestfor="success-hint">
+        Test Integration
+      </button>
+      
+      <div id="success-hint" popover="hint" class="tooltip-content">
+        Click to update the status message below ↓
+      </div>
+      
+      <div id="integration-status" style="margin-top: 12px; font-style: italic; color: #656d76;"></div>
+    </div>
+  </div>
+
+  <!-- Load the Invokers library -->
+  <script type="module" src="../src/index.ts"></script>
+
+  <script>
+    // Add some debug logging
+    document.addEventListener('interest', (e) => {
+      console.log('Interest shown:', e.target, 'by:', e.source);
+    });
+
+    document.addEventListener('loseinterest', (e) => {
+      console.log('Interest lost:', e.target, 'by:', e.source);
+    });
+
+    // Log when custom commands are executed
+    window.addEventListener('load', () => {
+      if (window.Invoker) {
+        console.log('Invokers loaded successfully with Interest Invokers support');
+        console.log('Available debugging methods:', Object.keys(window.Invoker));
+        
+        // Enable debug mode to see execution details
+        window.Invoker.debug = true;
+      }
+    });
+  </script>
+</body>
+</html>
