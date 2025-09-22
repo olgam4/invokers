@@ -1814,8 +1814,13 @@ class PipelineManager {
 
 // --- AndThen Manager Class ---
 
+// --- AndThen Manager Class ---
+
 /**
- * Handles declarative <and-then> elements for command chaining.
+ * Manages declarative command chaining via <and-then> elements. This class
+ * is responsible for parsing the nested structure of <and-then> tags,
+ * respecting conditions and delays, and executing them sequentially without
+ * causing infinite loops.
  */
 class AndThenManager {
   private invokerManager: InvokerManager;
@@ -1825,144 +1830,148 @@ class AndThenManager {
   }
 
   /**
-   * Initializes <and-then> elements by setting default states.
+   * Processes <and-then> elements after a command execution. This is the main
+   * entry point that finds top-level <and-then> children of the invoker and
+   * kicks off the recursive execution process.
+   *
+   * @param invokerElement The original <button> that was activated.
+   * @param executionResult The success/failure result of the invoker's command.
+   * @param primaryTarget The main target of the invoker's command.
    */
-  private initializeAndThenElements(): void {
-    // Set default state for and-then elements that don't have one
-    const allElements = document.getElementsByTagName('and-then');
-    const andThenElements = Array.from(allElements).filter(element =>
-      !element.hasAttribute('data-state')
-    );
-    andThenElements.forEach(element => {
-      element.setAttribute('data-state', 'active');
-    });
-  }
-
-  /**
-   * Processes <and-then> elements after a command execution.
-   */
-  async processAndThen(invokerElement: HTMLButtonElement, executionResult: CommandExecutionResult, primaryTarget: HTMLElement, depth: number = 0): Promise<void> {
-    // Prevent infinite recursion
-    if (depth > 10) {
-      console.warn('Invokers: Maximum and-then depth reached, stopping execution to prevent infinite recursion');
-      return;
-    }
-
-    // Re-initialize and-then elements in case new ones were added dynamically
-    this.initializeAndThenElements();
-
-    // Find all and-then elements in the invoker's hierarchy
-    let current: HTMLElement | null = invokerElement;
-    while (current) {
-      const andThenElements = Array.from(current.children).filter(
-        child => child.tagName.toLowerCase() === 'and-then'
-      ) as HTMLElement[];
-
-      for (const andThen of andThenElements) {
-        // Skip elements that are not in active state
-        if (andThen.getAttribute('data-state') !== 'active' && andThen.getAttribute('data-state') !== null) {
-          continue;
-        }
-
-        const condition = andThen.getAttribute('data-condition') || 'always';
-        if (this.shouldExecuteCondition(condition, executionResult)) {
-          await this.executeAndThenCommand(andThen, invokerElement, executionResult, primaryTarget, depth + 1);
-
-          // Handle state transitions
-          if (andThen.hasAttribute('data-once')) {
-            andThen.remove();
-          } else {
-            andThen.setAttribute('data-state', 'completed');
-          }
-        }
-      }
-
-      current = current.parentElement;
-    }
-  }
-
-  /**
-   * Executes a command from an and-then element
-   */
-  private async executeAndThenCommand(
-    andThenElement: HTMLElement,
+  public async processAndThen(
     invokerElement: HTMLButtonElement,
     executionResult: CommandExecutionResult,
+    primaryTarget: HTMLElement
+  ): Promise<void> {
+    // Find all *top-level* and-then elements that are direct children of the invoker.
+    const topLevelAndThens = Array.from(invokerElement.children).filter(
+      child => child.tagName.toLowerCase() === 'and-then'
+    ) as HTMLElement[];
+
+    // Sequentially execute each top-level chain.
+    for (const andThenElement of topLevelAndThens) {
+      // The initial recursive call starts here.
+      await this.executeAndThenRecursively(
+        andThenElement,
+        invokerElement,
+        executionResult,
+        primaryTarget
+      );
+    }
+  }
+
+  /**
+   * Executes a command from an <and-then> element and its descendants recursively.
+   * This is the core of the chaining logic.
+   *
+   * @param andThenElement The current <and-then> element to execute.
+   * @param originalInvoker The very first button in the chain, used for context.
+   * @param parentResult The execution result from the parent command.
+   * @param primaryTarget The original target, used as a fallback.
+   * @param depth The current recursion depth to prevent stack overflows.
+   */
+  private async executeAndThenRecursively(
+    andThenElement: HTMLElement,
+    originalInvoker: HTMLButtonElement,
+    parentResult: CommandExecutionResult,
     primaryTarget: HTMLElement,
     depth: number = 0
   ): Promise<void> {
-    const command = andThenElement.getAttribute('command');
-    const targetId = andThenElement.getAttribute('commandfor') || invokerElement.getAttribute('commandfor') || primaryTarget.id;
-    const delay = parseInt(andThenElement.getAttribute('data-delay') || '0');
-
-    if (!command) {
-      console.warn('Invokers: <and-then> element missing command attribute', andThenElement);
+    // 1. Safety Check: Prevent infinite recursion.
+    if (depth > 25) {
+      logInvokerError(createInvokerError(
+        'Maximum <and-then> depth reached, stopping execution to prevent infinite loop.',
+        ErrorSeverity.CRITICAL,
+        { element: andThenElement, recovery: 'Check for circular or excessively deep <and-then> nesting.' }
+      ));
       return;
     }
 
-    // Apply delay if specified
+    // 2. State Check: Skip elements that have already run or are disabled.
+    const state = andThenElement.dataset.state;
+    if (state === 'disabled' || state === 'completed') {
+      return;
+    }
+
+    // 3. Conditional Check: Execute only if the condition is met.
+    const condition = andThenElement.dataset.condition || 'always';
+    if (!this.shouldExecuteCondition(condition, parentResult)) {
+      return;
+    }
+
+    // 4. Get Command Details
+    const command = andThenElement.getAttribute('command');
+    const targetId = andThenElement.getAttribute('commandfor') || originalInvoker.getAttribute('commandfor') || primaryTarget.id;
+    const delay = parseInt(andThenElement.dataset.delay || '0', 10);
+
+    if (!command || !targetId) {
+      logInvokerError(createInvokerError(
+        '<and-then> element is missing required "command" or "commandfor" attribute.',
+        ErrorSeverity.WARNING,
+        { element: andThenElement }
+      ));
+      return;
+    }
+
+    // 5. Apply Delay
     if (delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // Find the target element
-    const targetElement = targetId ? document.getElementById(targetId) || (targetId === primaryTarget.id ? primaryTarget : null) : null;
-    if (!targetElement) {
-      console.warn('Invokers: Target element not found for and-then command:', targetId);
-      return;
+    // 6. Execute the Command
+    let currentExecutionResult: CommandExecutionResult = { success: true };
+    try {
+      // Use a synthetic invoker to pass context attributes like `data-*`
+      // without re-triggering the top-level follow-up logic on the original invoker.
+      const syntheticInvoker = this.createSyntheticInvoker(andThenElement, command, targetId);
+      await this.invokerManager.executeCommand(command, targetId, syntheticInvoker);
+    } catch (error) {
+      // If the command fails, capture the result to pass to children.
+      currentExecutionResult = { success: false, error: error as Error };
     }
 
-    // Create synthetic invoker for the and-then command
-    const syntheticInvoker = document.createElement('button');
-    syntheticInvoker.setAttribute('type', 'button');
-    const fullCommand = command.startsWith('--') ? command : `--${command}`;
-    syntheticInvoker.setAttribute('command', fullCommand);
-
-    if (targetId) {
-      syntheticInvoker.setAttribute('commandfor', targetId);
+    // 7. Update State (Post-Execution)
+    if (andThenElement.hasAttribute('data-once')) {
+      andThenElement.remove();
+    } else {
+      andThenElement.dataset.state = 'completed';
     }
 
-    // Copy data attributes from and-then element to synthetic invoker
-    for (const attr of andThenElement.attributes) {
-      if (attr.name.startsWith('data-') && attr.name !== 'data-state' && attr.name !== 'data-condition' && attr.name !== 'data-once' && attr.name !== 'data-delay') {
-        syntheticInvoker.setAttribute(attr.name, attr.value);
-      }
-    }
-
-    // Directly execute the command using the InvokerManager instance
-    await this.invokerManager.executeCommand(fullCommand, targetId, syntheticInvoker);
-
-    // Process only direct child and-then elements recursively (not all descendants)
+    // 8. Recurse for Children
     const nestedAndThens = Array.from(andThenElement.children).filter(
       child => child.tagName.toLowerCase() === 'and-then'
-    );
-    for (const nestedAndThen of nestedAndThens) {
-      const nestedElement = nestedAndThen as HTMLElement;
-      const nestedCondition = nestedElement.getAttribute('data-condition') || 'always';
+    ) as HTMLElement[];
 
-      if (this.shouldExecuteCondition(nestedCondition, executionResult)) {
-        const nestedCommand = nestedElement.getAttribute('command');
-        const nestedTarget = nestedElement.getAttribute('commandfor') || targetId;
-
-        if (nestedCommand && nestedTarget && depth < 10) {
-          await this.invokerManager.executeCommand(nestedCommand, nestedTarget, invokerElement);
-
-          // Handle nested state transitions
-          if (nestedElement.hasAttribute('data-once')) {
-            nestedElement.remove();
-          } else {
-            nestedElement.setAttribute('data-state', 'completed');
-          }
-        }
-      }
+    for (const nested of nestedAndThens) {
+      await this.executeAndThenRecursively(
+        nested,
+        originalInvoker,
+        currentExecutionResult, // Pass the result of *this* command down.
+        primaryTarget,
+        depth + 1
+      );
     }
   }
 
   /**
-   * Determines if a condition should execute based on the command execution result
-   * @param condition The condition to check (success, error, always)
-   * @param result The result of the command execution
-   * @returns True if the condition is met, false otherwise
+   * Creates a temporary, in-memory <button> to act as the invoker for an
+   * <and-then> command, allowing `data-*` attributes to be passed for context.
+   */
+  private createSyntheticInvoker(andThenElement: HTMLElement, command: string, targetId: string): HTMLButtonElement {
+    const syntheticInvoker = document.createElement('button');
+    syntheticInvoker.setAttribute('command', command.startsWith('--') ? command : `--${command}`);
+    syntheticInvoker.setAttribute('commandfor', targetId);
+
+    // Copy all data attributes from the <and-then> to the synthetic button
+    // so the command's context can access them via `invoker.dataset`.
+    for (const key in andThenElement.dataset) {
+      syntheticInvoker.dataset[key] = andThenElement.dataset[key];
+    }
+    return syntheticInvoker;
+  }
+
+  /**
+   * Determines if a condition is met based on the result of the parent command.
    */
   private shouldExecuteCondition(condition: string, result: CommandExecutionResult): boolean {
     switch (condition.toLowerCase()) {
@@ -1973,8 +1982,11 @@ class AndThenManager {
       case 'always':
         return true;
       default:
-        console.warn('Invokers: Unknown condition for and-then element:', condition);
-        return false;
+        logInvokerError(createInvokerError(
+          `Unknown condition for <and-then> element: "${condition}"`,
+          ErrorSeverity.WARNING
+        ));
+        return false; // Fail safe
     }
   }
 }
