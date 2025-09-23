@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+    <title>Invokers --bind Command Demo</title>
+    <script type="module" src="../dist/esm/development/index.js"></script>
+    <script type="module">
+        import invokerInstance from '../dist/esm/development/index.js';
+        import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
+        enableAdvancedEvents();
+
+        // Enable debug logging
+        window.Invoker = invokerInstance;
+        window.Invoker.debug = true;
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .demo-section {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #fafbfc;
+        }
+
+        .demo-section h2 {
+            margin-top: 0;
+            color: #24292f;
+            border-bottom: 1px solid #d1d9e0;
+            padding-bottom: 10px;
+        }
+
+        .demo-section h3 {
+            color: #0969da;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #24292f;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .input-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .output-area {
+            background: white;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 10px 0;
+            min-height: 40px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .output-area:empty::before {
+            content: "(empty)";
+            color: #656d76;
+        }
+
+        .live-preview {
+            background: #f6f8fa;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background: #238636;
+        }
+
+        .status-inactive {
+            background: #656d76;
+        }
+
+        .code-example {
+            background: #f6f8fa;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+
+        .feature-highlight {
+            background: #ddf4ff;
+            border: 1px solid #79c0ff;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 15px 0;
+        }
+
+        .feature-highlight h4 {
+            margin-top: 0;
+            color: #0969da;
+        }
+
+        button {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #1a7f37;
+        }
+
+        button:disabled {
+            background: #8c959f;
+            cursor: not-allowed;
+        }
+
+        .theme-dark {
+            background: #0d1117;
+            color: #f0f6fc;
+        }
+
+        .theme-dark .demo-section {
+            background: #161b22;
+            border-color: #30363d;
+        }
+
+        .theme-dark .output-area {
+            background: #0d1117;
+            border-color: #30363d;
+            color: #f0f6fc;
+        }
+
+        .theme-dark .code-example {
+            background: #161b22;
+            border-color: #30363d;
+        }
+
+        .theme-dark input,
+        .theme-dark textarea,
+        .theme-dark select {
+            background: #0d1117;
+            border-color: #30363d;
+            color: #f0f6fc;
+        }
+
+        .has-content {
+            background: #f6ffed;
+            border-color: #52c41a;
+        }
+
+        .empty {
+            background: #fff2f0;
+            border-color: #ff4d4f;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Invokers --bind Command Demo</h1>
+    <p>The <code>--bind</code> command creates declarative, one-way data binding between elements. It automatically synchronizes data from a source element to one or more destination elements whenever the source changes.</p>
+
+    <div class="demo-section">
+        <h2>🎯 Basic Binding: Input to Output</h2>
+        <p>The simplest form of binding - whatever you type in the input appears in the output area.</p>
+
+        <div class="input-group">
+            <label for="basic-input">Type something:</label>
+            <input type="text" id="basic-input"
+                   command-on="input"
+                   command="--bind:value"
+                   commandfor="basic-input"
+                   data-bind-to="#basic-output"
+                   data-bind-as="text"
+                   placeholder="Start typing...">
+        </div>
+
+        <div class="input-group">
+            <label>Output:</label>
+            <div id="basic-output" class="output-area"></div>
+        </div>
+
+        <div class="code-example">
+&lt;input command-on="input"
+       command="--bind:value"
+       commandfor="basic-input"
+       data-bind-to="#basic-output"
+       data-bind-as="text"&gt;
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📋 Different Property Types</h2>
+        <p>The --bind command supports various source and destination properties for different use cases.</p>
+
+        <h3>Source Properties</h3>
+        <div class="input-group">
+            <label for="value-input">Value (input.value):</label>
+            <input type="text" id="value-input"
+                   command-on="input"
+                   command="--bind:value"
+                   commandfor="value-input"
+                   data-bind-to="#value-output"
+                   placeholder="Type for value binding">
+        </div>
+
+        <div class="input-group">
+            <label for="text-input">Text Content (element.textContent):</label>
+            <div id="text-input"
+                 contenteditable="true"
+                 command-on="input"
+                 command="--bind:text"
+                 commandfor="text-input"
+                 data-bind-to="#text-output"
+                 style="border: 1px solid #d1d9e0; border-radius: 4px; padding: 8px; min-height: 80px;"
+                 data-placeholder="Type for text content binding"></div>
+        </div>
+
+        <div class="input-group">
+            <label for="html-input">HTML Content (element.innerHTML):</label>
+            <input type="text" id="html-input"
+                   command-on="input"
+                   command="--bind:value"
+                   commandfor="html-input"
+                   data-bind-to="#html-output"
+                   data-bind-as="html"
+                   placeholder="Type HTML: &lt;strong&gt;bold&lt;/strong&gt;">
+        </div>
+
+        <h3>Outputs</h3>
+        <div class="input-group">
+            <label>Value Output:</label>
+            <div id="value-output" class="output-area"></div>
+        </div>
+
+        <div class="input-group">
+            <label>Text Content Output:</label>
+            <div id="text-output" class="output-area"></div>
+        </div>
+
+        <div class="input-group">
+            <label>HTML Output:</label>
+            <div id="html-output" class="output-area"></div>
+        </div>
+
+        <div class="code-example">
+&lt;!-- Value binding --&gt;
+&lt;input command="--bind:value" data-bind-to="#output"&gt;
+
+&lt;!-- Text content binding --&gt;
+&lt;div command="--bind:text" data-bind-to="#output"&gt;&lt;/div&gt;
+
+&lt;!-- HTML binding (with sanitization) --&gt;
+&lt;input command="--bind:value" data-bind-to="#output" data-bind-as="html"&gt;
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🎨 Attribute and Data Binding</h2>
+        <p>Bind to element attributes and data attributes for dynamic styling and configuration.</p>
+
+        <div class="input-group">
+            <label for="attr-input">Bind to data-theme attribute:</label>
+            <select id="attr-input"
+                    command-on="change"
+                    command="--bind:value"
+                    commandfor="attr-input"
+                    data-bind-to="body"
+                    data-bind-as="data:theme">
+                <option value="">Default</option>
+                <option value="dark">Dark Theme</option>
+                <option value="light">Light Theme</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="class-input">Add/Remove CSS Classes:</label>
+            <input type="text" id="class-input"
+                   command-on="input"
+                   command="--bind:value"
+                   commandfor="class-input"
+                   data-bind-to="#class-demo"
+                   data-bind-as="class:add"
+                   placeholder="Type a class name to add">
+        </div>
+
+        <div id="class-demo" style="padding: 10px; border: 1px solid #d1d9e0; margin: 10px 0;">
+            This div's classes change dynamically
+        </div>
+
+        <button command="--bind:value"
+                commandfor="class-input"
+                data-bind-to="#class-demo"
+                data-bind-as="class:remove">
+            Remove Class
+        </button>
+
+        <div class="code-example">
+&lt;!-- Theme switching via data attributes --&gt;
+&lt;select command="--bind:value"
+        data-bind-to="body"
+        data-bind-as="data:theme"&gt;
+  &lt;option value="dark"&gt;Dark&lt;/option&gt;
+&lt;/select&gt;
+
+&lt;!-- Dynamic CSS classes --&gt;
+&lt;input command="--bind:value"
+       data-bind-to="#element"
+       data-bind-as="class:add"&gt;
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔗 Advanced Selectors</h2>
+        <p>Use advanced selectors including @closest for binding to parent elements or complex relationships.</p>
+
+        <div class="input-group">
+            <label for="closest-input">Bind to closest form:</label>
+            <form id="form-container">
+                <input type="text" id="closest-input"
+                       command-on="input"
+                       command="--bind:value"
+                       commandfor="closest-input"
+                       data-bind-to="@closest(form)"
+                       data-bind-as="data:user-input"
+                       placeholder="Type to update form data">
+                <div class="output-area" id="form-status">
+                    Form data-user-input: <span id="form-data-display">none</span>
+                </div>
+            </form>
+        </div>
+
+        <div class="input-group">
+            <label for="multi-target-input">Bind to multiple targets:</label>
+            <input type="text" id="multi-target-input"
+                   command-on="input"
+                   command="--bind:value"
+                   commandfor="multi-target-input"
+                   data-bind-to=".multi-target"
+                   placeholder="Updates all elements with class 'multi-target'">
+        </div>
+
+        <div class="multi-target output-area">Target 1</div>
+        <div class="multi-target output-area">Target 2</div>
+        <div class="multi-target output-area">Target 3</div>
+
+        <div class="code-example">
+&lt;!-- Bind to closest parent --&gt;
+&lt;input data-bind-to="@closest(form)" data-bind-as="data:user-input"&gt;
+
+&lt;!-- Bind to multiple elements --&gt;
+&lt;input data-bind-to=".multi-target"&gt;
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>⛓️ Command Chaining</h2>
+        <p>Combine --bind with other commands using data-and-then for complex workflows.</p>
+
+        <div class="input-group">
+            <label for="chain-input">Search with live preview:</label>
+            <input type="text" id="chain-input"
+                   command-on="input"
+                   command="--bind:value"
+                   commandfor="chain-input"
+                   data-bind-to="#search-preview"
+               data-and-then="--class:ternary:has-content:empty:has-content"
+               data-then-target="#search-preview"
+                   placeholder="Type to search...">
+        </div>
+
+        <div id="search-preview" class="output-area">
+            Search results will appear here...
+        </div>
+
+        <div class="feature-highlight">
+            <h4>💡 Chaining Example</h4>
+            <p>The input binds its value to the preview area, then toggles a CSS class based on whether there's content. This creates a live search experience without any JavaScript!</p>
+        </div>
+
+        <div class="code-example">
+&lt;input command-on="input.debounce.300"
+       command="--bind:value"
+       data-bind-to="#preview"
+       data-and-then="--class:toggle:has-content"
+       data-then-target="#preview"&gt;
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🎪 Real-World Example: Edit in Place</h2>
+        <p>A complete edit-in-place pattern using --bind with templates and chaining.</p>
+
+         <div id="profile-view" data-name="John Doe" data-role="Developer">
+             <h3>Profile View</h3>
+             <p><strong>Name:</strong> <span class="name">John Doe</span></p>
+             <p><strong>Role:</strong> <span class="role">Developer</span></p>
+             <script>document.body.dataset.name = "John Doe"; document.body.dataset.role = "Developer";</script>
+             <button command="--bind:data:name"
+                     commandfor="profile-view"
+                     data-bind-to="#edit-name-input"
+                     data-bind-as="value">
+                 Edit Profile
+                 <and-then command="--bind:data:role"
+                           commandfor="profile-view"
+                           data-bind-to="#edit-role-input"
+                           data-bind-as="value">
+                     <and-then command="--dom:swap:outer"
+                               commandfor="profile-view"
+                               data-template-id="edit-profile-template">
+                     </and-then>
+                 </and-then>
+             </button>
+        </div>
+
+        <template id="edit-profile-template">
+            <div id="profile-edit">
+                <h3>Edit Profile</h3>
+                <div class="input-group">
+                    <label>Name:</label>
+                    <input id="edit-name-input" type="text">
+                </div>
+                <div class="input-group">
+                    <label>Role:</label>
+                    <input id="edit-role-input" type="text">
+                </div>
+                  <button command="--bind:value"
+                          commandfor="edit-name-input"
+                          data-bind-to="body"
+                          data-bind-as="data:name">
+                     Save
+                     <and-then command="--bind:value"
+                               commandfor="edit-role-input"
+                               data-bind-to="body"
+                               data-bind-as="data:role">
+                         <and-then command="--dom:swap:outer"
+                                   commandfor="profile-edit"
+                                   data-template-id="profile-view-template">
+                         </and-then>
+                     </and-then>
+                 </button>
+                <button command="--dom:swap:outer"
+                        commandfor="profile-edit"
+                        data-template-id="profile-view-template">
+                    Cancel
+                </button>
+            </div>
+        </template>
+
+         <template id="profile-view-template">
+             <div id="profile-view" data-name="{{data.name}}" data-role="{{data.role}}">
+                 <h3>Profile View</h3>
+                 <p><strong>Name:</strong> <span class="name">{{data.name}}</span></p>
+                 <p><strong>Role:</strong> <span class="role">{{data.role}}</span></p>
+                 <button command="--bind:data:name"
+                         commandfor="profile-view"
+                         data-bind-to="#edit-name-input"
+                         data-bind-as="value">
+                     Edit Profile
+                     <and-then command="--bind:data:role"
+                               commandfor="profile-view"
+                               data-bind-to="#edit-role-input"
+                               data-bind-as="value">
+                         <and-then command="--dom:swap:outer"
+                                   commandfor="profile-view"
+                                   data-template-id="edit-profile-template">
+                         </and-then>
+                     </and-then>
+                 </button>
+             </div>
+         </template>
+
+        <div class="feature-highlight">
+            <h4>🚀 Advanced Features Used</h4>
+            <ul>
+                <li><strong>Data binding:</strong> Pre-populates form fields from data attributes</li>
+                <li><strong>Template interpolation:</strong> Uses {{...}} syntax for dynamic content</li>
+                <li><strong>Complex chaining:</strong> Multiple bind operations in sequence</li>
+                <li><strong>DOM manipulation:</strong> Seamless view switching with templates</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📚 API Reference</h2>
+
+        <h3>Source Properties</h3>
+        <ul>
+            <li><code>value</code> - Input/textarea/select value</li>
+            <li><code>text</code> - Element's textContent</li>
+            <li><code>html</code> - Element's innerHTML</li>
+            <li><code>attr:name</code> - Specific attribute value</li>
+            <li><code>data:name</code> - Data attribute value</li>
+        </ul>
+
+        <h3>Destination Properties</h3>
+        <ul>
+            <li><code>text</code> - Set textContent (default)</li>
+            <li><code>html</code> - Set innerHTML (sanitized)</li>
+            <li><code>value</code> - Set input value</li>
+            <li><code>attr:name</code> - Set attribute</li>
+            <li><code>data:name</code> - Set data attribute</li>
+            <li><code>class:add</code> - Add CSS class</li>
+            <li><code>class:remove</code> - Remove CSS class</li>
+        </ul>
+
+        <h3>Advanced Selectors</h3>
+        <ul>
+            <li><code>#id</code> - Element by ID</li>
+            <li><code>.class</code> - Elements by class</li>
+            <li><code>@closest(selector)</code> - Closest ancestor</li>
+            <li><code>tagname</code> - Elements by tag</li>
+        </ul>
+
+        <div class="code-example">
+// Basic syntax
+command="--bind:[source-property]"
+data-bind-to="[destination-selector]"
+data-bind-as="[destination-property]"
+
+// Examples
+command="--bind:value" data-bind-to="#output"
+command="--bind:data:name" data-bind-to="body" data-bind-as="data:theme"
+command="--bind:text" data-bind-to="@closest(form)" data-bind-as="data:content"
+        </div>
+    </div>
+
+    <script>
+        // Update form data display
+        function updateFormDisplay() {
+            const form = document.getElementById('form-container');
+            const display = document.getElementById('form-data-display');
+            display.textContent = form.dataset.userInput || 'none';
+        }
+
+        // Watch for changes to the form's data attribute
+        const observer = new MutationObserver(updateFormDisplay);
+        observer.observe(document.getElementById('form-container'), {
+            attributes: true,
+            attributeFilter: ['data-user-input']
+        });
+
+        // Initial update
+        updateFormDisplay();
+    </script>
+</body>
+</html>

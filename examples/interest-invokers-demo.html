@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
   <title>Interest Invokers Demo</title>
   <style>
     body {
@@ -159,6 +160,21 @@
     .fast-interest {
       --interest-delay-start: 100ms;
       --interest-delay-end: 100ms;
+    }
+
+    /* Popovers are positioned by JavaScript in the top layer */
+
+    /* Smooth transitions for popovers */
+    [popover] {
+      transition: opacity 300ms, overlay 300ms allow-discrete;
+      opacity: 0;
+    }
+
+    [popover]:popover-open {
+      opacity: 1;
+      @starting-style {
+        opacity: 0;
+      }
     }
   </style>
 </head>

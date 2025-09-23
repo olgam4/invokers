@@ -49,20 +49,11 @@ describe('Enhanced Attribute-Based Chaining', () => {
       mockButton.setAttribute('commandfor', 'test-target');
       mockButton.setAttribute('data-and-then', '--test-chain');
 
-      // Execute command by directly calling the method
-      const mockCommandEvent = {
-        command: '--test-primary',
-        source: mockButton,
-        target: mockTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
+       // Execute command by directly calling the method
+       await invokerManager.executeCommand('--test-primary', 'test-target', mockButton);
 
-      // Call the private handleCommand method (it's async)
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify both primary and chained commands executed
-      expect(mockTarget.textContent).toBe('primary executed + chained executed');
+       // Verify both primary and chained commands executed
+       expect(mockTarget.textContent).toBe('primary executed + chained executed');
     });
   });
 
@@ -82,18 +73,11 @@ describe('Enhanced Attribute-Based Chaining', () => {
       mockButton.setAttribute('commandfor', 'test-target');
       mockButton.setAttribute('data-after-success', '--test-success-chain');
 
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-success',
-        source: mockButton,
-        target: mockTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+       // Execute command
+       await invokerManager.executeCommand('--test-success', 'test-target', mockButton);
 
-      // Verify success chain executed
-      expect(mockTarget.textContent).toBe('success + success chain');
+       // Verify success chain executed
+       expect(mockTarget.textContent).toBe('success + success chain');
     });
 
     it('should execute error commands on failed execution', async () => {
@@ -111,18 +95,11 @@ describe('Enhanced Attribute-Based Chaining', () => {
       mockButton.setAttribute('commandfor', 'test-target');
       mockButton.setAttribute('data-after-error', '--test-error-chain');
 
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-error',
-        source: mockButton,
-        target: mockTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+       // Execute command
+       await invokerManager.executeCommand('--test-error', 'test-target', mockButton);
 
-      // Verify error chain executed
-      expect(mockTarget.textContent).toBe('error chain executed');
+       // Verify error chain executed
+       expect(mockTarget.textContent).toBe('error chain executed');
     });
 
     it('should execute complete commands regardless of success/error', async () => {
@@ -131,7 +108,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
       // Create mock DOM elements
       const testButton = document.createElement('button');
       const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
+      testTarget.id = 'complete-target';
 
       // Add elements to document first
       document.body.appendChild(testButton);
@@ -148,277 +125,235 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
       // Set up complete chaining using old attribute method
       testButton.setAttribute('command', '--test-complete');
-      testButton.setAttribute('commandfor', 'test-target');
+      testButton.setAttribute('commandfor', 'complete-target');
       testButton.setAttribute('data-after-complete', '--test-complete-chain');
 
       // Execute command
-      const mockCommandEvent = {
-        command: '--test-complete',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+      await invokerManager.executeCommand('--test-complete', 'complete-target', testButton);
 
       // Verify complete chain executed
       expect(testTarget.textContent).toBe('complete + always executed');
-    });
-  });
+     });
+   });
 
-  describe('Declarative <and-then> Elements', () => {
-    it('should execute and-then element after primary command', async () => {
-      const invokerManager = InvokerManager.getInstance();
+   describe('Declarative <and-then> Elements', () => {
+     it('should execute and-then element after primary command', async () => {
+       const invokerManager = InvokerManager.getInstance();
 
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
+       // Create mock DOM elements
+       const testButton = document.createElement('button');
+       const testTarget = document.createElement('div');
+       testTarget.id = 'declarative-target-1';
+       const andThenElement = document.createElement('and-then');
+       andThenElement.setAttribute('command', '--test-chain');
+       andThenElement.setAttribute('commandfor', 'declarative-target-1');
 
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
+       // Add and-then element to button
+       testButton.appendChild(andThenElement);
 
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
+       // Add elements to document
+       document.body.appendChild(testButton);
+       document.body.appendChild(testTarget);
 
-      // Register test commands
-      invokerManager.register('--test-primary', ({ targetElement }) => {
-        targetElement.textContent = 'primary';
+       // Register test commands
+       invokerManager.register('--test-primary', ({ targetElement }) => {
+         targetElement.textContent = 'primary';
+       });
+
+       invokerManager.register('--test-chain', ({ targetElement }) => {
+         targetElement.textContent += ' + chained';
+       });
+
+       // Set up primary command
+       testButton.setAttribute('command', '--test-primary');
+       testButton.setAttribute('commandfor', 'declarative-target-1');
+
+       // Execute command
+       await invokerManager.executeCommand('--test-primary', 'declarative-target-1', testButton);
+
+       // Verify both primary and chained commands executed
+       expect(testTarget.textContent).toBe('primary + chained');
+     });
+
+       it('should execute and-then element with conditional success', async () => {
+         const invokerManager = InvokerManager.getInstance();
+
+         // Create mock DOM elements
+         const testButton = document.createElement('button');
+         const testTarget = document.createElement('div');
+         testTarget.id = 'conditional-success-target';
+         const andThenElement = document.createElement('and-then');
+         andThenElement.setAttribute('command', '--test-success-chain');
+         andThenElement.setAttribute('commandfor', 'conditional-success-target');
+         andThenElement.setAttribute('data-condition', 'success');
+
+         // Add and-then element to button
+         testButton.appendChild(andThenElement);
+
+         // Add elements to document
+         document.body.appendChild(testButton);
+         document.body.appendChild(testTarget);
+
+        // Register test commands
+        invokerManager.register('--test-success', ({ targetElement }) => {
+          targetElement.textContent = 'success';
+        });
+
+        invokerManager.register('--test-success-chain', ({ targetElement }) => {
+          targetElement.textContent += ' + success chain';
+        });
+
+         // Set up primary command
+         testButton.setAttribute('command', '--test-success');
+         testButton.setAttribute('commandfor', 'conditional-success-target');
+
+         // Execute command
+         await invokerManager.executeCommand('--test-success', 'conditional-success-target', testButton);
+
+         // Verify success chain executed
+         expect(testTarget.textContent).toBe('success + success chain');
       });
 
-      invokerManager.register('--test-chain', ({ targetElement }) => {
-        targetElement.textContent += ' + chained';
+       it('should execute and-then element with conditional error', async () => {
+         const invokerManager = InvokerManager.getInstance();
+
+         // Create mock DOM elements
+         const testButton = document.createElement('button');
+         const testTarget = document.createElement('div');
+         testTarget.id = 'conditional-error-target';
+         const andThenElement = document.createElement('and-then');
+         andThenElement.setAttribute('command', '--test-error-chain');
+         andThenElement.setAttribute('commandfor', 'conditional-error-target');
+         andThenElement.setAttribute('data-condition', 'error');
+
+         // Add and-then element to button
+         testButton.appendChild(andThenElement);
+
+         // Add elements to document
+         document.body.appendChild(testButton);
+         document.body.appendChild(testTarget);
+
+        // Register test commands
+        invokerManager.register('--test-error', () => {
+          throw new Error('Test error');
+        });
+
+        invokerManager.register('--test-error-chain', ({ targetElement }) => {
+          targetElement.textContent = 'error chain executed';
+        });
+
+         // Set up primary command
+         testButton.setAttribute('command', '--test-error');
+         testButton.setAttribute('commandfor', 'conditional-error-target');
+
+         // Execute command
+         await invokerManager.executeCommand('--test-error', 'conditional-error-target', testButton);
+
+         // Verify error chain executed
+         expect(testTarget.textContent).toBe('error chain executed');
       });
 
-      // Set up primary command
-      testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
+       it('should handle nested and-then elements', async () => {
+         const invokerManager = InvokerManager.getInstance();
 
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+         // Create mock DOM elements
+         const testButton = document.createElement('button');
+         const testTarget = document.createElement('div');
+         testTarget.id = 'nested-target';
 
-      // Verify both primary and chained commands executed
-      expect(testTarget.textContent).toBe('primary + chained');
-    });
+          // Create nested and-then elements
+          const andThenElement1 = document.createElement('and-then');
+          andThenElement1.setAttribute('command', '--test-chain-1');
+          andThenElement1.setAttribute('commandfor', 'nested-target');
 
-    it('should execute and-then element with conditional success', async () => {
-      const invokerManager = InvokerManager.getInstance();
+          const andThenElement2 = document.createElement('and-then');
+          andThenElement2.setAttribute('command', '--test-chain-2');
+          andThenElement2.setAttribute('commandfor', 'nested-target');
 
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-success-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-      andThenElement.setAttribute('data-condition', 'success');
+         // Nest the second and-then inside the first
+         andThenElement1.appendChild(andThenElement2);
+         testButton.appendChild(andThenElement1);
 
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
+         // Add elements to document
+         document.body.appendChild(testButton);
+         document.body.appendChild(testTarget);
 
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
+        // Register test commands
+        invokerManager.register('--test-primary', ({ targetElement }) => {
+          targetElement.textContent = 'primary';
+        });
 
-      // Register test commands
-      invokerManager.register('--test-success', ({ targetElement }) => {
-        targetElement.textContent = 'success';
+        invokerManager.register('--test-chain-1', ({ targetElement }) => {
+          targetElement.textContent += ' + chain1';
+        });
+
+        invokerManager.register('--test-chain-2', ({ targetElement }) => {
+          targetElement.textContent += ' + chain2';
+        });
+
+          // Set up primary command
+          testButton.setAttribute('command', '--test-primary');
+          testButton.setAttribute('commandfor', 'nested-target');
+
+         // Execute command
+         await invokerManager.executeCommand('--test-primary', 'nested-target', testButton);
+
+          // Verify sequential execution
+          expect(testTarget.textContent).toBe('primary + chain1 + chain2');
       });
 
-      invokerManager.register('--test-success-chain', ({ targetElement }) => {
-        targetElement.textContent += ' + success chain';
-      });
+     it('should handle once state for and-then elements', async () => {
+       const invokerManager = InvokerManager.getInstance();
 
-      // Set up primary command
-      testButton.setAttribute('command', '--test-success');
-      testButton.setAttribute('commandfor', 'test-target');
+       // Create mock DOM elements
+       const testButton = document.createElement('button');
+       const testTarget = document.createElement('div');
+       testTarget.id = 'declarative-target-1';
+       const andThenElement = document.createElement('and-then');
+       andThenElement.setAttribute('command', '--test-chain');
+       andThenElement.setAttribute('commandfor', 'declarative-target-1');
+       andThenElement.setAttribute('data-once', 'true');
 
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-success',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+       // Add and-then element to button
+       testButton.appendChild(andThenElement);
 
-      // Verify success chain executed
-      expect(testTarget.textContent).toBe('success + success chain');
-    });
+       // Add elements to document
+       document.body.appendChild(testButton);
+       document.body.appendChild(testTarget);
 
-    it('should execute and-then element with conditional error', async () => {
-      const invokerManager = InvokerManager.getInstance();
+       // Register test commands
+       invokerManager.register('--test-primary', ({ targetElement }) => {
+         targetElement.textContent = 'primary';
+       });
 
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-error-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-      andThenElement.setAttribute('data-condition', 'error');
+       invokerManager.register('--test-chain', ({ targetElement }) => {
+         targetElement.textContent += ' + chained';
+       });
 
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
+       // Set up primary command
+       testButton.setAttribute('command', '--test-primary');
+       testButton.setAttribute('commandfor', 'declarative-target-1');
 
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
+       // Execute command first time
+       await invokerManager.executeCommand('--test-primary', 'declarative-target-1', testButton);
 
-      // Register test commands
-      invokerManager.register('--test-error', () => {
-        throw new Error('Test error');
-      });
-
-      invokerManager.register('--test-error-chain', ({ targetElement }) => {
-        targetElement.textContent = 'error chain executed';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-error');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-error',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify error chain executed
-      expect(testTarget.textContent).toBe('error chain executed');
-    });
-
-    it('should handle nested and-then elements', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-
-      // Create nested and-then elements
-      const andThenElement1 = document.createElement('and-then');
-      andThenElement1.setAttribute('command', '--test-chain-1');
-      andThenElement1.setAttribute('commandfor', 'test-target');
-
-      const andThenElement2 = document.createElement('and-then');
-      andThenElement2.setAttribute('command', '--test-chain-2');
-      andThenElement2.setAttribute('commandfor', 'test-target');
-
-      // Nest the second and-then inside the first
-      andThenElement1.appendChild(andThenElement2);
-      testButton.appendChild(andThenElement1);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-primary', ({ targetElement }) => {
-        targetElement.textContent = 'primary';
-      });
-
-      invokerManager.register('--test-chain-1', ({ targetElement }) => {
-        targetElement.textContent += ' + chain1';
-      });
-
-      invokerManager.register('--test-chain-2', ({ targetElement }) => {
-        targetElement.textContent += ' + chain2';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify sequential execution
-      expect(testTarget.textContent).toBe('primary + chain1 + chain2');
-    });
-
-    it('should handle once state for and-then elements', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-      andThenElement.setAttribute('data-once', 'true');
-
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-primary', ({ targetElement }) => {
-        targetElement.textContent = 'primary';
-      });
-
-      invokerManager.register('--test-chain', ({ targetElement }) => {
-        targetElement.textContent += ' + chained';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command first time
-      const mockCommandEvent1 = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent1);
-
-      // Verify and-then element was removed
-      expect(testButton.querySelector('and-then')).toBeNull();
-    });
+       // Verify and-then element was removed
+       expect(testButton.querySelector('and-then')).toBeNull();
+     });
   });
 
   describe('Command Lifecycle States', () => {
     it('should handle "once" state correctly', async () => {
-      const invokerManager = InvokerManager.getInstance();
+       const invokerManager = InvokerManager.getInstance();
 
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
+       // Create mock DOM elements
+       const testButton = document.createElement('button');
+       const testTarget = document.createElement('div');
+       testTarget.id = 'once-target';
 
-      // Add elements to document first
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
+       // Add elements to document first
+       document.body.appendChild(testButton);
+       document.body.appendChild(testTarget);
 
       let executionCount = 0;
       invokerManager.register('--test-once', ({ targetElement }) => {
@@ -426,32 +361,18 @@ describe('Enhanced Attribute-Based Chaining', () => {
         targetElement.textContent = `executed ${executionCount}`;
       });
 
-        // Set up once command
-        testButton.setAttribute('command', '--test-once');
-        testButton.setAttribute('commandfor', 'test-target');
-        testButton.setAttribute('data-state', 'once');
+         // Set up once command
+         testButton.setAttribute('command', '--test-once');
+         testButton.setAttribute('commandfor', 'once-target');
+         testButton.setAttribute('data-state', 'once');
 
-      // Execute command first time
-      const mockCommandEvent1 = {
-        command: '--test-once',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent1);
+       // Execute command first time
+       await invokerManager.executeCommand('--test-once', 'once-target', testButton);
       expect(executionCount).toBe(1);
       expect(testTarget.textContent).toBe('executed 1');
 
-      // Execute command second time (should not execute due to once state)
-      const mockCommandEvent2 = {
-        command: '--test-once',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent2);
+       // Execute command second time (should not execute due to once state)
+       await invokerManager.executeCommand('--test-once', 'once-target', testButton);
       expect(executionCount).toBe(1); // Should still be 1
     });
 
@@ -461,7 +382,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
       // Create mock DOM elements
       const testButton = document.createElement('button');
       const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
+      testTarget.id = 'declarative-target-1';
 
       // Add elements to document first
       document.body.appendChild(testButton);
@@ -474,18 +395,11 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
         // Set up disabled command
         testButton.setAttribute('command', '--test-disabled');
-        testButton.setAttribute('commandfor', 'test-target');
+        testButton.setAttribute('commandfor', 'declarative-target-1');
         testButton.setAttribute('data-state', 'disabled');
 
       // Execute command (should not execute due to disabled state)
-      const mockCommandEvent = {
-        command: '--test-disabled',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+      await invokerManager.executeCommand('--test-disabled', 'declarative-target-1', testButton);
       expect(executionCount).toBe(0);
     });
   });
@@ -497,7 +411,7 @@ describe('Enhanced Attribute-Based Chaining', () => {
       // Create mock DOM elements
       const testButton = document.createElement('button');
       const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
+      testTarget.id = 'declarative-target-1';
       const secondaryTarget = document.createElement('div');
       secondaryTarget.id = 'secondary-target';
 
@@ -518,267 +432,19 @@ describe('Enhanced Attribute-Based Chaining', () => {
 
       // Set up target override
       testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
+      testButton.setAttribute('commandfor', 'declarative-target-1');
       testButton.setAttribute('data-and-then', '--test-chain');
       testButton.setAttribute('data-then-target', 'secondary-target');
 
       // Execute command
-      const mockCommandEvent = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
+      await invokerManager.executeCommand('--test-primary', 'test-target', testButton);
 
       // Verify primary command affected original target
       expect(testTarget.textContent).toBe('primary');
       // Verify chained command affected overridden target
       expect(secondaryTarget.textContent).toBe('chained');
     });
-  });
-
-  describe('Declarative <and-then> Elements', () => {
-    it('should execute and-then element after primary command', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-primary', ({ targetElement }) => {
-        targetElement.textContent = 'primary';
-      });
-
-      invokerManager.register('--test-chain', ({ targetElement }) => {
-        targetElement.textContent += ' + chained';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify both primary and chained commands executed
-      expect(testTarget.textContent).toBe('primary + chained');
-    });
-
-    it('should execute and-then element with conditional success', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-success-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-      andThenElement.setAttribute('data-condition', 'success');
-
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-success', ({ targetElement }) => {
-        targetElement.textContent = 'success';
-      });
-
-      invokerManager.register('--test-success-chain', ({ targetElement }) => {
-        targetElement.textContent += ' + success chain';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-success');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-success',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify success chain executed
-      expect(testTarget.textContent).toBe('success + success chain');
-    });
-
-    it('should execute and-then element with conditional error', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-error-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-      andThenElement.setAttribute('data-condition', 'error');
-
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-error', () => {
-        throw new Error('Test error');
-      });
-
-      invokerManager.register('--test-error-chain', ({ targetElement }) => {
-        targetElement.textContent = 'error chain executed';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-error');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-error',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify error chain executed
-      expect(testTarget.textContent).toBe('error chain executed');
-    });
-
-    it('should handle nested and-then elements', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-
-      // Create nested and-then elements
-      const andThenElement1 = document.createElement('and-then');
-      andThenElement1.setAttribute('command', '--test-chain-1');
-      andThenElement1.setAttribute('commandfor', 'test-target');
-
-      const andThenElement2 = document.createElement('and-then');
-      andThenElement2.setAttribute('command', '--test-chain-2');
-      andThenElement2.setAttribute('commandfor', 'test-target');
-
-      // Nest the second and-then inside the first
-      andThenElement1.appendChild(andThenElement2);
-      testButton.appendChild(andThenElement1);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-primary', ({ targetElement }) => {
-        targetElement.textContent = 'primary';
-      });
-
-      invokerManager.register('--test-chain-1', ({ targetElement }) => {
-        targetElement.textContent += ' + chain1';
-      });
-
-      invokerManager.register('--test-chain-2', ({ targetElement }) => {
-        targetElement.textContent += ' + chain2';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command
-      const mockCommandEvent = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent);
-
-      // Verify sequential execution
-      expect(testTarget.textContent).toBe('primary + chain1 + chain2');
-    });
-
-    it('should handle once state for and-then elements', async () => {
-      const invokerManager = InvokerManager.getInstance();
-
-      // Create mock DOM elements
-      const testButton = document.createElement('button');
-      const testTarget = document.createElement('div');
-      testTarget.id = 'test-target';
-      const andThenElement = document.createElement('and-then');
-      andThenElement.setAttribute('command', '--test-chain');
-      andThenElement.setAttribute('commandfor', 'test-target');
-      andThenElement.setAttribute('data-once', 'true');
-
-      // Add and-then element to button
-      testButton.appendChild(andThenElement);
-
-      // Add elements to document
-      document.body.appendChild(testButton);
-      document.body.appendChild(testTarget);
-
-      // Register test commands
-      invokerManager.register('--test-primary', ({ targetElement }) => {
-        targetElement.textContent = 'primary';
-      });
-
-      invokerManager.register('--test-chain', ({ targetElement }) => {
-        targetElement.textContent += ' + chained';
-      });
-
-      // Set up primary command
-      testButton.setAttribute('command', '--test-primary');
-      testButton.setAttribute('commandfor', 'test-target');
-
-      // Execute command first time
-      const mockCommandEvent1 = {
-        command: '--test-primary',
-        source: testButton,
-        target: testTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-      await (invokerManager as any).handleCommand(mockCommandEvent1);
-
-      // Verify and-then element was removed
-      expect(testButton.querySelector('and-then')).toBeNull();
-    });
-  });
+   });
 });
 
 describe('Utility Functions', () => {

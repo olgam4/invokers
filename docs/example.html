@@ -229,7 +229,7 @@
             command="--text:set:Primary updated!"
             commandfor="primary-target"
             data-and-then="--text:set:Secondary updated via chain!"
-            data-then-target="secondary-target">
+            data-target="secondary-target">
             Chain to Different Target
         </button>
     </div>
@@ -310,7 +310,7 @@
     <div class="demo-box">
         <div id="andthen-status" style="padding: 0.5rem; background: #f9f9f9; border-radius: 4px;">Status: Ready</div>
         <p style="margin-top: 1rem;">This button simulates a successful fetch and uses <code>data-condition</code> to execute only the success path.</p>
-        <button type="button" command="--fetch:get" data-url="/api/posts/3" data-loading-template="spinner-template">
+        <button type="button" command="--fetch:get" commandfor="andthen-status" data-url="/api/posts/3" data-loading-template="spinner-template">
             Simulate Successful Operation
             <and-then command="--text:set:✅ Success path executed!" commandfor="andthen-status" data-condition="success" data-delay="500"></and-then>
             <and-then command="--text:set:❌ Error path executed!" commandfor="andthen-status" data-condition="error"></and-then>

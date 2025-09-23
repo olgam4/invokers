@@ -1,0 +1,1 @@
+{"version":3,"file":"event-trigger-manager.d.ts","sourceRoot":"","sources":["../../src/event-trigger-manager.ts"],"names":[],"mappings":"AA+LA,qBAAa,mBAAmB;IAC9B,OAAO,CAAC,MAAM,CAAC,QAAQ,CAAsB;WAE/B,WAAW,IAAI,mBAAmB;IAOzC,UAAU,CAAC,IAAI,GAAE,OAAuB;IAaxC,QAAQ;IAMR,uBAAuB,CAAC,IAAI,GAAE,OAAuB;CAI7D"}

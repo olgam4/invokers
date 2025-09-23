@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
     <title>Invokers Middleware & Plugins Demo</title>
-    <script type="module" src="https://esm.sh/invokers"></script>
+    <script type="module" src="../dist/esm/development/index.js"></script>
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -77,7 +78,7 @@
         <p>Tracks command usage and performance metrics.</p>
 
         <div class="plugin-controls">
-            <button onclick="toggleAnalyticsPlugin()">Toggle Analytics Plugin</button>
+            <button id="analytics-toggle" onclick="toggleAnalyticsPlugin()" disabled>Disable Analytics Plugin</button>
             <button onclick="clearAnalytics()">Clear Analytics</button>
         </div>
 
@@ -89,7 +90,7 @@
         <p>Adds security checks and rate limiting.</p>
 
         <div class="plugin-controls">
-            <button onclick="toggleSecurityPlugin()">Toggle Security Plugin</button>
+            <button id="security-toggle" onclick="toggleSecurityPlugin()" disabled>Enable Security Plugin</button>
         </div>
 
         <div id="security-status" class="status info">Security plugin is disabled</div>
@@ -100,7 +101,7 @@
         <p>Adds loading states and animations.</p>
 
         <div class="plugin-controls">
-            <button onclick="toggleUIPlugin()">Toggle UI Plugin</button>
+            <button id="ui-toggle" onclick="toggleUIPlugin()" disabled>Enable UI Plugin</button>
         </div>
 
         <div id="ui-status" class="status info">UI enhancement plugin is disabled</div>
@@ -122,8 +123,8 @@
             Toggle Class
         </button>
 
-        <button type="button" command="--fetch:get" data-url="https://httpbin.org/delay/1" commandfor="test-output" data-loading-template="loading">
-            Fetch Data (with delay)
+        <button type="button" command="--fetch:get" data-url="data:text/plain,Hello from fetch command!" commandfor="test-output" data-loading-template="loading">
+            Fetch Data
         </button>
 
         <div id="test-panel" hidden style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
@@ -138,10 +139,15 @@
     </div>
 
     <script>
-        // Wait for Invokers to load
-        window.addEventListener('load', () => {
-            initializePlugins();
-        });
+        // Wait for Invoker to be available
+        function waitForInvoker() {
+            if (window.Invoker && window.Invoker.registerMiddleware && window.Invoker.HookPoint) {
+                initializePlugins();
+            } else {
+                setTimeout(waitForInvoker, 50);
+            }
+        }
+        waitForInvoker();
 
         let analyticsPlugin = null;
         let securityPlugin = null;
@@ -260,9 +266,33 @@
                     25% { transform: translateX(-5px); }
                     75% { transform: translateX(5px); }
                 }
-            `;
-            document.head.appendChild(style);
-        }
+             `;
+             document.head.appendChild(style);
+
+              // Enable plugin toggle buttons now that plugins are initialized
+              document.getElementById('analytics-toggle').disabled = false;
+              document.getElementById('security-toggle').disabled = false;
+              document.getElementById('ui-toggle').disabled = false;
+
+              // Enable analytics plugin by default to demonstrate functionality
+              window.Invoker.registerPlugin(analyticsPlugin);
+              logAnalytics('Analytics plugin enabled (default)');
+              document.getElementById('analytics-toggle').textContent = 'Disable Analytics Plugin';
+         }
+
+         // Example of using middleware directly (not through plugins)
+         if (window.Invoker && window.Invoker.registerMiddleware) {
+             window.Invoker.registerMiddleware(window.Invoker.HookPoint.BEFORE_COMMAND, (context) => {
+                 console.log('Global middleware: Command about to execute:', context.fullCommand);
+             });
+
+             // Example custom command with middleware
+             window.Invoker.register('--demo:command', async (context) => {
+                 console.log('Demo command executed with params:', context.params);
+                 // Simulate some work
+                 await new Promise(resolve => setTimeout(resolve, 500));
+             });
+         }
 
         function logAnalytics(message) {
             const output = document.getElementById('analytics-output');
@@ -284,32 +314,53 @@
         }
 
         function toggleAnalyticsPlugin() {
-            if (window.Invoker.instance.plugins.has('analytics')) {
+            if (!analyticsPlugin) {
+                console.error('Analytics plugin not initialized yet');
+                return;
+            }
+            const button = document.getElementById('analytics-toggle');
+            if (window.Invoker.hasPlugin('analytics')) {
                 window.Invoker.unregisterPlugin('analytics');
                 document.getElementById('analytics-output').textContent = 'Analytics plugin disabled...\n';
+                button.textContent = 'Enable Analytics Plugin';
             } else {
                 window.Invoker.registerPlugin(analyticsPlugin);
                 logAnalytics('Analytics plugin enabled');
+                button.textContent = 'Disable Analytics Plugin';
             }
         }
 
         function toggleSecurityPlugin() {
-            if (window.Invoker.instance.plugins.has('security')) {
+            if (!securityPlugin) {
+                console.error('Security plugin not initialized yet');
+                return;
+            }
+            const button = document.getElementById('security-toggle');
+            if (window.Invoker.hasPlugin('security')) {
                 window.Invoker.unregisterPlugin('security');
                 updateSecurityStatus('Security plugin disabled');
+                button.textContent = 'Enable Security Plugin';
             } else {
                 window.Invoker.registerPlugin(securityPlugin);
                 updateSecurityStatus('Security plugin enabled');
+                button.textContent = 'Disable Security Plugin';
             }
         }
 
         function toggleUIPlugin() {
-            if (window.Invoker.instance.plugins.has('ui-enhancement')) {
+            if (!uiPlugin) {
+                console.error('UI plugin not initialized yet');
+                return;
+            }
+            const button = document.getElementById('ui-toggle');
+            if (window.Invoker.hasPlugin('ui-enhancement')) {
                 window.Invoker.unregisterPlugin('ui-enhancement');
                 updateUIStatus('UI enhancement plugin disabled');
+                button.textContent = 'Enable UI Plugin';
             } else {
                 window.Invoker.registerPlugin(uiPlugin);
                 updateUIStatus('UI enhancement plugin enabled');
+                button.textContent = 'Disable UI Plugin';
             }
         }
 
@@ -318,16 +369,7 @@
         }
 
         // Example of using middleware directly (not through plugins)
-        window.Invoker.registerMiddleware(window.Invoker.HookPoint.BEFORE_COMMAND, (context) => {
-            console.log('Global middleware: Command about to execute:', context.fullCommand);
-        });
-
-        // Example custom command with middleware
-        window.Invoker.register('--demo:command', async (context) => {
-            console.log('Demo command executed with params:', context.params);
-            // Simulate some work
-            await new Promise(resolve => setTimeout(resolve, 500));
-        });
+        // and custom command registration will be done in initializePlugins()
     </script>
 </body>
 </html>

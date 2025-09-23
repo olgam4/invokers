@@ -440,31 +440,15 @@ describe('Advanced Plugin System', () => {
       });
 
       // Execute successful command
-      const successEvent = {
-        command: '--monitor-success',
-        source: mockButton,
-        target: mockTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
-
-      await (invokerManager as any).handleCommand(successEvent);
+      await invokerManager.executeCommand('--monitor-success', 'test-target', mockButton);
 
       expect(metrics.commandsExecuted).toBe(1);
       expect(metrics.avgExecutionTime).toBeGreaterThan(0);
 
       // Execute failing command
-      const errorEvent = {
-        command: '--monitor-error',
-        source: mockButton,
-        target: mockTarget,
-        preventDefault: vi.fn(),
-        type: 'command'
-      } as any;
+      await invokerManager.executeCommand('--monitor-error', 'test-target', mockButton);
 
-      await (invokerManager as any).handleCommand(errorEvent);
-
-      expect(metrics.commandsExecuted).toBe(2);
+      expect(metrics.commandsExecuted).toBe(2); // BEFORE_COMMAND is called even for failed commands
       expect(metrics.errorsCaught).toBe(1);
     });
   });
@@ -502,7 +486,7 @@ describe('Advanced Plugin System', () => {
         middleware: {
           [HookPoint.BEFORE_COMMAND]: (context, hookPoint) => {
             // Plugin should only access allowed context properties
-            const allowedProps = ['invoker', 'targetElement', 'fullCommand', 'params', 'getTargets', 'updateAriaState', 'manageGroupState', 'executeAfter', 'executeConditional'];
+            const allowedProps = ['invoker', 'targetElement', 'fullCommand', 'triggeringEvent', 'params', 'getTargets', 'updateAriaState', 'manageGroupState', 'executeAfter', 'executeConditional', 'result'];
             const contextKeys = Object.keys(context);
 
             for (const key of contextKeys) {

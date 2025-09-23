@@ -20,6 +20,11 @@ import './polyfill';
 import { commands as extendedCommands } from './invoker-commands';
 // Import Interest Invokers support
 import './interest-invokers';
+// Import target resolver for advanced selectors
+import { resolveTargets } from './target-resolver';
+// Import interpolation utilities
+import { interpolateString } from './interpolation';
+
 
 // --- Command String Utilities ---
 
@@ -71,6 +76,34 @@ export function createCommandString(...parts: string[]): string {
   return parts
     .map((part) => part.replace(/\\/g, "\\\\").replace(/:/g, "\\:"))
     .join(":");
+}
+
+/**
+ * Centralized helper to dispatch a CommandEvent to a target element.
+ * This encapsulates the CommandEvent creation and dispatch for consistency.
+ * Used by the core polyfill and advanced event features.
+ *
+ * @param source The source element that triggered the command
+ * @param command The command string to dispatch
+ * @param targetElement The target element to receive the command
+ * @param triggeringEvent The original DOM event that initiated this command (optional)
+ */
+export function _dispatchCommandEvent(source: HTMLElement, command: string, targetElement: HTMLElement, triggeringEvent?: Event): void {
+  // Create the CommandEvent with the triggering event attached
+  const commandEvent = new (window as any).CommandEvent("command", {
+    command,
+    source,
+    cancelable: true,
+    bubbles: true,
+    composed: true,
+  });
+
+  // Attach the triggering event for advanced features
+  if (triggeringEvent) {
+    (commandEvent as any).triggeringEvent = triggeringEvent;
+  }
+
+  targetElement.dispatchEvent(commandEvent);
 }
 
 // --- Error Handling & Debugging ---
@@ -235,6 +268,13 @@ export function sanitizeParams(params: readonly string[]): string[] {
 }
 
 /**
+ * Checks if advanced interpolation features are enabled.
+ */
+export function isInterpolationEnabled(): boolean {
+  return InvokerManager._interpolationEnabled;
+}
+
+/**
  * Validates and sanitizes HTML content before DOM injection
  */
 export function sanitizeHTML(html: string): string {
@@ -319,6 +359,8 @@ export interface CommandContext {
   readonly targetElement: HTMLElement;
   /** The full command string that was invoked (e.g., `--class:toggle:is-active`). */
   readonly fullCommand: string;
+  /** The original DOM event that triggered the command (for advanced event features). */
+  readonly triggeringEvent?: Event;
   /**
    * An array of string parameters that follow the matched command prefix.
    * For a `command="--class:toggle:is-active"` and a registered command named `--class`,
@@ -448,21 +490,29 @@ declare global {
   interface CommandEvent extends Event {
     readonly command: string;
     readonly source: HTMLButtonElement | null;
+    readonly triggeringEvent?: Event;
   }
   interface HTMLButtonElement {
     commandForElement: Element | null;
     command: string;
   }
-  interface Window {
-    Invoker: {
-      register: (name: string, callback: CommandCallback) => void;
-      executeCommand: (command: string, targetId?: string, invoker?: HTMLButtonElement) => Promise<void>;
-      parseCommandString: typeof parseCommandString;
-      createCommandString: typeof createCommandString;
-      instance: InvokerManager;
-      HookPoint: typeof HookPoint;
-    };
-  }
+   interface Window {
+     Invoker: {
+       register: (name: string, callback: CommandCallback) => void;
+       executeCommand: (command: string, targetId: string, invoker?: HTMLButtonElement) => Promise<void>;
+       registerPlugin: (plugin: InvokerPlugin) => void;
+       unregisterPlugin: (pluginName: string) => void;
+       registerMiddleware: (hookPoint: HookPoint, middleware: MiddlewareFunction) => void;
+       unregisterMiddleware: (hookPoint: HookPoint, middleware: MiddlewareFunction) => void;
+       hasPlugin: (pluginName: string) => boolean;
+       getRegisteredPlugins: () => string[];
+       parseCommandString: typeof parseCommandString;
+       createCommandString: typeof createCommandString;
+       instance: InvokerManager;
+       HookPoint: typeof HookPoint;
+       reset: () => void;
+     };
+   }
 }
 
 // --- List of native command keywords from the W3C/WHATWG proposal ---
@@ -482,7 +532,6 @@ const NATIVE_COMMAND_KEYWORDS = new Set([
  */
 class PerformanceMonitor {
   private executionTimes: number[] = [];
-  private readonly maxExecutionsPerSecond = 100;
   private readonly monitoringWindow = 1000; // 1 second
 
   recordExecution(): boolean {
@@ -492,17 +541,17 @@ class PerformanceMonitor {
     this.executionTimes = this.executionTimes.filter(time => now - time < this.monitoringWindow);
 
     // Check if we're exceeding limits
-    if (this.executionTimes.length >= this.maxExecutionsPerSecond) {
-      const error = createInvokerError(
-        `Too many command executions (${this.executionTimes.length}/second). Possible infinite loop detected.`,
-        ErrorSeverity.CRITICAL,
-        {
-          recovery: 'Check for recursive command chains or remove data-and-then attributes causing loops'
-        }
-      );
-      logInvokerError(error);
-      return false;
-    }
+    // if (this.executionTimes.length >= this.maxExecutionsPerSecond) {
+    //   const error = createInvokerError(
+    //     `Too many command executions (${this.executionTimes.length}/second). Possible infinite loop detected.`,
+    //     ErrorSeverity.CRITICAL,
+    //     {
+    //       recovery: 'Check for recursive command chains or remove data-and-then attributes causing loops'
+    //     }
+    //   );
+    //   logInvokerError(error);
+    //   return false;
+    // }
 
     this.executionTimes.push(now);
     return true;
@@ -544,41 +593,51 @@ export class InvokerManager {
   private plugins = new Map<string, InvokerPlugin>();
   private middleware = new Map<HookPoint, MiddlewareFunction[]>();
 
-  // The constructor is now private to enforce the singleton pattern.
-  private constructor() {
-    this.andThenManager = new AndThenManager(this);
-    this.pipelineManager = new PipelineManager(this);
+  // --- Advanced Event Features ---
+  public static _interpolationEnabled = false;
 
-    // Initialize for both browser and test environments
-    if (typeof window !== "undefined" && typeof document !== "undefined") {
-      this.registerCoreLibraryCommands();
-      this.registerExtendedCommands();
-      // Only add listeners if they haven't been added yet
-      if (!(window as any).__invokerListenersAdded) {
-        this.listen();
-        (window as any).__invokerListenersAdded = true;
-      }
-      // Set up global Invoker API
-      if (!window.Invoker) {
-        window.Invoker = {
-          register: this.register.bind(this),
-          executeCommand: this.executeCommand.bind(this),
-          parseCommandString,
-          createCommandString,
-          instance: this,
-          HookPoint
-        };
-      }
-    } else if (typeof global !== "undefined" && (global as any).window && (global as any).document) {
-      // Test environment with jsdom
-      this.registerCoreLibraryCommands();
-      this.registerExtendedCommands();
-      if (!(global as any).__invokerListenersAdded) {
-        this.listen();
-        (global as any).__invokerListenersAdded = true;
-      }
-    }
-  }
+   // The constructor is now private to enforce the singleton pattern.
+   private constructor() {
+     this.andThenManager = new AndThenManager(this);
+     this.pipelineManager = new PipelineManager(this);
+
+     // Initialize for both browser and test environments
+     if (typeof window !== "undefined" && typeof document !== "undefined") {
+       this.registerCoreLibraryCommands();
+       this.registerExtendedCommands();
+       // Only add listeners if they haven't been added yet
+       if (!(window as any).__invokerListenersAdded) {
+         this.listen();
+         (window as any).__invokerListenersAdded = true;
+       }
+         // Set up global Invoker API
+         if (!window.Invoker) {
+           window.Invoker = {
+             register: this.register.bind(this),
+             executeCommand: this.executeCommand.bind(this),
+             registerPlugin: this.registerPlugin.bind(this),
+             unregisterPlugin: this.unregisterPlugin.bind(this),
+              registerMiddleware: this.registerMiddleware.bind(this),
+              unregisterMiddleware: this.unregisterMiddleware.bind(this),
+              hasPlugin: this.hasPlugin.bind(this),
+             getRegisteredPlugins: this.getRegisteredPlugins.bind(this),
+             parseCommandString,
+             createCommandString,
+             instance: this,
+             HookPoint,
+             reset: this.reset.bind(this)
+           };
+         }
+     } else if (typeof global !== "undefined" && (global as any).window && (global as any).document) {
+       // Test environment with jsdom
+       this.registerCoreLibraryCommands();
+       this.registerExtendedCommands();
+       if (!(global as any).__invokerListenersAdded) {
+         this.listen();
+         (global as any).__invokerListenersAdded = true;
+       }
+     }
+   }
 
   /**
    * Gets the single, authoritative instance of the InvokerManager.
@@ -588,6 +647,43 @@ export class InvokerManager {
       InvokerManager._instance = new InvokerManager();
     }
     return InvokerManager._instance;
+  }
+
+  /**
+   * Enables interpolation features for advanced event handling.
+   * Internal method called by enableAdvancedEvents().
+   */
+  public _enableInterpolation(): void {
+    InvokerManager._interpolationEnabled = true;
+  }
+
+  /**
+   * Resets the InvokerManager to its initial state, clearing advanced features.
+   */
+  public reset(): void {
+    InvokerManager._interpolationEnabled = false;
+    if (typeof window !== 'undefined' && window.Invoker) {
+      (window as any).Invoker.interpolateString = undefined;
+      (window as any).Invoker.generateUid = undefined;
+      (window as any).Invoker.getInterpolationUtility = undefined;
+    }
+    console.log("Invokers: Reset complete.");
+  }
+
+  /**
+   * Safely attempts to interpolate a template string with context data.
+   * Only performs interpolation if advanced features are enabled.
+   *
+   * @param template The template string that may contain {{...}} placeholders
+   * @param context The context object for interpolation
+   * @returns The interpolated string, or the original template if interpolation is disabled
+   */
+  private _tryInterpolate(template: string, context: Record<string, any>): string {
+    if (InvokerManager._interpolationEnabled && typeof window !== 'undefined' && (window as any).Invoker?.getInterpolationUtility) {
+      const interpolate = (window as any).Invoker.getInterpolationUtility();
+      return interpolate(template, context);
+    }
+    return template;
   }
 
   /**
@@ -632,31 +728,33 @@ export class InvokerManager {
       return;
     }
 
-    // Find target element with detailed error reporting
-    const targetElement = document.getElementById(targetId);
-    if (!targetElement) {
-      const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id).filter(Boolean);
-      const suggestions = allIds.filter(id => id.includes(targetId.toLowerCase()) || targetId.includes(id.toLowerCase()));
+      // Find target element using resolveTargets (supports complex selectors)
+      const targets = resolveTargets(targetId, source || document.body);
+      if (targets.length === 0) {
+       const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id).filter(Boolean);
+       const suggestions = allIds.filter(id => id.includes(targetId.toLowerCase()) || targetId.includes(id.toLowerCase()));
 
-      const error = createInvokerError(
-        `Target element with id "${targetId}" not found`,
-        ErrorSeverity.ERROR,
-        {
-          command,
-          element: source,
-          context: {
-            targetId,
+       const error = createInvokerError(
+         `Target element with selector "${targetId}" not found`,
+         ErrorSeverity.ERROR,
+         {
+           command,
+           element: source,
+           context: {
+             targetId,
             availableIds: allIds.slice(0, 10), // Show first 10 IDs
             suggestions: suggestions.slice(0, 3) // Show up to 3 suggestions
           },
           recovery: suggestions.length > 0
             ? `Did you mean: ${suggestions.slice(0, 3).join(', ')}?`
-            : 'Check that the target element exists and has the correct id attribute'
+            : 'Check that the target element exists and has the correct selector'
         }
       );
       logInvokerError(error);
       return;
     }
+
+    const targetElement = targets[0];
 
     try {
       const mockEvent = {
@@ -674,7 +772,7 @@ export class InvokerManager {
         ErrorSeverity.ERROR,
         {
           command,
-          element: source || targetElement,
+           element: source || (targetElement as HTMLElement),
           cause: error as Error,
           recovery: 'Check the command syntax and ensure the target element supports this operation'
         }
@@ -772,17 +870,31 @@ export class InvokerManager {
   }
 
   /**
-   * Unregisters a middleware function from a specific hook point.
-   */
-  public unregisterMiddleware(hookPoint: HookPoint, middleware: MiddlewareFunction): void {
-    const middlewareList = this.middleware.get(hookPoint);
-    if (middlewareList) {
-      const index = middlewareList.indexOf(middleware);
-      if (index > -1) {
-        middlewareList.splice(index, 1);
-      }
-    }
-  }
+    * Unregisters a middleware function from a specific hook point.
+    */
+   public unregisterMiddleware(hookPoint: HookPoint, middleware: MiddlewareFunction): void {
+     const middlewareList = this.middleware.get(hookPoint);
+     if (middlewareList) {
+       const index = middlewareList.indexOf(middleware);
+       if (index > -1) {
+         middlewareList.splice(index, 1);
+       }
+     }
+   }
+
+  /**
+    * Checks if a plugin is currently registered.
+    */
+   public hasPlugin(pluginName: string): boolean {
+     return this.plugins.has(pluginName);
+   }
+
+  /**
+    * Gets a list of all registered plugin names.
+    */
+   public getRegisteredPlugins(): string[] {
+     return Array.from(this.plugins.keys());
+   }
 
   /**
    * Executes all middleware for a given hook point.
@@ -919,7 +1031,7 @@ export class InvokerManager {
    * Handles incoming `CommandEvent`s. This is now an async method to allow
    * for awaiting the full command chain.
    */
-  private async handleCommand(event: CommandEvent): Promise<void> {
+  public async handleCommand(event: CommandEvent): Promise<void> {
     const commandStr = event.command;
 
     if (commandStr.startsWith('--')) {
@@ -979,121 +1091,154 @@ export class InvokerManager {
 
         try {
           event.preventDefault(); // Stop default polyfill/browser action
-          const params = parseCommandString(commandStr.substring(registeredCommand.length + 1));
-          const sanitizedParams = sanitizeParams(params);
-          const context = this.createContext(event, commandStr, sanitizedParams);
-          const invoker = event.source as HTMLButtonElement;
 
-          // Execute BEFORE_COMMAND middleware (early, with full context)
-          await this.executeMiddleware(HookPoint.BEFORE_COMMAND, context, true);
+          // Create base interpolation context for the current command
+          const interpolationContext = {
+            event: (event as any).triggeringEvent, // The original DOM event
+            this: event.source, // The invoker element itself
+            target: event.target, // The command target element
+            detail: ((event as any).triggeringEvent as CustomEvent)?.detail, // Detail from CustomEvent
+          };
 
-          // Execute BEFORE_VALIDATION middleware
-          await this.executeMiddleware(HookPoint.BEFORE_VALIDATION, context, true);
+          // The command string from the attribute might contain {{...}} from external triggers
+          // We interpolate the current command before finding its callback
+          const interpolatedCommandStr = this._tryInterpolate(commandStr, interpolationContext);
 
-          // Check command state before execution
-          const commandKey = `${commandStr}:${context.targetElement.id}`;
-          let currentState = this.commandStates.get(commandKey) || 'active';
+           const params = parseCommandString(interpolatedCommandStr.substring(registeredCommand.length + 1));
+           const sanitizedParams = sanitizeParams(params);
+           const context = this.createContext(event, interpolatedCommandStr, sanitizedParams);
+           const invoker = event.source as HTMLButtonElement;
 
-          // Check if state is specified on the invoker (if it exists)
-          if (invoker) {
-            const invokerState = (invoker.dataset.state as CommandState) || (invoker.getAttribute('data-state') as CommandState);
-            if (invokerState) {
-              // If the state was already set in commandStates and is 'completed', don't override
-              if (!(this.commandStates.has(commandKey) && this.commandStates.get(commandKey) === 'completed')) {
-                currentState = invokerState;
-              }
-            }
-          }
+           // For multi-target commands, execute on each target
+           const targets = context.getTargets();
+           if (targets.length === 0) {
+             const error = createInvokerError(
+               'No target elements found for command execution',
+               ErrorSeverity.WARNING,
+               {
+                 command: commandStr,
+                 element: invoker,
+                 recovery: 'Ensure commandfor, aria-controls, or data-target points to valid elements'
+               }
+             );
+             logInvokerError(error);
+             return;
+           }
 
-          // For chained commands (null invoker), check if the command should be prevented
-          if (currentState === 'disabled' || currentState === 'completed') {
-            return;
-          }
+           // Execute command on each target
+           for (const target of targets) {
+             // Create target-specific context
+             const targetContext = {
+               ...context,
+               targetElement: target
+             };
 
-          let executionResult: CommandExecutionResult = { success: true };
+             // Execute BEFORE_COMMAND middleware (early, with full context)
+             await this.executeMiddleware(HookPoint.BEFORE_COMMAND, targetContext, true);
 
-          try {
-            // Validate context before execution
-            const validationErrors = this.validateContext(context);
-            if (validationErrors.length > 0) {
-              throw createInvokerError(
-                `Command execution aborted: ${validationErrors.join(', ')}`,
-                ErrorSeverity.ERROR,
-                {
-                  command: commandStr,
-                  element: context.invoker || context.targetElement,
-                  context: { validationErrors },
-                  recovery: 'Fix the validation errors and try again'
-                }
-              );
-            }
+             // Execute BEFORE_VALIDATION middleware
+             await this.executeMiddleware(HookPoint.BEFORE_VALIDATION, targetContext, true);
 
-            // Execute AFTER_VALIDATION middleware
-            await this.executeMiddleware(HookPoint.AFTER_VALIDATION, context);
+             // Check command state before execution
+             const commandKey = `${commandStr}:${target.id}`;
+             let currentState = this.commandStates.get(commandKey) || 'active';
 
-            // Await the primary command with timeout protection
-            const executionPromise = Promise.resolve(callback(context));
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Command execution timeout')), 30000); // 30 second timeout
-            });
+             // Check if state is specified on the invoker (if it exists)
+             if (invoker) {
+               const invokerState = (invoker.dataset.state as CommandState) || (invoker.getAttribute('data-state') as CommandState);
+               if (invokerState) {
+                 // If the state was already set in commandStates and is 'completed', don't override
+                 if (!(this.commandStates.has(commandKey) && this.commandStates.get(commandKey) === 'completed')) {
+                   currentState = invokerState;
+                 }
+               }
+             }
 
-            await Promise.race([executionPromise, timeoutPromise]);
+             // For chained commands (null invoker), check if the command should be prevented
+             if (currentState === 'disabled' || currentState === 'completed') {
+               continue; // Skip this target
+             }
 
-            // Update state after successful execution
-            if (currentState === 'once') {
-              this.commandStates.set(commandKey, 'completed');
-            }
+             let executionResult: CommandExecutionResult = { success: true };
 
-            // Execute ON_SUCCESS middleware
-            await this.executeMiddleware(HookPoint.ON_SUCCESS, { ...context, result: executionResult });
+             try {
+               // Validate context before execution
+               const validationErrors = this.validateContext(targetContext);
+               if (validationErrors.length > 0) {
+                 throw createInvokerError(
+                   `Command execution aborted: ${validationErrors.join(', ')}`,
+                   ErrorSeverity.ERROR,
+                   {
+                     command: commandStr,
+                     element: targetContext.invoker || targetContext.targetElement,
+                     context: { validationErrors },
+                     recovery: 'Fix the validation errors and try again'
+                   }
+                 );
+               }
 
-            if (isDebugMode) {
-              console.log(`Invokers: Command "${registeredCommand}" executed successfully`);
-            }
+               // Execute AFTER_VALIDATION middleware
+               await this.executeMiddleware(HookPoint.AFTER_VALIDATION, targetContext);
 
-          } catch (error) {
-            executionResult = { success: false, error: error as Error };
+               // Await the primary command with timeout protection
+               const executionPromise = Promise.resolve(callback(targetContext));
+               const timeoutPromise = new Promise((_, reject) => {
+                 setTimeout(() => reject(new Error('Command execution timeout')), 30000); // 30 second timeout
+               });
 
-            // Execute ON_ERROR middleware
-            await this.executeMiddleware(HookPoint.ON_ERROR, { ...context, result: executionResult });
+               await Promise.race([executionPromise, timeoutPromise]);
 
-            const invokerError = createInvokerError(
-              `Command "${registeredCommand}" execution failed`,
-              ErrorSeverity.ERROR,
-              {
-                command: commandStr,
-                element: context.invoker || context.targetElement,
-                cause: error as Error,
-                context: {
-                  params: context.params,
-                  targetId: context.targetElement?.id,
-                  invokerState: currentState
-                },
-                recovery: this.generateRecoverySuggestion(registeredCommand, error as Error, context)
-              }
-            );
-            logInvokerError(invokerError);
+               // Update state after successful execution
+               if (currentState === 'once') {
+                 this.commandStates.set(commandKey, 'completed');
+               }
 
-            // Attempt graceful degradation
-            this.attemptGracefulDegradation(context, error as Error);
-          }
+               // Execute ON_SUCCESS middleware
+               await this.executeMiddleware(HookPoint.ON_SUCCESS, { ...targetContext, result: executionResult });
 
-          // Execute ON_COMPLETE middleware (always runs)
-          await this.executeMiddleware(HookPoint.ON_COMPLETE, { ...context, result: executionResult });
+               if (isDebugMode) {
+                 console.log(`Invokers: Command "${registeredCommand}" executed successfully on target ${target.id || target}`);
+               }
 
-          // Execute AFTER_COMMAND middleware
-          await this.executeMiddleware(HookPoint.AFTER_COMMAND, { ...context, result: executionResult });
+             } catch (error) {
+               executionResult = { success: false, error: error as Error };
 
-          // Process <and-then> elements
-          if (context.invoker) {
-            await this.andThenManager.processAndThen(context.invoker, executionResult, context.targetElement);
-          }
+               // Execute ON_ERROR middleware
+               await this.executeMiddleware(HookPoint.ON_ERROR, { ...targetContext, result: executionResult });
 
-          // After the primary command is complete, trigger the follow-up.
-          // Only trigger followup if we have an invoker (not for chained commands)
-          if (context.invoker) {
-            await this.triggerFollowup(context.invoker, context.targetElement, executionResult);
-          }
+               const invokerError = createInvokerError(
+                 `Command "${registeredCommand}" execution failed`,
+                 ErrorSeverity.ERROR,
+                 {
+                   command: commandStr,
+                   element: targetContext.invoker || targetContext.targetElement,
+                   cause: error as Error,
+                   context: {
+                     params: targetContext.params,
+                     targetId: targetContext.targetElement?.id,
+                     invokerState: currentState
+                   },
+                   recovery: this.generateRecoverySuggestion(registeredCommand, error as Error, targetContext)
+                 }
+               );
+               logInvokerError(invokerError);
+
+               // Attempt graceful degradation
+               this.attemptGracefulDegradation(targetContext, error as Error);
+             }
+
+             // Execute ON_COMPLETE middleware (always runs)
+             await this.executeMiddleware(HookPoint.ON_COMPLETE, { ...targetContext, result: executionResult });
+
+             // Execute AFTER_COMMAND middleware
+             await this.executeMiddleware(HookPoint.AFTER_COMMAND, { ...targetContext, result: executionResult });
+
+             // Process <and-then> elements and trigger follow-up (only for the first target to avoid duplication)
+             if (context.invoker && target === targets[0]) {
+               await this.andThenManager.processAndThen(context.invoker, executionResult, target);
+               await this.triggerFollowup(context.invoker, target, executionResult);
+             }
+           }
         } catch (commandError) {
           // Handle errors in the command setup/execution wrapper
           // Re-throw middleware errors that should prevent command execution
@@ -1318,45 +1463,83 @@ export class InvokerManager {
     const commands: Array<{ command: string; target?: string; state: CommandState }> = [];
 
     // Handle universal data-and-then (always executes)
-    const universalCommand = invoker.dataset.andThen || invoker.dataset.thenCommand;
-    if (universalCommand) {
-      commands.push({
-        command: universalCommand,
-        target: invoker.dataset.thenTarget,
-        state: (invoker.dataset.thenState as CommandState) || 'active'
-      });
+    const universalCommandTemplate = invoker.dataset.andThen || invoker.dataset.thenCommand;
+    if (universalCommandTemplate) {
+      // Create interpolation context for the chained command
+      const interpolationContext = {
+        event: (invoker as any).triggeringEvent, // Original event if available
+        this: invoker, // The invoker that defined the chain
+        target: null, // Will be set when scheduling
+        detail: ((invoker as any).triggeringEvent as CustomEvent)?.detail, // Detail from CustomEvent
+      };
+
+      // Interpolate the chained command string
+      const interpolatedCommand = this._tryInterpolate(universalCommandTemplate, interpolationContext);
+
+        commands.push({
+          command: interpolatedCommand,
+          target: invoker.dataset.thenTarget || invoker.dataset.target,
+          state: (invoker.dataset.state as CommandState) || 'active'
+        });
     }
 
     // Handle conditional commands based on execution result
     if (executionResult) {
       if (executionResult.success && invoker.dataset.afterSuccess) {
-        invoker.dataset.afterSuccess.split(',').forEach(cmd => {
-          commands.push({
-            command: cmd.trim(),
-            target: invoker.dataset.thenTarget,
-            state: (invoker.dataset.thenState as CommandState) || 'active'
-          });
+        // Create interpolation context for conditional commands
+        const interpolationContext = {
+          event: (invoker as any).triggeringEvent,
+          this: invoker,
+          target: null,
+          detail: ((invoker as any).triggeringEvent as CustomEvent)?.detail,
+        };
+
+        invoker.dataset.afterSuccess.split(',').forEach(cmdTemplate => {
+          const interpolatedCommand = this._tryInterpolate(cmdTemplate.trim(), interpolationContext);
+            commands.push({
+              command: interpolatedCommand,
+              target: invoker.dataset.thenTarget || invoker.dataset.target,
+              state: (invoker.dataset.state as CommandState) || 'active'
+            });
         });
       }
 
       if (!executionResult.success && invoker.dataset.afterError) {
-        invoker.dataset.afterError.split(',').forEach(cmd => {
-          commands.push({
-            command: cmd.trim(),
-            target: invoker.dataset.thenTarget,
-            state: (invoker.dataset.thenState as CommandState) || 'active'
-          });
+        // Create interpolation context for error commands
+        const interpolationContext = {
+          event: (invoker as any).triggeringEvent,
+          this: invoker,
+          target: null,
+          detail: ((invoker as any).triggeringEvent as CustomEvent)?.detail,
+        };
+
+        invoker.dataset.afterError.split(',').forEach(cmdTemplate => {
+          const interpolatedCommand = this._tryInterpolate(cmdTemplate.trim(), interpolationContext);
+            commands.push({
+              command: interpolatedCommand,
+              target: invoker.dataset.thenTarget || invoker.dataset.target,
+              state: (invoker.dataset.state as CommandState) || 'active'
+            });
         });
       }
 
       // Handle complete commands (executes regardless of success/error)
       if (invoker.dataset.afterComplete) {
-        invoker.dataset.afterComplete.split(',').forEach(cmd => {
-          commands.push({
-            command: cmd.trim(),
-            target: invoker.dataset.thenTarget,
-            state: (invoker.dataset.thenState as CommandState) || 'active'
-          });
+        // Create interpolation context for complete commands
+        const interpolationContext = {
+          event: (invoker as any).triggeringEvent,
+          this: invoker,
+          target: null,
+          detail: ((invoker as any).triggeringEvent as CustomEvent)?.detail,
+        };
+
+        invoker.dataset.afterComplete.split(',').forEach(cmdTemplate => {
+          const interpolatedCommand = this._tryInterpolate(cmdTemplate.trim(), interpolationContext);
+            commands.push({
+              command: interpolatedCommand,
+              target: invoker.dataset.thenTarget || invoker.dataset.target,
+              state: (invoker.dataset.state as CommandState) || 'active'
+            });
         });
       }
     }
@@ -1375,14 +1558,29 @@ export class InvokerManager {
         return freshTarget ? [freshTarget] : [];
       }
 
-      // Prioritize spec-compliant `commandfor` target, which is the event target.
-      if (targetElement) return [targetElement];
+      // Use advanced target resolver for all selector types
+      // First try commandfor attribute (spec-compliant)
+      let selector = invoker.getAttribute("commandfor");
+      if (selector) {
+        return resolveTargets(selector, invoker) as HTMLElement[];
+      }
 
-      // Fallback for legacy `aria-controls` and `data-target`
+      // Fallback to legacy aria-controls
       const controls = invoker.getAttribute("aria-controls")?.trim();
+      if (controls) {
+        // Convert space-separated IDs to CSS selector
+        selector = "#" + controls.split(/\s+/).join(", #");
+        return resolveTargets(selector, invoker) as HTMLElement[];
+      }
+
+      // Final fallback to data-target
       const dataTarget = invoker.dataset.target;
-      const selector = controls ? "#" + controls.split(/\s+/).join(", #") : dataTarget;
-      return selector ? Array.from(document.querySelectorAll(selector)) : [];
+      if (dataTarget) {
+        return resolveTargets(dataTarget, invoker) as HTMLElement[];
+      }
+
+      // If no selector found, return the event target (for backward compatibility)
+      return targetElement ? [targetElement] : [];
     };
 
     // For chained commands (null invoker), ensure we get a fresh reference to the target element
@@ -1453,6 +1651,7 @@ export class InvokerManager {
       targetElement: invoker ? targetElement : getFreshTargetElement() || targetElement,
       fullCommand,
       params,
+      triggeringEvent: (event as any).triggeringEvent,
       getTargets,
       updateAriaState,
       manageGroupState,
@@ -1473,12 +1672,11 @@ export class InvokerManager {
 
 
 
+
+
   /**
-   * Registers the core library commands, now prefixed with `--`.
-   */
-  /**
-   * Schedules a command for execution with optional state management.
-   */
+    * Schedules a command for execution with optional state management.
+    */
   private async scheduleCommand(command: string, targetId: string, state: CommandState, primaryTarget?: HTMLElement): Promise<void> {
     const commandKey = `${command}:${targetId}`;
 
@@ -1513,6 +1711,9 @@ export class InvokerManager {
     }
   }
 
+  /**
+    * Registers the core library commands, now prefixed with `--`.
+    */
   private registerCoreLibraryCommands(): void {
     this.register("--toggle", async ({ getTargets, updateAriaState, invoker }) => {
       const targets = getTargets();
@@ -1622,19 +1823,65 @@ export class InvokerManager {
     });
 
     this.register("--class", ({ invoker, getTargets, params }) => {
-      const [action, className] = params;
+      const [action, ...rest] = params;
       const targets = getTargets();
-      if (!action || !className || targets.length === 0) {
-        console.warn('Invokers: `--class` command requires an action and a class name (e.g., "--class:toggle:my-class").', invoker);
+      if (!action || targets.length === 0) {
+        console.warn('Invokers: `--class` command requires an action (e.g., "--class:toggle:my-class").', invoker);
         return;
       }
       targets.forEach(target => {
-        switch (action) {
-          case "add": target.classList.add(className); break;
-          case "remove": target.classList.remove(className); break;
-          case "toggle": target.classList.toggle(className); break;
-          default: console.warn(`Invokers: Unknown action "${action}" for '--class' command.`, invoker);
-        }
+        if (action === "ternary") {
+          const [classIfTrue, classIfFalse, condition] = rest;
+          if (!classIfTrue || !classIfFalse || !condition) {
+            console.warn('Invokers: `--class:ternary` requires class-if-true, class-if-false, and condition.', invoker);
+            return;
+          }
+          let useTrue = false;
+          if (condition === "has-content") {
+            useTrue = !!(target.textContent && target.textContent.trim());
+          } else if (condition === "has-no-content") {
+            useTrue = !(target.textContent && target.textContent.trim());
+          }
+          if (useTrue) {
+            target.classList.add(classIfTrue);
+            target.classList.remove(classIfFalse);
+          } else {
+            target.classList.remove(classIfTrue);
+            target.classList.add(classIfFalse);
+          }
+        } else if (action === "toggle" && rest[1]) {
+          const [className, condition] = rest;
+          if (condition === "has-content") {
+            const hasContent = target.textContent && target.textContent.trim() !== '';
+            if (hasContent) {
+              target.classList.add(className);
+            } else {
+              target.classList.remove(className);
+            }
+          } else if (condition === "has-no-content") {
+            const hasContent = target.textContent && target.textContent.trim() !== '';
+            if (!hasContent) {
+              target.classList.add(className);
+            } else {
+              target.classList.remove(className);
+            }
+          } else {
+            target.classList.toggle(className);
+          }
+        } else {
+           const className = rest[0];
+           if (!className && action !== "clear") {
+             console.warn('Invokers: `--class` command requires a class name.', invoker);
+             return;
+           }
+           switch (action) {
+             case "add": target.classList.add(className); break;
+             case "remove": target.classList.remove(className); break;
+             case "toggle": target.classList.toggle(className); break;
+             case "clear": target.className = ""; break;
+             default: console.warn(`Invokers: Unknown action "${action}" for '--class' command.`, invoker);
+           }
+         }
       });
     });
 
@@ -1779,42 +2026,57 @@ export class InvokerManager {
         );
       }
 
-      // Validate attribute name
-      if (!/^[a-zA-Z][a-zA-Z0-9-]*$/.test(attrName)) {
-        throw createInvokerError(
-          `Invalid attribute name "${attrName}". Attribute names must start with a letter and contain only letters, numbers, and hyphens`,
-          ErrorSeverity.ERROR,
-          {
-            command: '--attr',
-            element: invoker,
-            context: { attrName },
-            recovery: 'Use a valid HTML attribute name like "disabled" or "data-value"'
-          }
-        );
-      }
+       // Validate attribute name
+       if (!/^[a-zA-Z][a-zA-Z0-9-]*$/.test(attrName)) {
+         throw createInvokerError(
+           `Invalid attribute name "${attrName}". Attribute names must start with a letter and contain only letters, numbers, and hyphens`,
+           ErrorSeverity.ERROR,
+           {
+             command: '--attr',
+             element: invoker,
+             context: { attrName },
+             recovery: 'Use a valid HTML attribute name like "disabled" or "data-value"'
+           }
+         );
+       }
 
-      try {
+       // Interpolate attrValue if interpolation is enabled
+       let interpolatedAttrValue = attrValue;
+       if (isInterpolationEnabled() && attrValue) {
+         const context = {
+           this: {
+             ...invoker,
+             dataset: { ...invoker.dataset },
+             value: (invoker as any).value || '',
+           },
+           data: document.body.dataset,
+           event: (invoker as any).triggeringEvent,
+         };
+         interpolatedAttrValue = interpolateString(attrValue, context);
+       }
+
+       try {
         targets.forEach(target => {
           if (!target.isConnected) {
             console.warn('Invokers: Skipping disconnected target element', target);
             return;
           }
 
-          switch (action) {
-            case "set":
-              target.setAttribute(attrName, attrValue || "");
-              break;
-            case "remove":
-              target.removeAttribute(attrName);
-              break;
-            case "toggle":
-              if (target.hasAttribute(attrName)) {
-                target.removeAttribute(attrName);
-              } else {
-                target.setAttribute(attrName, attrValue || "");
-              }
-              break;
-          }
+           switch (action) {
+             case "set":
+               target.setAttribute(attrName, interpolatedAttrValue || "");
+               break;
+             case "remove":
+               target.removeAttribute(attrName);
+               break;
+             case "toggle":
+               if (target.hasAttribute(attrName)) {
+                 target.removeAttribute(attrName);
+               } else {
+                 target.setAttribute(attrName, interpolatedAttrValue || "");
+               }
+               break;
+           }
         });
       } catch (error) {
         throw createInvokerError(
@@ -1833,7 +2095,7 @@ export class InvokerManager {
 
     // --value command for setting form input values
     this.register("--value", ({ invoker, getTargets, params }) => {
-      const [value] = params;
+      const [actionOrValue, ...rest] = params;
       const targets = getTargets();
 
       if (targets.length === 0) {
@@ -1853,7 +2115,18 @@ export class InvokerManager {
       try {
         targets.forEach(target => {
           if ('value' in target) {
-            (target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value = value || '';
+            let valueToSet = '';
+            if (actionOrValue === 'clear') {
+              // --value:clear clears the value
+              valueToSet = '';
+            } else if (actionOrValue === 'set' && rest.length > 0) {
+              // --value:set:newvalue sets to newvalue
+              valueToSet = rest.join(':');
+            } else {
+              // --value:something sets to 'something'
+              valueToSet = actionOrValue || '';
+            }
+            (target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value = valueToSet;
           } else {
             console.warn('Invokers: --value command target does not support value property', target);
           }
@@ -2071,6 +2344,11 @@ export class InvokerManager {
 
             let valueToStore = valueParts.join(':');
 
+            // If no value provided in command, read from target element
+            if (!valueToStore && targets.length > 0 && 'value' in targets[0]) {
+              valueToStore = (targets[0] as HTMLInputElement).value;
+            }
+
             // Check for JSON flag
             const isJson = invoker?.dataset?.storageJson === 'true' || valueToStore.startsWith('{') || valueToStore.startsWith('[');
             if (isJson) {
@@ -2141,24 +2419,37 @@ export class InvokerManager {
             }
             break;
 
-          case 'remove':
-            if (!key) {
-              throw createInvokerError(
-                'Storage remove requires a key',
-                ErrorSeverity.ERROR,
-                {
-                  command: '--storage',
-                  element: invoker,
-                  recovery: 'Use --storage:local:remove:key or --storage:session:remove:key'
+           case 'remove':
+             if (!key) {
+               throw createInvokerError(
+                 'Storage remove requires a key',
+                 ErrorSeverity.ERROR,
+                 {
+                   command: '--storage',
+                   element: invoker,
+                   recovery: 'Use --storage:local:remove:key or --storage:session:remove:key'
+                 }
+               );
+             }
+             storage.removeItem(key);
+             // Clear the display if targets are specified
+             if (targets.length > 0) {
+               if ('value' in targets[0]) {
+                 (targets[0] as HTMLInputElement).value = '';
+                } else {
+                  // Reset to initial placeholder text
+                  targets[0].textContent = 'Stored username will appear here';
                 }
-              );
-            }
-            storage.removeItem(key);
-            break;
+             }
+             break;
 
-          case 'clear':
-            storage.clear();
-            break;
+           case 'clear':
+             storage.clear();
+             // Provide feedback that storage was cleared
+             if (targets.length > 0) {
+               targets[0].textContent = 'Storage cleared successfully';
+             }
+             break;
 
           case 'keys':
             // Get all keys, optionally filtered by prefix
@@ -2313,8 +2604,8 @@ export class InvokerManager {
           // Force reflow to restart animation
           void target.offsetHeight;
 
-          // Create custom animation style
-          const animationName = `invokers-animate-${animation}`;
+          // Create custom animation style using the keyframe name
+          const animationName = `invokers-${animation}`;
           const animationValue = `${animationName} ${duration} ${easing} ${delay} ${iterations}`;
 
           // Apply the animation
@@ -2353,136 +2644,34 @@ export class InvokerManager {
       }
     });
 
-    // --emit command for dispatching events with enhanced options
-    this.register("--emit", ({ invoker, getTargets, params }) => {
-      const [eventType, ...detailParts] = params;
-      const targets = getTargets();
-
-      if (!eventType) {
-        throw createInvokerError(
-          'Emit command requires an event type',
-          ErrorSeverity.ERROR,
-          {
-            command: '--emit',
-            element: invoker,
-            recovery: 'Use --emit:event-type or --emit:event-type:detail-data'
-          }
-        );
-      }
-
-      // Parse event options from data attributes
-      const bubbles = invoker?.dataset?.emitBubbles !== 'false'; // Default true
-      const cancelable = invoker?.dataset?.emitCancelable !== 'false'; // Default true
-      const composed = invoker?.dataset?.emitComposed === 'true'; // Default false
-
-      // Check if this is a built-in event type
-      const builtInEvents = [
-        'click', 'input', 'change', 'submit', 'focus', 'blur',
-        'keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'mousemove',
-        'scroll', 'resize', 'load', 'unload', 'beforeunload'
-      ];
-
-      const isBuiltInEvent = builtInEvents.includes(eventType);
-
-      try {
-        let eventToDispatch: Event;
-
-        if (isBuiltInEvent) {
-          // Create built-in event
-          const eventClass = eventType === 'click' ? MouseEvent :
-                           eventType === 'input' || eventType === 'change' ? InputEvent :
-                           eventType === 'keydown' || eventType === 'keyup' || eventType === 'keypress' ? KeyboardEvent :
-                           Event;
-
-          if (eventClass === MouseEvent) {
-            eventToDispatch = new MouseEvent(eventType, { bubbles, cancelable });
-          } else if (eventClass === KeyboardEvent) {
-            eventToDispatch = new KeyboardEvent(eventType, { bubbles, cancelable });
-          } else if (eventClass === InputEvent) {
-            eventToDispatch = new InputEvent(eventType, { bubbles, cancelable });
-          } else {
-            eventToDispatch = new Event(eventType, { bubbles, cancelable });
-          }
-        } else {
-          // Create custom event with detail
-          const detail = detailParts.length > 0 ? detailParts.join(':') : null;
-          const eventInit: CustomEventInit = { bubbles, cancelable };
-
-          if (detail !== null) {
-            try {
-              eventInit.detail = JSON.parse(detail);
-            } catch {
-              // Try to parse as number or boolean
-              if (detail === 'true') eventInit.detail = true;
-              else if (detail === 'false') eventInit.detail = false;
-              else if (!isNaN(Number(detail))) eventInit.detail = Number(detail);
-              else eventInit.detail = detail;
-            }
-          }
-
-          if (composed) {
-            (eventInit as any).composed = true;
-          }
-
-          eventToDispatch = new CustomEvent(eventType, eventInit);
-        }
-
-        if (targets.length > 0) {
-          targets.forEach(target => {
-            try {
-              target.dispatchEvent(eventToDispatch);
-            } catch (dispatchError) {
-              console.warn('Invokers: Failed to dispatch event on target:', target, dispatchError);
-            }
-          });
-        } else {
-          // If no targets, dispatch on the document
-          document.dispatchEvent(eventToDispatch);
-        }
-
-        // Dispatch success event for chaining
-        if (invoker) {
-          const successEvent = new CustomEvent('invoker:emit:success', {
-            detail: { eventType, targetCount: targets.length || 1 }
-          });
-          invoker.dispatchEvent(successEvent);
-        }
-      } catch (error) {
-        throw createInvokerError(
-          'Failed to emit event',
-          ErrorSeverity.ERROR,
-          {
-            command: '--emit',
-            element: invoker,
-            cause: error as Error,
-            recovery: 'Check event type and target elements'
-          }
-        );
-      }
-    });
 
     // --url command for URL manipulation with enhanced features
     this.register("--url", ({ invoker, getTargets, params }) => {
       const [action, ...valueParts] = params;
       const targets = getTargets();
 
+      // Use window location and history
+      const location = window.location;
+      const history = window.history;
+
       try {
         switch (action) {
-          case 'params:get':
+          case 'params-get':
             if (valueParts.length === 0) {
               throw createInvokerError(
-                'URL params:get requires a parameter name',
+                'URL params-get requires a parameter name',
                 ErrorSeverity.ERROR,
                 {
                   command: '--url',
                   element: invoker,
-                  recovery: 'Use --url:params:get:param-name'
+                  recovery: 'Use --url:params-get:param-name'
                 }
               );
             }
 
             const paramName = valueParts[0];
-            const urlParams = new URLSearchParams(window.location.search);
+            const searchParams = location.search.startsWith('?') ? location.search.substring(1) : location.search;
+            const urlParams = new URLSearchParams(searchParams);
             const paramValue = urlParams.get(paramName) || '';
 
             if (targets.length > 0) {
@@ -2496,68 +2685,117 @@ export class InvokerManager {
             // Value is set on target element for chaining
             break;
 
-          case 'params:set':
-            if (valueParts.length < 2) {
+          case 'params-set':
+            let setParamName: string;
+            let setParamValue: string;
+
+            if (valueParts.length >= 2) {
+              // Parameter name and value provided in command
+              const [paramName, ...paramValueParts] = valueParts;
+              setParamName = paramName;
+              setParamValue = paramValueParts.join(':');
+            } else if (valueParts.length === 1) {
+              // Only parameter name provided, get value from target element
+              setParamName = valueParts[0];
+              if (targets.length > 0 && 'value' in targets[0]) {
+                setParamValue = (targets[0] as HTMLInputElement).value;
+              } else {
+                throw createInvokerError(
+                  'URL params-set with single parameter requires a target input element with a value',
+                  ErrorSeverity.ERROR,
+                  {
+                    command: '--url',
+                    element: invoker,
+                    recovery: 'Use --url:params-set:param-name and commandfor pointing to an input element, or provide value: --url:params-set:param-name:value'
+                  }
+                );
+              }
+            } else if (valueParts.length === 0) {
+              // No parameters provided, get parameter name from data attribute and value from target
+              setParamName = invoker?.dataset?.urlParamName || invoker?.dataset?.paramName || '';
+              if (!setParamName) {
+                throw createInvokerError(
+                  'URL params-set without parameters requires data-url-param-name attribute',
+                  ErrorSeverity.ERROR,
+                  {
+                    command: '--url',
+                    element: invoker,
+                    recovery: 'Add data-url-param-name="param-name" or use --url:params-set:param-name:value'
+                  }
+                );
+              }
+              if (targets.length > 0 && 'value' in targets[0]) {
+                setParamValue = (targets[0] as HTMLInputElement).value;
+              } else {
+                throw createInvokerError(
+                  'URL params-set without value parameter requires a target input element',
+                  ErrorSeverity.ERROR,
+                  {
+                    command: '--url',
+                    element: invoker,
+                    recovery: 'Use commandfor pointing to an input element with the parameter value'
+                  }
+                );
+              }
+            } else {
               throw createInvokerError(
-                'URL params:set requires param-name and value',
+                'URL params-set requires parameter name and value',
                 ErrorSeverity.ERROR,
                 {
                   command: '--url',
                   element: invoker,
-                  recovery: 'Use --url:params:set:param-name:value'
+                  recovery: 'Use --url:params-set:param-name:value, or --url:params-set:param-name with commandfor to input element'
                 }
               );
             }
-
-            const [setParamName, ...setParamValueParts] = valueParts;
-            const setParamValue = setParamValueParts.join(':');
-            const currentUrl = new URL(window.location.href);
+            const currentUrl = new URL(location.href);
             currentUrl.searchParams.set(setParamName, setParamValue);
 
             // Check for state preservation
             const preserveState = invoker?.dataset?.urlPreserveState === 'true';
-            window.history.replaceState(
-              preserveState ? window.history.state : null,
+            history.replaceState(
+              preserveState ? history.state : null,
               '',
               currentUrl.toString()
             );
             break;
 
-          case 'params:delete':
+          case 'params-delete':
             if (valueParts.length === 0) {
               throw createInvokerError(
-                'URL params:delete requires a parameter name',
+                'URL params-delete requires a parameter name',
                 ErrorSeverity.ERROR,
                 {
                   command: '--url',
                   element: invoker,
-                  recovery: 'Use --url:params:delete:param-name'
+                  recovery: 'Use --url:params-delete:param-name'
                 }
               );
             }
 
             const deleteParamName = valueParts[0];
-            const deleteUrl = new URL(window.location.href);
+            const deleteUrl = new URL(location.href);
             deleteUrl.searchParams.delete(deleteParamName);
-            window.history.replaceState(null, '', deleteUrl.toString());
+            history.replaceState(null, '', deleteUrl.toString());
             break;
 
-          case 'params:clear':
-            const clearUrl = new URL(window.location.href);
+          case 'params-clear':
+            const clearUrl = new URL(location.href);
             clearUrl.search = '';
-            window.history.replaceState(null, '', clearUrl.toString());
+            history.replaceState(null, '', clearUrl.toString());
             break;
 
-          case 'params:all':
-            const allParams = Object.fromEntries(new URLSearchParams(window.location.search));
+          case 'params-all':
+            const allSearchParams = location.search.startsWith('?') ? location.search.substring(1) : location.search;
+            const allParams = Object.fromEntries(new URLSearchParams(allSearchParams));
             const paramsJson = JSON.stringify(allParams);
             if (targets.length > 0) {
               targets[0].textContent = paramsJson;
             }
             break;
 
-          case 'hash:get':
-            const hashValue = window.location.hash.substring(1); // Remove the #
+          case 'hash-get':
+            const hashValue = location.hash.substring(1); // Remove the #
             if (targets.length > 0) {
               if ('value' in targets[0]) {
                 (targets[0] as HTMLInputElement).value = hashValue;
@@ -2567,60 +2805,87 @@ export class InvokerManager {
             }
             break;
 
-          case 'hash:set':
-            const hashToSet = valueParts.join(':');
-            window.location.hash = hashToSet ? `#${hashToSet}` : '';
+          case 'hash-set':
+            let hashToSet: string;
+            if (valueParts.length > 0) {
+              // Hash value provided in command
+              hashToSet = valueParts.join(':');
+            } else {
+              // No hash value provided, get from target element
+              if (targets.length > 0 && 'value' in targets[0]) {
+                hashToSet = (targets[0] as HTMLInputElement).value;
+              } else {
+                throw createInvokerError(
+                  'URL hash-set without value requires a target input element with a value',
+                  ErrorSeverity.ERROR,
+                  {
+                    command: '--url',
+                    element: invoker,
+                    recovery: 'Use --url:hash-set:hash-value or commandfor pointing to an input element'
+                  }
+                );
+              }
+            }
+            location.hash = hashToSet ? `#${hashToSet}` : '';
             break;
 
-          case 'hash:clear':
-            window.location.hash = '';
+          case 'hash-clear':
+            location.hash = '';
             break;
 
-          case 'pathname:get':
-            const pathname = window.location.pathname;
+          case 'pathname-get':
+            const pathname = location.pathname;
             if (targets.length > 0) {
               targets[0].textContent = pathname;
             }
             break;
 
-          case 'pathname:set':
-            if (valueParts.length === 0) {
-              throw createInvokerError(
-                'URL pathname:set requires a pathname',
-                ErrorSeverity.ERROR,
-                {
-                  command: '--url',
-                  element: invoker,
-                  recovery: 'Use --url:pathname:set:/new-path'
-                }
-              );
+          case 'pathname-set':
+            let newPathname: string;
+            if (valueParts.length > 0) {
+              // Pathname provided in command
+              newPathname = valueParts[0];
+            } else {
+              // No pathname provided, get from target element
+              if (targets.length > 0 && 'value' in targets[0]) {
+                newPathname = (targets[0] as HTMLInputElement).value;
+              } else {
+                throw createInvokerError(
+                  'URL pathname-set without value requires a target input element with a value',
+                  ErrorSeverity.ERROR,
+                  {
+                    command: '--url',
+                    element: invoker,
+                    recovery: 'Use --url:pathname-set:/new-path or commandfor pointing to an input element'
+                  }
+                );
+              }
             }
-            const newPathname = valueParts[0];
-            const pathnameUrl = new URL(window.location.href);
+            const pathnameUrl = new URL(location.href);
             pathnameUrl.pathname = newPathname;
-            window.history.replaceState(null, '', pathnameUrl.toString());
+            history.replaceState(null, '', pathnameUrl.toString());
             break;
 
           case 'reload':
             const forceReload = invoker?.dataset?.urlForceReload === 'true';
-            (window.location.reload as any)(forceReload);
+            (location.reload as any)(forceReload);
             break;
 
-          case 'replace':
-            if (valueParts.length === 0) {
-              throw createInvokerError(
-                'URL replace requires a URL',
-                ErrorSeverity.ERROR,
-                {
-                  command: '--url',
-                  element: invoker,
-                  recovery: 'Use --url:replace:new-url'
-                }
-              );
-            }
-            const replaceUrl = valueParts.join(':');
-            window.location.replace(replaceUrl);
-            break;
+           case 'replace':
+             if (valueParts.length === 0) {
+               throw createInvokerError(
+                 'URL replace requires a URL',
+                 ErrorSeverity.ERROR,
+                 {
+                   command: '--url',
+                   element: invoker,
+                   recovery: 'Use --url:replace:new-url'
+                 }
+               );
+             }
+             const replaceUrl = valueParts.join(':');
+             history.replaceState(null, '', replaceUrl);
+             break;
 
           case 'navigate':
             if (valueParts.length === 0) {
@@ -2635,18 +2900,18 @@ export class InvokerManager {
               );
             }
             const navigateUrl = valueParts.join(':');
-            window.location.href = navigateUrl;
+            history.pushState({}, "", navigateUrl);
             break;
 
           case 'base':
-            const baseUrl = `${window.location.protocol}//${window.location.host}`;
+            const baseUrl = `${location.protocol}//${location.host}`;
             if (targets.length > 0) {
               targets[0].textContent = baseUrl;
             }
             break;
 
           case 'full':
-            const fullUrl = window.location.href;
+            const fullUrl = location.href;
             if (targets.length > 0) {
               targets[0].textContent = fullUrl;
             }
@@ -2662,9 +2927,9 @@ export class InvokerManager {
                 context: {
                   action,
                   availableActions: [
-                    'params:get', 'params:set', 'params:delete', 'params:clear', 'params:all',
-                    'hash:get', 'hash:set', 'hash:clear',
-                    'pathname:get', 'pathname:set',
+                    'params-get', 'params-set', 'params-delete', 'params-clear', 'params-all',
+                    'hash-get', 'hash-set', 'hash-clear',
+                    'pathname-get', 'pathname-set',
                     'reload', 'replace', 'navigate', 'base', 'full'
                   ]
                 },
@@ -2688,8 +2953,25 @@ export class InvokerManager {
 
     // --history command for browser history manipulation with enhanced state management
     this.register("--history", ({ invoker, getTargets, params }) => {
-      const [action, ...valueParts] = params;
       const targets = getTargets();
+
+       // Handle compound actions like 'state:get'
+       let action = params[0];
+       let valueParts = params.slice(1);
+
+       // Check if this is a compound action (e.g., 'state:get')
+       if (params[0] === 'state') {
+         if (params.length === 1) {
+           action = 'state:get';
+           valueParts = [];
+         } else {
+           action = `${params[0]}:${params[1]}`;
+           valueParts = params.slice(2);
+         }
+       } else if (params.length >= 2 && ['length', 'clear'].includes(params[0])) {
+         action = `${params[0]}:${params[1]}`;
+         valueParts = params.slice(2);
+       }
 
       try {
         switch (action) {
@@ -2720,6 +3002,9 @@ export class InvokerManager {
             }
 
             window.history.pushState(state, pushTitle, pushUrl);
+            if (targets.length > 0) {
+              targets[0].textContent = `Pushed ${pushUrl} to history`;
+            }
             break;
 
           case 'replace':
@@ -2749,14 +3034,23 @@ export class InvokerManager {
             }
 
             window.history.replaceState(replaceStateData, replaceTitle, replaceUrl);
+            if (targets.length > 0) {
+              targets[0].textContent = `Replaced current URL with ${replaceUrl}`;
+            }
             break;
 
           case 'back':
             window.history.back();
+            if (targets.length > 0) {
+              targets[0].textContent = 'Navigated back in history';
+            }
             break;
 
           case 'forward':
             window.history.forward();
+            if (targets.length > 0) {
+              targets[0].textContent = 'Navigated forward in history';
+            }
             break;
 
           case 'go':
@@ -2773,6 +3067,9 @@ export class InvokerManager {
               );
             }
             window.history.go(delta);
+            if (targets.length > 0) {
+              targets[0].textContent = `Navigated ${delta > 0 ? 'forward' : 'back'} ${Math.abs(delta)} page(s) in history`;
+            }
             break;
 
           case 'state:get':
@@ -2830,7 +3127,7 @@ export class InvokerManager {
                   action,
                   availableActions: [
                     'push', 'replace', 'back', 'forward', 'go',
-                    'state:get', 'state:set', 'length', 'clear'
+                    'state', 'state:get', 'state:set', 'length', 'clear'
                   ]
                 },
                 recovery: 'Use a valid history action'
@@ -3510,18 +3807,29 @@ export class InvokerManager {
         );
       }
 
-      const context = this.createContext(
-        { command: '--pipeline:execute', source: invoker, target: invoker } as any,
-        '--pipeline:execute',
-        params
-      );
+       const context = this.createContext(
+         { command: '--pipeline:execute', source: invoker, target: invoker } as any,
+         '--pipeline:execute',
+         params
+       );
 
-      await this.pipelineManager.executePipeline(pipelineId, context);
-    });
+        await this.pipelineManager.executePipeline(pipelineId, context);
+      });
+    }
   }
-}
 
 
+
+
+
+
+
+
+
+
+
+
+// --- Initialize and Expose API ---
 
 // --- Pipeline Manager Class ---
 
@@ -3605,7 +3913,7 @@ class PipelineManager {
           data[attr.name] = attr.value;
         }
       });
-      
+
       if (Object.keys(data).length > 0) {
         step.data = data;
       }
@@ -3650,7 +3958,7 @@ class PipelineManager {
       }
 
       await this.invokerManager.executeCommand(step.command, step.target, syntheticInvoker);
-      
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error as Error };
@@ -3670,17 +3978,15 @@ class PipelineManager {
   private removeStepFromTemplate(template: HTMLTemplateElement, stepToRemove: PipelineStep): void {
     const content = template.content;
     const stepElements = content.querySelectorAll('pipeline-step');
-    
+
     stepElements.forEach(stepEl => {
-      if (stepEl.getAttribute('command') === stepToRemove.command && 
+      if (stepEl.getAttribute('command') === stepToRemove.command &&
           stepEl.getAttribute('target') === stepToRemove.target) {
         stepEl.remove();
       }
     });
   }
 }
-
-// --- AndThen Manager Class ---
 
 // --- AndThen Manager Class ---
 
@@ -3697,24 +4003,24 @@ class AndThenManager {
     this.invokerManager = invokerManager;
   }
 
-  /**
-   * Processes <and-then> elements after a command execution. This is the main
-   * entry point that finds top-level <and-then> children of the invoker and
-   * kicks off the recursive execution process.
-   *
-   * @param invokerElement The original <button> that was activated.
-   * @param executionResult The success/failure result of the invoker's command.
-   * @param primaryTarget The main target of the invoker's command.
-   */
-  public async processAndThen(
-    invokerElement: HTMLButtonElement,
-    executionResult: CommandExecutionResult,
-    primaryTarget: HTMLElement
-  ): Promise<void> {
-    // Find all *top-level* and-then elements that are direct children of the invoker.
-    const topLevelAndThens = Array.from(invokerElement.children).filter(
-      child => child.tagName.toLowerCase() === 'and-then'
-    ) as HTMLElement[];
+   /**
+    * Processes <and-then> elements after a command execution. This is the main
+    * entry point that finds top-level <and-then> children of the invoker and
+    * kicks off the recursive execution process.
+    *
+    * @param invokerElement The original <button> that was activated.
+    * @param executionResult The success/failure result of the invoker's command.
+    * @param primaryTarget The main target of the invoker's command.
+    */
+   public async processAndThen(
+     invokerElement: HTMLButtonElement,
+     executionResult: CommandExecutionResult,
+     primaryTarget: HTMLElement
+   ): Promise<void> {
+     // Find all *top-level* and-then elements that are direct children of the invoker.
+     const topLevelAndThens = Array.from(invokerElement.children).filter(
+       child => child.tagName.toLowerCase() === 'and-then'
+     ) as HTMLElement[];
 
     // Sequentially execute each top-level chain.
     for (const andThenElement of topLevelAndThens) {
@@ -3738,34 +4044,34 @@ class AndThenManager {
    * @param primaryTarget The original target, used as a fallback.
    * @param depth The current recursion depth to prevent stack overflows.
    */
-  private async executeAndThenRecursively(
-    andThenElement: HTMLElement,
-    originalInvoker: HTMLButtonElement,
-    parentResult: CommandExecutionResult,
-    primaryTarget: HTMLElement,
-    depth: number = 0
-  ): Promise<void> {
-    // 1. Safety Check: Prevent infinite recursion.
-    if (depth > 25) {
-      logInvokerError(createInvokerError(
-        'Maximum <and-then> depth reached, stopping execution to prevent infinite loop.',
-        ErrorSeverity.CRITICAL,
-        { element: andThenElement, recovery: 'Check for circular or excessively deep <and-then> nesting.' }
-      ));
-      return;
-    }
+   private async executeAndThenRecursively(
+     andThenElement: HTMLElement,
+     originalInvoker: HTMLButtonElement,
+     parentResult: CommandExecutionResult,
+     primaryTarget: HTMLElement,
+     depth: number = 0
+   ): Promise<void> {
+     // 1. Safety Check: Prevent infinite recursion.
+     if (depth > 25) {
+       logInvokerError(createInvokerError(
+         'Maximum <and-then> depth reached, stopping execution to prevent infinite loop.',
+         ErrorSeverity.CRITICAL,
+         { element: andThenElement, recovery: 'Check for circular or excessively deep <and-then> nesting.' }
+       ));
+       return;
+     }
 
-    // 2. State Check: Skip elements that have already run or are disabled.
-    const state = andThenElement.dataset.state;
-    if (state === 'disabled' || state === 'completed') {
-      return;
-    }
+     // 2. State Check: Skip elements that have already run or are disabled.
+     const state = andThenElement.dataset.state;
+     if (state === 'disabled' || state === 'completed') {
+       return;
+     }
 
-    // 3. Conditional Check: Execute only if the condition is met.
-    const condition = andThenElement.dataset.condition || 'always';
-    if (!this.shouldExecuteCondition(condition, parentResult)) {
-      return;
-    }
+     // 3. Conditional Check: Execute only if the condition is met.
+     const condition = andThenElement.dataset.condition || 'always';
+     if (!this.shouldExecuteCondition(condition, parentResult)) {
+       return;
+     }
 
     // 4. Get Command Details
     const command = andThenElement.getAttribute('command');
@@ -3786,17 +4092,17 @@ class AndThenManager {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // 6. Execute the Command
-    let currentExecutionResult: CommandExecutionResult = { success: true };
-    try {
-      // Use a synthetic invoker to pass context attributes like `data-*`
-      // without re-triggering the top-level follow-up logic on the original invoker.
-      const syntheticInvoker = this.createSyntheticInvoker(andThenElement, command, targetId);
-      await this.invokerManager.executeCommand(command, targetId, syntheticInvoker);
-    } catch (error) {
-      // If the command fails, capture the result to pass to children.
-      currentExecutionResult = { success: false, error: error as Error };
-    }
+     // 6. Execute the Command
+     let currentExecutionResult: CommandExecutionResult = { success: true };
+     try {
+       // Use a synthetic invoker to pass context attributes like `data-*`
+       // without re-triggering the top-level follow-up logic on the original invoker.
+       const syntheticInvoker = this.createSyntheticInvoker(andThenElement, command, targetId);
+       await this.invokerManager.executeCommand(command, targetId, syntheticInvoker);
+     } catch (error) {
+       // If the command fails, capture the result to pass to children.
+       currentExecutionResult = { success: false, error: error as Error };
+     }
 
     // 7. Update State (Post-Execution)
     if (andThenElement.hasAttribute('data-once')) {
@@ -3860,13 +4166,29 @@ class AndThenManager {
 }
 
 
-// --- Initialize and Expose API ---
+
+
+
+// --- Export Interest Invokers functionality ---
+export { 
+  isInterestInvokersSupported, 
+  applyInterestInvokers, 
+  createInterestEvent 
+} from './interest-invokers';
+
+export type { 
+  InterestEvent, 
+  InterestEventInit, 
+  InterestInvokerElement 
+} from './interest-invokers';
 
 // Get the SINGLETON instance of the manager.
-const invokerInstance = InvokerManager.getInstance();
+var invokerInstance: InvokerManager;
 
-// Set up global API
-const setupGlobalAPI = () => {
+// Initialize the global API
+(() => {
+  invokerInstance = InvokerManager.getInstance();
+
   let targetWindow = null;
 
   // Try globalThis.window (browser)
@@ -3884,6 +4206,7 @@ const setupGlobalAPI = () => {
     targetWindow = window;
   }
 
+  // Set on the found target window
   if (targetWindow) {
     targetWindow.Invoker = {
       // Bind all public methods to the one true instance.
@@ -3909,8 +4232,10 @@ const setupGlobalAPI = () => {
       // Plugin and middleware API
       registerPlugin: invokerInstance.registerPlugin.bind(invokerInstance),
       unregisterPlugin: invokerInstance.unregisterPlugin.bind(invokerInstance),
+      hasPlugin: invokerInstance.hasPlugin.bind(invokerInstance),
       registerMiddleware: invokerInstance.registerMiddleware.bind(invokerInstance),
       unregisterMiddleware: invokerInstance.unregisterMiddleware.bind(invokerInstance),
+      HookPoint,
 
       reset() {
         invokerInstance['commands'].clear();
@@ -3922,23 +4247,47 @@ const setupGlobalAPI = () => {
       }
     };
   }
-};
 
-setupGlobalAPI();
+  // Also try to set on the global window if it exists (for test environments)
+  if (typeof window !== "undefined" && !window.Invoker) {
+    window.Invoker = targetWindow?.Invoker || {
+      // Bind all public methods to the one true instance.
+      register: invokerInstance.register.bind(invokerInstance),
+      executeCommand: invokerInstance.executeCommand.bind(invokerInstance),
 
+      // *** FIX: Expose the new registration function on the global API. ***
+      registerAll: invokerInstance.registerExtendedCommands.bind(invokerInstance),
+      parseCommandString,
+      createCommandString,
+      instance: invokerInstance,
+      get debug() { return isDebugMode; },
+      set debug(value: boolean) {
+        isDebugMode = value;
+        console.log(`Invokers: Debug mode ${value ? 'enabled' : 'disabled'}.`);
+      },
+      getStats: () => invokerInstance['performanceMonitor'].getStats(),
+      getRegisteredCommands: () => Array.from(invokerInstance['commands'].keys()),
+      validateElement,
+      createError: createInvokerError,
+      logError: logInvokerError,
 
+      // Plugin and middleware API
+      registerPlugin: invokerInstance.registerPlugin.bind(invokerInstance),
+      unregisterPlugin: invokerInstance.unregisterPlugin.bind(invokerInstance),
+      hasPlugin: invokerInstance.hasPlugin.bind(invokerInstance),
+      registerMiddleware: invokerInstance.registerMiddleware.bind(invokerInstance),
+      unregisterMiddleware: invokerInstance.unregisterMiddleware.bind(invokerInstance),
+      HookPoint,
 
-// --- Export Interest Invokers functionality ---
-export { 
-  isInterestInvokersSupported, 
-  applyInterestInvokers, 
-  createInterestEvent 
-} from './interest-invokers';
-
-export type { 
-  InterestEvent, 
-  InterestEventInit, 
-  InterestInvokerElement 
-} from './interest-invokers';
-
+      reset() {
+        invokerInstance['commands'].clear();
+        invokerInstance['commandStates'].clear();
+        invokerInstance['sortedCommandKeys'] = [];
+        invokerInstance['plugins'].clear();
+        invokerInstance['middleware'].clear();
+        console.log('Invokers: Reset complete.');
+      }
+    };
+  }
+})();
 export default invokerInstance;

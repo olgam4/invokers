@@ -169,6 +169,54 @@
       animation: invokers-zoom-out 0.5s ease-out;
     }
 
+    .invokers-animate-spin {
+      animation: invokers-spin 1s linear infinite;
+    }
+
+    .invokers-animate-wobble {
+      animation: invokers-wobble 1s ease-in-out;
+    }
+
+    .invokers-animate-jello {
+      animation: invokers-jello 0.9s ease-in-out;
+    }
+
+    .invokers-animate-heartbeat {
+      animation: invokers-heartbeat 1.5s ease-in-out infinite;
+    }
+
+    .invokers-animate-rubber-band {
+      animation: invokers-rubber-band 1s ease-in-out;
+    }
+
+    .invokers-animate-fade-out {
+      animation: invokers-fade-out 0.5s ease-in-out;
+    }
+
+    .invokers-animate-slide-down {
+      animation: invokers-slide-down 0.5s ease-out;
+    }
+
+    .invokers-animate-slide-left {
+      animation: invokers-slide-left 0.5s ease-out;
+    }
+
+    .invokers-animate-slide-right {
+      animation: invokers-slide-right 0.5s ease-out;
+    }
+
+    .invokers-animate-rotate-in {
+      animation: invokers-rotate-in 0.5s ease-out;
+    }
+
+    .invokers-animate-zoom-in {
+      animation: invokers-zoom-in 0.5s ease-out;
+    }
+
+    .invokers-animate-zoom-out {
+      animation: invokers-zoom-out 0.5s ease-out;
+    }
+
     @keyframes invokers-fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -236,6 +284,50 @@
     @keyframes invokers-zoom-out {
       from { transform: scale(1); opacity: 0; }
       to { transform: scale(0); opacity: 1; }
+    }
+
+    @keyframes invokers-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes invokers-wobble {
+      0% { transform: translateX(0%); }
+      15% { transform: translateX(-25%) rotate(-5deg); }
+      30% { transform: translateX(20%) rotate(3deg); }
+      45% { transform: translateX(-15%) rotate(-3deg); }
+      60% { transform: translateX(10%) rotate(2deg); }
+      75% { transform: translateX(-5%) rotate(-1deg); }
+      100% { transform: translateX(0%); }
+    }
+
+    @keyframes invokers-jello {
+      0%, 11.1%, 100% { transform: translate3d(0,0,0); }
+      22.2% { transform: skewX(-12.5deg) skewY(-12.5deg); }
+      33.3% { transform: skewX(6.25deg) skewY(6.25deg); }
+      44.4% { transform: skewX(-3.125deg) skewY(-3.125deg); }
+      55.5% { transform: skewX(1.5625deg) skewY(1.5625deg); }
+      66.6% { transform: skewX(-0.78125deg) skewY(-0.78125deg); }
+      77.7% { transform: skewX(0.390625deg) skewY(0.390625deg); }
+      88.8% { transform: skewX(-0.1953125deg) skewY(-0.1953125deg); }
+    }
+
+    @keyframes invokers-heartbeat {
+      0% { transform: scale(1); }
+      14% { transform: scale(1.3); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.3); }
+      70% { transform: scale(1); }
+    }
+
+    @keyframes invokers-rubber-band {
+      0% { transform: scale3d(1, 1, 1); }
+      30% { transform: scale3d(1.25, 0.75, 1); }
+      40% { transform: scale3d(0.75, 1.25, 1); }
+      50% { transform: scale3d(1.15, 0.85, 1); }
+      65% { transform: scale3d(.95, 1.05, 1); }
+      75% { transform: scale3d(1.05, .95, 1); }
+      100% { transform: scale3d(1, 1, 1); }
     }
 
     .storage-display {
@@ -323,12 +415,17 @@
 
       <div class="demo-box">
         <h3>Storage Management</h3>
-        <button type="button" command="--storage:local:remove:username">
-          Remove Username from Local
+          <button type="button" command="--storage:local:remove:username" commandfor="username-display">
+            Remove Username from Local
+          </button>
+        <button type="button" command="--storage:local:clear" commandfor="local-clear-status">
+          Clear All Local Storage
         </button>
-        <button type="button" command="--storage:session:clear">
+        <div id="local-clear-status" class="storage-display">Clear status will appear here</div>
+        <button type="button" command="--storage:session:clear" commandfor="session-clear-status">
           Clear All Session Storage
         </button>
+        <div id="session-clear-status" class="storage-display">Clear status will appear here</div>
       </div>
     </div>
 
@@ -359,6 +456,42 @@
         </button>
         <button type="button" command="--animate:pulse" commandfor="animated-element">
           Pulse
+        </button>
+        <button type="button" command="--animate:spin" commandfor="animated-element">
+          Spin
+        </button>
+        <button type="button" command="--animate:wobble" commandfor="animated-element">
+          Wobble
+        </button>
+        <button type="button" command="--animate:jello" commandfor="animated-element">
+          Jello
+        </button>
+        <button type="button" command="--animate:heartbeat" commandfor="animated-element">
+          Heartbeat
+        </button>
+        <button type="button" command="--animate:rubber-band" commandfor="animated-element">
+          Rubber Band
+        </button>
+        <button type="button" command="--animate:fade-out" commandfor="animated-element">
+          Fade Out
+        </button>
+        <button type="button" command="--animate:slide-down" commandfor="animated-element">
+          Slide Down
+        </button>
+        <button type="button" command="--animate:slide-left" commandfor="animated-element">
+          Slide Left
+        </button>
+        <button type="button" command="--animate:slide-right" commandfor="animated-element">
+          Slide Right
+        </button>
+        <button type="button" command="--animate:rotate-in" commandfor="animated-element">
+          Rotate In
+        </button>
+        <button type="button" command="--animate:zoom-in" commandfor="animated-element">
+          Zoom In
+        </button>
+        <button type="button" command="--animate:zoom-out" commandfor="animated-element">
+          Zoom Out
         </button>
       </div>
     </div>
@@ -398,52 +531,89 @@
           <input type="text" id="param-value" value="hello">
         </div>
 
-        <button type="button" command="--url:params:set" commandfor="param-name" data-and-then="--url:params:set" data-then-target="param-value">
+        <button type="button" command="--url:params-set" commandfor="param-value" data-url-param-name="test">
           Set URL Param
         </button>
-        <button type="button" command="--url:params:get:test" commandfor="param-display">
+        <button type="button" command="--url:params-get:test" commandfor="param-display">
           Get URL Param 'test'
         </button>
 
         <div id="param-display" class="storage-display">Parameter value will appear here</div>
       </div>
 
-      <div class="demo-box">
-        <h3>Hash Navigation</h3>
-        <button type="button" command="--url:hash:set:section-1">
-          Set Hash to #section-1
-        </button>
-        <button type="button" command="--url:hash:get" commandfor="hash-display">
-          Get Current Hash
-        </button>
+       <div class="demo-box">
+         <h3>Hash Navigation</h3>
+         <div class="form-group">
+           <label for="hash-input">Hash Value:</label>
+           <input type="text" id="hash-input" value="section-1" placeholder="Enter hash value">
+         </div>
+
+         <button type="button" command="--url:hash-set:section-1">
+           Set Hash to #section-1
+         </button>
+         <button type="button" command="--url:hash-set" commandfor="hash-input">
+           Set Hash from Input
+         </button>
+         <button type="button" command="--url:hash-get" commandfor="hash-display">
+           Get Current Hash
+         </button>
+         <button type="button" command="--url:hash-clear">
+           Clear Hash
+         </button>
 
         <div id="hash-display" class="storage-display">Current hash will appear here</div>
-      </div>
-    </div>
+        </div>
 
-    <div class="demo-section">
-      <h2>History Commands (--history)</h2>
-      <p>Control browser navigation history.</p>
+        <div class="demo-box">
+          <h3>Pathname Navigation</h3>
+          <div class="form-group">
+            <label for="pathname-input">Pathname:</label>
+            <input type="text" id="pathname-input" value="/new-page" placeholder="Enter pathname">
+          </div>
 
-      <div class="demo-box">
-        <h3>History Navigation</h3>
-        <button type="button" command="--history:push:/demo-page">
-          Push /demo-page to History
-        </button>
-        <button type="button" command="--history:replace:/replaced-page">
-          Replace Current with /replaced-page
-        </button>
-        <button type="button" command="--history:back">
-          Go Back
-        </button>
-        <button type="button" command="--history:forward">
-          Go Forward
-        </button>
-        <button type="button" command="--history:go:-2">
-          Go Back 2 Pages
-        </button>
-      </div>
-    </div>
+          <button type="button" command="--url:pathname-set:/new-page">
+            Set Pathname to /new-page
+          </button>
+          <button type="button" command="--url:pathname-set" commandfor="pathname-input">
+            Set Pathname from Input
+          </button>
+          <button type="button" command="--url:pathname-get" commandfor="pathname-display">
+            Get Current Pathname
+          </button>
+
+          <div id="pathname-display" class="storage-display">Current pathname will appear here</div>
+        </div>
+     </div>
+
+     <div class="demo-section">
+       <h2>History Commands (--history)</h2>
+       <p>Control browser navigation history.</p>
+
+       <div class="demo-box">
+         <h3>History Navigation</h3>
+         <button type="button" command="--history:push:/demo-page" commandfor="history-status">
+           Push /demo-page to History
+         </button>
+         <button type="button" command="--history:replace:/replaced-page" commandfor="history-status">
+           Replace Current with /replaced-page
+         </button>
+         <button type="button" command="--history:back" commandfor="history-status">
+           Go Back
+         </button>
+         <button type="button" command="--history:forward" commandfor="history-status">
+           Go Forward
+         </button>
+         <button type="button" command="--history:go:-2" commandfor="history-status">
+           Go Back 2 Pages
+         </button>
+         <button type="button" command="--history:state:get" commandfor="history-state-display">
+           Get Current History State
+         </button>
+
+         <div id="history-status" class="storage-display">History command status will appear here</div>
+         <div id="history-state-display" class="storage-display">Current history state will appear here</div>
+       </div>
+     </div>
 
     <div class="demo-section">
       <h2>Device Commands (--device)</h2>
@@ -527,39 +697,79 @@
 
   <!-- Load the Invokers library -->
   <script type="module" src="../dist/esm/development/index.js"></script>
+  <script type="module" src="../dist/esm/development/advanced.js"></script>
 
-  <script>
-    // Event listener for custom events
-    document.addEventListener('user-action', (e) => {
-      logEvent('user-action', e.detail);
-    });
+   <script type="module">
+    // Enable advanced events for interpolation and advanced features
+    import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
+    enableAdvancedEvents();
+   </script>
 
-    document.addEventListener('navigation', (e) => {
-      logEvent('navigation', e.detail);
-    });
+   <script>
+    // Wait for modules to load, then set up event listeners
+    setTimeout(() => {
+        // Event listener for custom events
+        document.addEventListener('user-action', (e) => {
+          logEvent('user-action', e.detail);
+        });
 
-    // Geolocation success/error listeners
-    document.addEventListener('geolocation:success', (e) => {
-      logEvent('geolocation:success', e.detail);
-    });
+        document.addEventListener('navigation', (e) => {
+          logEvent('navigation', e.detail);
+        });
 
-    document.addEventListener('geolocation:error', (e) => {
-      logEvent('geolocation:error', e.detail);
-    });
+        // Device event listeners
+        document.addEventListener('device:share:success', (e) => {
+          logEvent('device:share:success', 'Content shared successfully');
+        });
 
-    function logEvent(type, detail) {
-      const log = document.getElementById('event-log');
-      const timestamp = new Date().toLocaleTimeString();
-      const entry = document.createElement('div');
-      entry.textContent = `[${timestamp}] ${type}: ${JSON.stringify(detail)}`;
-      log.appendChild(entry);
-      log.scrollTop = log.scrollHeight;
-    }
+        document.addEventListener('device:share:cancelled', (e) => {
+          logEvent('device:share:cancelled', e.detail);
+        });
 
-    // Add some visual feedback
-    document.addEventListener('command', (e) => {
-      console.log('Command executed:', e.command, 'on:', e.target);
-    });
+        document.addEventListener('device:geolocation:success', (e) => {
+          logEvent('device:geolocation:success', e.detail);
+        });
+
+        document.addEventListener('device:geolocation:error', (e) => {
+          logEvent('device:geolocation:error', e.detail);
+        });
+
+        document.addEventListener('device:battery:status', (e) => {
+          logEvent('device:battery:status', e.detail);
+        });
+
+        document.addEventListener('device:clipboard:read', (e) => {
+          logEvent('device:clipboard:read', e.detail);
+        });
+
+        document.addEventListener('device:clipboard:written', (e) => {
+          logEvent('device:clipboard:written', 'Text written to clipboard');
+        });
+
+        document.addEventListener('device:wake-lock:acquired', (e) => {
+          logEvent('device:wake-lock:acquired', 'Wake lock acquired');
+        });
+
+        document.addEventListener('device:wake-lock:released', (e) => {
+          logEvent('device:wake-lock:released', 'Wake lock released');
+        });
+
+        function logEvent(type, detail) {
+          const log = document.getElementById('event-log');
+          const timestamp = new Date().toLocaleTimeString();
+          const entry = document.createElement('div');
+          entry.textContent = `[${timestamp}] ${type}: ${JSON.stringify(detail)}`;
+          log.appendChild(entry);
+          log.scrollTop = log.scrollHeight;
+        }
+
+        // Add some visual feedback
+        document.addEventListener('command', (e) => {
+          console.log('Command executed:', e.command, 'on:', e.target);
+        });
+
+        console.log('Event listeners set up');
+    }, 100);
   </script>
 </body>
 </html>

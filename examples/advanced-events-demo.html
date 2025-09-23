@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+
+  <title>Invokers Advanced Events Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .demo-section h2 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    input, button {
+      padding: 8px 12px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      background: #007acc;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #005aa3;
+    }
+
+    #search-results {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      min-height: 30px;
+    }
+
+    #toast-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 15px;
+      border-radius: 4px;
+    }
+
+    #toast-notification[hidden] {
+      display: none;
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Invokers Advanced Events Demo</h1>
+  <p>This demo showcases the advanced event features of Invokers. These features are opt-in and require calling <code>enableAdvancedEvents()</code>.</p>
+
+  <div class="demo-section">
+    <h2>1. Live Search (command-on + Dynamic Data)</h2>
+    <p>Type in the search box to see live results fetched from a mock API:</p>
+
+     <input type="search"
+            name="query"
+            placeholder="Search articles..."
+            command-on="input"
+            command="--fetch:get"
+            commandfor="search-results"
+            data-url="/api/search?q={{ this.value }}">
+
+    <div id="search-results">Search results will appear here...</div>
+  </div>
+
+  <div class="demo-section">
+    <h2>2. Self-Submitting Form (command-on)</h2>
+    <p>This form submits automatically when you press Enter (no submit button needed):</p>
+
+    <form id="contact-form"
+          command-on="submit.prevent"
+          command="--emit:notify:{\"message\":\"Form submitted successfully!\",\"type\":\"success\"}"
+          commandfor="toast-notification">
+
+      <input name="email" type="email" placeholder="Enter your email">
+      <input name="name" type="text" placeholder="Enter your name">
+      <input type="submit" hidden>
+    </form>
+  </div>
+
+  <div class="demo-section">
+    <h2>3. Keyboard Shortcuts (command-on with modifiers)</h2>
+     <p>Press <kbd>Ctrl+/</kbd> anywhere on the page to show/hide the search modal (uses escaped key syntax <code>\\/</code>):</p>
+
+     <div id="search-modal" hidden style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
+       <h3>Search Modal</h3>
+       <input type="search" placeholder="Search...">
+       <button command="--attr:set:hidden:true" commandfor="search-modal">Close</button>
+     </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>4. Custom Events (data-on-event + Dynamic Data)</h2>
+    <p>Click the button to emit a custom event that shows a toast notification:</p>
+
+    <button command-on="click" command="--emit:notify:{&quot;message&quot;:&quot;Item added to cart!&quot;,&quot;type&quot;:&quot;success&quot;}" commandfor="toast-notification">
+      Add to Cart
+    </button>
+
+    <!-- Placeholder text (not used, as ID is overridden) -->
+    <div id="toast-notification-placeholder">
+      Notification will appear here!
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>5. Real-time Character Counter (command-on + Dynamic Data)</h2>
+    <p>Type in the textarea to see the character count update in real-time:</p>
+
+     <textarea command-on="input"
+               command="--text:set:{{ this.value.length }} characters"
+               commandfor="char-count"
+               placeholder="Start typing..."
+               rows="3"></textarea>
+
+    <div id="char-count">0 characters</div>
+  </div>
+
+   <!-- Global keyboard shortcut for search modal -->
+   <div command-on="keydown.window.ctrl.\/.prevent"
+        command="--attr:toggle:hidden"
+        commandfor="search-modal"
+        style="display: none;"></div>
+
+    <!-- Toast notification listener -->
+    <div id="toast-notification"
+         data-on-event="notify"
+         command="--text:set:{{ detail.message }}"
+         data-and-then="--attr:remove:hidden"
+         commandfor="toast-notification"
+         hidden
+         style="position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px; border-radius: 4px; z-index: 10000; min-width: 250px; font-size: 18px; font-weight: bold;">
+    </div>
+
+   <!-- Load Invokers and enable advanced events -->
+   <script type="module">
+     import '../dist/esm/development/index.js';
+     import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
+
+    // Enable advanced event features
+    enableAdvancedEvents();
+
+     // Mock API endpoint for search demo
+     // In a real app, this would be a server endpoint
+     window.addEventListener('fetch:before', (e) => {
+       const url = new URL(e.detail.url, window.location.href);
+       if (url.pathname === '/api/search') {
+         const query = url.searchParams.get('q') || '';
+         // Simulate API response
+         setTimeout(() => {
+           const results = query.length > 0
+             ? `<p>Found ${query.length} results for "${query}":</p><ul><li>Article about ${query}</li><li>Guide to ${query}</li><li>${query} tutorial</li></ul>`
+             : 'Start typing to search...';
+
+           document.getElementById('search-results').innerHTML = results;
+         }, 300); // Simulate network delay
+
+         e.preventDefault(); // Prevent actual fetch
+       }
+     });
+  </script>
+</body>
+</html>

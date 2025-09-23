@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+    <title>Invokers Advanced Lists & Arrays Demo</title>
+ <script type="module" src="../dist/esm/development/index.js"></script>
+      <script type="module">
+          import { enableAdvancedEvents, rescanCommandOnElements } from '../dist/esm/development/advanced.js';
+          enableAdvancedEvents();
+          window.rescanCommandOnElements = rescanCommandOnElements;
+      </script>
+     <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f6f8fa;
+        }
+
+        .demo-container {
+            background: white;
+            border: 1px solid #d1d9e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .demo-header {
+            border-bottom: 2px solid #0969da;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .demo-header h2 {
+            margin: 0;
+            color: #0969da;
+            font-size: 24px;
+        }
+
+        .demo-header p {
+            margin: 5px 0 0 0;
+            color: #656d76;
+            font-size: 14px;
+        }
+
+        .todo-app {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .todo-input-section {
+            background: #f6f8fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .todo-input-section h3 {
+            margin-top: 0;
+            color: #24292f;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #24292f;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #0969da;
+            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+        }
+
+        .todo-list {
+            background: white;
+            border: 1px solid #d1d9e0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #d1d9e0;
+            transition: background-color 0.2s;
+        }
+
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .todo-item:hover {
+            background: #f6f8fa;
+        }
+
+        .todo-item.completed {
+            background: #f6ffed;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .todo-checkbox {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .todo-content {
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .todo-content .title {
+            font-weight: 600;
+            color: #24292f;
+            margin-bottom: 4px;
+        }
+
+        .todo-content .description {
+            color: #656d76;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .todo-content .meta {
+            font-size: 12px;
+            color: #8c959f;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            background: white;
+            color: #24292f;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #f6f8fa;
+            border-color: #0969da;
+        }
+
+        .btn.primary {
+            background: #0969da;
+            color: white;
+            border-color: #0969da;
+        }
+
+        .btn.primary:hover {
+            background: #0751cc;
+        }
+
+        .btn.danger {
+            color: #cf222e;
+            border-color: #cf222e;
+        }
+
+        .btn.danger:hover {
+            background: #cf222e;
+            color: white;
+        }
+
+        .btn.small {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .filters select,
+        .filters input {
+            padding: 6px 10px;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .stats {
+            background: #f6f8fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #24292f;
+        }
+
+        .code-example {
+            background: #f6f8fa;
+            border: 1px solid #d1d9e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+
+        .feature-highlight {
+            background: #ddf4ff;
+            border: 1px solid #79c0ff;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 15px 0;
+        }
+
+        .feature-highlight h4 {
+            margin-top: 0;
+            color: #0969da;
+        }
+
+        .edit-form {
+            background: #f6f8fa;
+            border: 1px solid #d1d9e0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+
+        .edit-form .input-group {
+            margin-bottom: 15px;
+        }
+
+        .edit-form .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .priority-high { color: #cf222e; }
+        .priority-medium { color: #d29922; }
+        .priority-low { color: #0969da; }
+
+        .tag {
+            display: inline-block;
+            background: #f6f8fa;
+            color: #24292f;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 4px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-out {
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .fade-in {
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Invokers Advanced Lists & Arrays Demo</h1>
+    <p>This demo showcases advanced patterns for working with lists, arrays, and dynamic data using Invokers commands. Learn how to build complex, interactive list-based interfaces with declarative HTML.</p>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>📝 Advanced Todo List Application</h2>
+            <p>A complete CRUD application demonstrating list manipulation, filtering, sorting, and real-time updates.</p>
+        </div>
+
+         <div id="todo-app" class="todo-app">
+            <!-- Statistics -->
+            <div class="stats">
+                <div class="stat">
+                    <span>Total:</span>
+                    <span class="stat-value" id="total-count">0</span>
+                </div>
+                <div class="stat">
+                    <span>Completed:</span>
+                    <span class="stat-value" id="completed-count">0</span>
+                </div>
+                <div class="stat">
+                    <span>Pending:</span>
+                    <span class="stat-value" id="pending-count">0</span>
+                </div>
+                <div class="stat">
+                    <span>High Priority:</span>
+                    <span class="stat-value" id="high-priority-count">0</span>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="filters">
+                <select id="filter-status"
+                        command-on="change"
+                        command="--data:set:filter:status"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:filter-status">
+                    <option value="all">All Tasks</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                </select>
+
+                <select id="filter-priority"
+                        command-on="change"
+                        command="--data:set:filter:priority"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:filter-priority">
+                    <option value="all">All Priorities</option>
+                    <option value="high">High Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="low">Low Priority</option>
+                </select>
+
+                <input type="text" id="search-input"
+                       placeholder="Search tasks..."
+                       command-on="input"
+                       command="--data:set:search"
+                       commandfor="todo-app"
+                       data-bind-to="body"
+                       data-bind-as="data:search-term">
+
+                <select id="sort-by"
+                        command-on="change"
+                        command="--data:set:sort:by"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:sort-by">
+                    <option value="created">Sort by Created</option>
+                    <option value="priority">Sort by Priority</option>
+                    <option value="title">Sort by Title</option>
+                </select>
+
+                <select id="sort-order"
+                        command-on="change"
+                        command="--data:set:sort:order"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:sort-order">
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                </select>
+            </div>
+
+            <!-- Add New Todo Form -->
+            <div class="todo-input-section">
+                <h3>Add New Task</h3>
+                 <form id="add-todo-form"
+                       command-on="submit.prevent"
+                       command="--data:set:new-todo"
+                       commandfor="todo-app">
+                    <div class="input-group">
+                        <label for="todo-title">Title:</label>
+                        <input type="text" id="todo-title" name="title" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="todo-description">Description:</label>
+                        <textarea id="todo-description" name="description"></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="todo-priority">Priority:</label>
+                        <select id="todo-priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="todo-tags">Tags (comma-separated):</label>
+                        <input type="text" id="todo-tags" name="tags">
+                    </div>
+
+                    <button type="submit" class="btn primary">Add Task</button>
+                    <button type="button" class="btn"
+                            command="--form:reset"
+                            commandfor="add-todo-form">Clear</button>
+                </form>
+            </div>
+
+            <!-- Todo List Container -->
+            <div id="todo-list" class="todo-list">
+                <!-- Todos will be rendered here -->
+            </div>
+
+            <!-- Bulk Actions -->
+            <div style="margin-top: 20px; padding: 15px; background: #f6f8fa; border-radius: 6px;">
+                <h4>Bulk Actions</h4>
+                <button class="btn"
+                        command="--data:set:bulk-action:complete-all"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:bulk-action">Complete All Pending</button>
+                <button class="btn danger"
+                        command="--data:set:bulk-action:clear-completed"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:bulk-action">Clear Completed</button>
+                <button class="btn"
+                        command="--data:set:bulk-action:export"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:bulk-action">Export to JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="todo-item-template">
+        <div class="todo-item" data-index="{{__index}}" data-id="{{id}}" data-completed="{{completed}}">
+            <input type="checkbox" class="todo-checkbox"
+                   command-on="change"
+                   command="--data:set:toggle:{{id}}"
+                   commandfor="todo-app"
+                   data-bind-to="body"
+                   data-bind-as="data:toggle-item">
+
+            <div class="todo-content">
+                <div class="title priority-{{priority}}">{{title}}</div>
+                <div class="description">{{description}}</div>
+                <div class="meta">
+                    Priority: <strong>{{priority}}</strong> |
+                    Created: {{created}} |
+                    Tags: {{tags}}
+                </div>
+            </div>
+
+            <div class="todo-actions">
+                <button class="btn small"
+                        command="--data:set:edit:{{id}}"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:edit-item">Edit</button>
+                <button class="btn small danger"
+                        command="--data:set:delete:{{id}}"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:delete-item">Delete</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="edit-todo-template">
+        <div class="edit-form">
+            <h4>Edit Task</h4>
+            <div class="input-group">
+                <label>Title:</label>
+                 <input type="text" value="{{title}}"
+                        command-on="input"
+                        command="--bind:value"
+                        commandfor="edit-form-{{id}}"
+                        data-bind-to="#edit-form-{{id}}"
+                        data-bind-as="data:title">
+            </div>
+
+             <div class="input-group">
+                 <label>Description:</label>
+                 <textarea command-on="input"
+                           command="--bind:value"
+                           commandfor="edit-form-{{id}}"
+                           data-bind-to="#edit-form-{{id}}"
+                           data-bind-as="data:description">{{description}}</textarea>
+             </div>
+
+             <div class="input-group">
+                 <label>Priority:</label>
+                 <select command-on="change"
+                         command="--bind:value"
+                         commandfor="edit-form-{{id}}"
+                         data-bind-to="#edit-form-{{id}}"
+                         data-bind-as="data:priority">
+                    <option value="low" {{#if priority === 'low'}}selected{{/if}}>Low</option>
+                    <option value="medium" {{#if priority === 'medium'}}selected{{/if}}>Medium</option>
+                    <option value="high" {{#if priority === 'high'}}selected{{/if}}>High</option>
+                </select>
+            </div>
+
+            <div class="actions">
+                <button class="btn"
+                        command="--data:set:cancel-edit:{{id}}"
+                        commandfor="todo-app"
+                        data-bind-to="body"
+                        data-bind-as="data:cancel-edit">Cancel</button>
+                <button class="btn primary"
+                        command="--data:set:save-edit:{{id}}"
+                        commandfor="todo-app"
+                        data-bind-to="#edit-form-{{id}}"
+                        data-bind-as="data:save-edit-json">Save</button>
+            </div>
+        </div>
+    </template>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🔧 Core Concepts</h2>
+            <p>Understanding the building blocks of advanced list manipulation.</p>
+        </div>
+
+        <h3>1. Array Data Structure</h3>
+        <p>Store your list data as JSON in a data attribute:</p>
+        <div class="code-example">
+&lt;div id="todo-app" data-todos='[
+  {"id": "1", "title": "Learn Invokers", "completed": false, "priority": "high"},
+  {"id": "2", "title": "Build awesome UI", "completed": true, "priority": "medium"}
+]'&gt;
+&lt;/div&gt;
+        </div>
+
+        <h3>2. Template-Based Rendering</h3>
+        <p>Use templates with interpolation to render list items:</p>
+        <div class="code-example">
+&lt;template id="item-template"&gt;
+  &lt;div data-id="{{id}}" data-index="{{__index}}"&gt;
+    &lt;h3&gt;{{title}}&lt;/h3&gt;
+    &lt;p&gt;{{description}}&lt;/p&gt;
+  &lt;/div&gt;
+&lt;/template&gt;
+        </div>
+
+        <h3>3. Index-Based Operations</h3>
+        <p>Access specific items using their index in the array:</p>
+        <div class="code-example">
+&lt;!-- Update item at index 2 --&gt;
+&lt;button command="--data:set:array:update:2"
+        data-value='{"title": "Updated Title"}'
+        commandfor="todo-app"&gt;
+  Update Third Item
+&lt;/button&gt;
+
+&lt;!-- Remove item at index 1 --&gt;
+&lt;button command="--data:set:array:remove:1"
+        commandfor="todo-app"&gt;
+  Remove Second Item
+&lt;/button&gt;
+        </div>
+
+        <h3>4. Dynamic Filtering & Sorting</h3>
+        <p>Combine data binding with computed properties:</p>
+        <div class="code-example">
+&lt;select command-on="change"
+        command="--data:set:filter:status"
+        data-bind-to="body"
+        data-bind-as="data:filter-status"&gt;
+  &lt;option value="all"&gt;All&lt;/option&gt;
+  &lt;option value="pending"&gt;Pending&lt;/option&gt;
+  &lt;option value="completed"&gt;Completed&lt;/option&gt;
+&lt;/select&gt;
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🎯 Advanced Patterns</h2>
+            <p>Complex scenarios and best practices.</p>
+        </div>
+
+        <h3>Real-Time Search & Filtering</h3>
+        <div class="feature-highlight">
+            <h4>🔍 Dynamic Filtering</h4>
+            <p>Combine input binding with array filtering to create real-time search. The search term updates a data attribute, which triggers a re-render of the filtered list.</p>
+        </div>
+
+        <h3>Bulk Operations</h3>
+        <div class="feature-highlight">
+            <h4>⚡ Efficient Bulk Updates</h4>
+            <p>Perform operations on multiple items at once. Use array methods to filter, map, or reduce your data before updating the entire list.</p>
+        </div>
+
+        <h3>Optimistic Updates</h3>
+        <div class="feature-highlight">
+            <h4>🚀 Immediate UI Feedback</h4>
+            <p>Update the UI immediately when an action is triggered, then sync with the server. Rollback on errors for a smooth user experience.</p>
+        </div>
+
+        <h3>Data Validation</h3>
+        <div class="feature-highlight">
+            <h4>✅ Client-Side Validation</h4>
+            <p>Validate data before adding to arrays. Use HTML5 validation combined with custom validation logic triggered by form submission.</p>
+        </div>
+
+        <h3>Infinite Scroll & Pagination</h3>
+        <div class="feature-highlight">
+            <h4>📄 Progressive Loading</h4>
+            <p>Load data in chunks and append to existing arrays. Use intersection observers or scroll events to trigger loading of next pages.</p>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>📚 API Reference</h2>
+            <p>Complete guide to array and list manipulation commands.</p>
+        </div>
+
+        <h3>Array Commands</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f6f8fa;">
+                    <th style="padding: 10px; text-align: left; border: 1px solid #d1d9e0;">Command</th>
+                    <th style="padding: 10px; text-align: left; border: 1px solid #d1d9e0;">Purpose</th>
+                    <th style="padding: 10px; text-align: left; border: 1px solid #d1d9e0;">Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:push</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Add item to end of array</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-value='{"name": "New Item"}'</code></td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:unshift</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Add item to beginning of array</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-value='{"name": "First Item"}'</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:insert:index</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Insert item at specific index</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-value='{"name": "Middle"}' data-index="2"</code></td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:update:index</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Update item at index</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-value='{"name": "Updated"}' data-index="1"</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:remove:index</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Remove item at index</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-index="0"</code></td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:clear</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Remove all items</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">No additional data needed</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:sort</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Sort array by property</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-sort-by="priority" data-sort-order="desc"</code></td>
+                </tr>
+                <tr style="background: #fafbfc;">
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>--data:set:array:filter</code></td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;">Filter array items</td>
+                    <td style="padding: 10px; border: 1px solid #d1d9e0;"><code>data-filter-by="completed" data-filter-value="false"</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Template Interpolation</h3>
+        <div class="code-example">
+// Basic interpolation
+{{property}}
+
+// Conditional rendering
+{{#if condition}}Content{{/if}}
+
+// Loops (for arrays)
+{{#each items}}{{this}}{{/each}}
+
+// Index access
+{{__index}} // Current item index
+{{__total}} // Total number of items
+        </div>
+
+        <h3>Data Binding Patterns</h3>
+        <div class="code-example">
+// Form to array item
+&lt;input command="--bind:value"
+       data-bind-to="#form-data"
+       data-bind-as="data:field-name"&gt;
+
+// Array item to display
+&lt;span command="--bind:data:field-name"
+      data-bind-to="#item-{{id}}"
+      data-bind-as="text"&gt;&lt;/span&gt;
+
+// Computed properties
+&lt;div command="--bind:data:computed-value"
+     data-bind-to="#computed-display"
+     data-bind-as="text"&gt;&lt;/div&gt;
+        </div>
+    </div>
+
+    <script>
+        // Initialize the todo application
+        document.addEventListener('DOMContentLoaded', function() {
+            const todoApp = document.getElementById('todo-app');
+
+            // Initialize with sample data
+            const initialTodos = [
+                {
+                    id: '1',
+                    title: 'Learn Invokers Commands',
+                    description: 'Master the new --bind and array manipulation commands',
+                    completed: false,
+                    priority: 'high',
+                    tags: 'learning, javascript',
+                    created: new Date().toLocaleDateString()
+                },
+                {
+                    id: '2',
+                    title: 'Build Todo App',
+                    description: 'Create a complete todo application using Invokers',
+                    completed: true,
+                    priority: 'medium',
+                    tags: 'project, demo',
+                    created: new Date().toLocaleDateString()
+                },
+                {
+                    id: '3',
+                    title: 'Write Documentation',
+                    description: 'Document all the new features and examples',
+                    completed: false,
+                    priority: 'low',
+                    tags: 'documentation',
+                    created: new Date().toLocaleDateString()
+                }
+            ];
+
+            todoApp.dataset.todos = JSON.stringify(initialTodos);
+            renderTodoList();
+            updateStats();
+
+            // Set up event listeners for dynamic updates
+            document.addEventListener('todo-updated', () => {
+                renderTodoList();
+                updateStats();
+                // Scroll to the new item
+                const todoList = document.getElementById('todo-list');
+                const lastItem = todoList.lastElementChild;
+                if (lastItem) {
+                    lastItem.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+
+            document.addEventListener('filter-changed', () => {
+                renderTodoList();
+            });
+
+            document.addEventListener('edit-mode-changed', () => {
+                renderTodoList();
+            });
+        });
+
+        function renderTodoList() {
+            const todoApp = document.getElementById('todo-app');
+            const todoList = document.getElementById('todo-list');
+            const todos = JSON.parse(todoApp.dataset.todos || '[]');
+
+            // Apply filters and sorting
+            let filteredTodos = applyFilters(todos);
+            filteredTodos = applySorting(filteredTodos);
+
+            // Clear existing list
+            todoList.innerHTML = '';
+
+            // Render each todo
+            filteredTodos.forEach((todo, index) => {
+                const todoElement = renderTodoItem(todo, index);
+                todoList.appendChild(todoElement);
+            });
+
+            // Rescan for new command-on elements
+            if (window.rescanCommandOnElements) {
+                window.rescanCommandOnElements();
+            }
+
+
+        }
+
+        function applyFilters(todos) {
+            const todoApp = document.getElementById('todo-app');
+            const filterStatus = todoApp.dataset.filterStatus || 'all';
+            const filterPriority = todoApp.dataset.filterPriority || 'all';
+            const searchTerm = (todoApp.dataset.searchTerm || '').toLowerCase();
+
+            return todos.filter(todo => {
+                // Status filter
+                if (filterStatus === 'pending' && todo.completed) return false;
+                if (filterStatus === 'completed' && !todo.completed) return false;
+
+                // Priority filter
+                if (filterPriority !== 'all' && todo.priority !== filterPriority) return false;
+
+                // Search filter
+                if (searchTerm) {
+                    const searchableText = `${todo.title} ${todo.description} ${todo.tags}`.toLowerCase();
+                    if (!searchableText.includes(searchTerm)) return false;
+                }
+
+                return true;
+            });
+        }
+
+        function applySorting(todos) {
+            const todoApp = document.getElementById('todo-app');
+            const sortBy = todoApp.dataset.sortBy || 'created';
+            const sortOrder = todoApp.dataset.sortOrder || 'asc';
+
+            return [...todos].sort((a, b) => {
+                let aVal = a[sortBy];
+                let bVal = b[sortBy];
+
+                // Special handling for dates
+                if (sortBy === 'created') {
+                    aVal = new Date(aVal);
+                    bVal = new Date(bVal);
+                }
+
+                let comparison = 0;
+                if (aVal < bVal) comparison = -1;
+                else if (aVal > bVal) comparison = 1;
+
+                return sortOrder === 'desc' ? -comparison : comparison;
+            });
+        }
+
+        function renderTodoItem(todo, index) {
+            const todoApp = document.getElementById('todo-app');
+            const isEditing = todoApp.dataset.editingId === todo.id;
+
+            if (isEditing) {
+                return renderEditForm(todo);
+            } else {
+                return renderTodoDisplay(todo, index);
+            }
+        }
+
+        function renderTodoDisplay(todo, index) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+            itemDiv.dataset.index = index;
+            itemDiv.dataset.id = todo.id;
+            itemDiv.dataset.completed = todo.completed;
+
+            itemDiv.innerHTML = `
+                <input type="checkbox" class="todo-checkbox"
+                       command-on="change"
+                       command="--data:set:toggle:${todo.id}"
+                       commandfor="todo-app"
+                       ${todo.completed ? 'checked' : ''}
+                       data-bind-to="body"
+                       data-bind-as="data:toggle-item">
+
+                <div class="todo-content">
+                    <div class="title priority-${todo.priority}">${escapeHtml(todo.title)}</div>
+                    <div class="description">${escapeHtml(todo.description)}</div>
+                    <div class="meta">
+                        Priority: <strong>${todo.priority}</strong> |
+                        Created: ${todo.created} |
+                        Tags: ${todo.tags.split(',').map(tag => `<span class="tag">${escapeHtml(tag.trim())}</span>`).join('')}
+                    </div>
+                </div>
+
+                <div class="todo-actions">
+                    <button class="btn small"
+                            command="--data:set:edit:${todo.id}"
+                            commandfor="todo-app"
+                            data-bind-to="body"
+                            data-bind-as="data:edit-item">Edit</button>
+                    <button class="btn small danger"
+                            command="--data:set:delete:${todo.id}"
+                            commandfor="todo-app"
+                            data-bind-to="body"
+                            data-bind-as="data:delete-item">Delete</button>
+                </div>
+            `;
+
+            return itemDiv;
+        }
+
+        function renderEditForm(todo) {
+            const formDiv = document.createElement('div');
+            formDiv.className = 'edit-form';
+            formDiv.id = `edit-form-${todo.id}`;
+
+            formDiv.innerHTML = `
+                <h4>Edit Task</h4>
+                <div class="input-group">
+                    <label>Title:</label>
+                     <input type="text" value="${escapeHtml(todo.title)}"
+                             command-on="input"
+                             command="--bind:value"
+                             commandfor="#edit-form-${todo.id}"
+                             data-bind-as="data:title">
+                </div>
+
+                <div class="input-group">
+                    <label>Description:</label>
+                  <textarea command-on="input"
+                            command="--bind:value"
+                            commandfor="#edit-form-${todo.id}"
+                            data-bind-as="data:description">${escapeHtml(todo.description)}</textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>Priority:</label>
+                  <select command-on="change"
+                          command="--bind:value"
+                          commandfor="#edit-form-${todo.id}"
+                          data-bind-as="data:priority">
+                        <option value="low" ${todo.priority === 'low' ? 'selected' : ''}>Low</option>
+                        <option value="medium" ${todo.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="high" ${todo.priority === 'high' ? 'selected' : ''}>High</option>
+                    </select>
+                </div>
+
+                <div class="actions">
+                    <button class="btn"
+                            command="--data:set:cancel-edit:${todo.id}"
+                            commandfor="todo-app"
+                            data-bind-to="body"
+                            data-bind-as="data:cancel-edit">Cancel</button>
+                    <button class="btn primary"
+                            command="--data:set:save-edit:${todo.id}"
+                            commandfor="todo-app"
+                            data-bind-to="#edit-form-${todo.id}"
+                            data-bind-as="data:save-edit-json">Save</button>
+                </div>
+            `;
+
+            // Set initial dataset values
+            formDiv.dataset.title = todo.title;
+            formDiv.dataset.description = todo.description;
+            formDiv.dataset.priority = todo.priority;
+
+            // Add event listeners to update dataset
+            const titleInput = formDiv.querySelector('input[type="text"]');
+            const descTextarea = formDiv.querySelector('textarea');
+            const prioritySelect = formDiv.querySelector('select');
+
+            if (titleInput) {
+                titleInput.addEventListener('input', () => {
+                    formDiv.dataset.title = titleInput.value;
+                });
+            }
+
+            if (descTextarea) {
+                descTextarea.addEventListener('input', () => {
+                    formDiv.dataset.description = descTextarea.value;
+                });
+            }
+
+            if (prioritySelect) {
+                prioritySelect.addEventListener('change', () => {
+                    formDiv.dataset.priority = prioritySelect.value;
+                });
+            }
+
+            return formDiv;
+        }
+
+        function updateStats() {
+            const todoApp = document.getElementById('todo-app');
+            const todos = JSON.parse(todoApp.dataset.todos || '[]');
+
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            const pending = total - completed;
+            const highPriority = todos.filter(t => t.priority === 'high').length;
+
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('completed-count').textContent = completed;
+            document.getElementById('pending-count').textContent = pending;
+            document.getElementById('high-priority-count').textContent = highPriority;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Helper function to generate unique IDs
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+    </script>
+</body>
+</html>

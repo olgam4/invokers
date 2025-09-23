@@ -77,6 +77,15 @@
       "require": "./dist/cjs/production/commands.js",
       "import": "./dist/esm/production/commands.js"
     },
+    "./demo-commands": {
+      "types": "./dist/types/demo-commands.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/demo-commands.js",
+        "import": "./dist/esm/development/demo-commands.js"
+      },
+      "require": "./dist/cjs/production/demo-commands.js",
+      "import": "./dist/esm/production/demo-commands.js"
+    },
     "./interest": {
       "types": "./dist/types/interest-invokers.d.ts",
       "development": {
@@ -85,6 +94,15 @@
       },
       "require": "./dist/cjs/production/interest.js",
       "import": "./dist/esm/production/interest.js"
+    },
+    "./advanced": {
+      "types": "./dist/types/advanced-events.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/advanced.js",
+        "import": "./dist/esm/development/advanced.js"
+      },
+      "require": "./dist/cjs/production/advanced.js",
+      "import": "./dist/esm/production/advanced.js"
     }
   },
   "scripts": {
@@ -96,7 +114,8 @@
     "watch": "pridepack watch",
     "start": "pridepack start",
     "dev": "pridepack dev",
-    "test": "vitest --run"
+    "test": "vitest --run --reporter=json --outputFile=./test-results.json",
+    "serve-examples": "npm run build && npx serve"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",
@@ -116,8 +135,14 @@
       "commands": [
         "./dist/types/invoker-commands.d.ts"
       ],
+      "demo-commands": [
+        "./dist/types/demo-commands.d.ts"
+      ],
       "interest": [
         "./dist/types/interest-invokers.d.ts"
+      ],
+      "advanced": [
+        "./dist/types/advanced-events.d.ts"
       ]
     }
   }

@@ -189,7 +189,7 @@
       <h3>Conditional Success/Error Chains</h3>
       <button type="button"
               command="--fetch:get"
-              data-url="https://httpbin.org/json"
+              data-url="data:application/json,{'message':'Hello from pipeline demo!'}"
               commandfor="fetch-result"
               data-after-success="--class:add:success,--text:set:✅ Data loaded successfully!"
               data-after-error="--class:add:error,--text:set:❌ Failed to load data"
@@ -354,7 +354,7 @@
       
       <button type="button"
               command="--fetch:get"
-              data-url="https://httpbin.org/delay/1"
+              data-url="data:text/plain,Async data loaded!"
               commandfor="async-target"
               data-and-then="--class:add:loaded">
         Fetch + Animate

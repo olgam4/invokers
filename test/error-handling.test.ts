@@ -207,10 +207,10 @@ describe('Enhanced Error Handling & Debugging', () => {
       
       // Should fail validation
       expect(validateElement(null, { id: true })).toContain('Element not found');
-      expect(validateElement(div, { tagName: ['span'] })).toContain('Element must be one of: span');
+       expect(validateElement(div, { tagName: ['span'] })).toContain('Element must be one of: span, got: div');
       
-      const divWithoutId = document.createElement('div');
-      expect(validateElement(divWithoutId, { id: true })).toContain('missing required id');
+       const divWithoutId = document.createElement('div');
+       expect(validateElement(divWithoutId, { id: true })).toContain('Element missing required id attribute');
     });
 
     it('should create detailed error objects', () => {

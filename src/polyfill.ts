@@ -184,8 +184,8 @@ function applyInvokerMixin(ElementClass: typeof HTMLElement) {
         }
       },
       get(): Element | null {
-        // Only buttons support commandfor
-        if (this.localName !== "button") {
+        // Buttons, inputs, and textareas support commandfor
+        if (this.localName !== "button" && this.localName !== "input" && this.localName !== "textarea") {
           return null;
         }
         // Warn for deprecated attributes
@@ -337,20 +337,48 @@ declare global {
      */
     interestForElement: Element | null;
   }
-  interface HTMLButtonElement {
-    /**
-     * Gets or sets the command string for the button.
-     */
-    command: string;
-    /**
-     * Gets or sets the element controlled by the button.
-     */
-    commandForElement: Element | null;
-    /**
-     * Gets or sets the element controlled by the interest invoker.
-     */
-    interestForElement: Element | null;
-  }
+   interface HTMLButtonElement {
+     /**
+      * Gets or sets the command string for the button.
+      */
+     command: string;
+     /**
+      * Gets or sets the element controlled by the button.
+      */
+     commandForElement: Element | null;
+     /**
+      * Gets or sets the element controlled by the interest invoker.
+      */
+     interestForElement: Element | null;
+   }
+   interface HTMLInputElement {
+     /**
+      * Gets or sets the command string for the input.
+      */
+     command: string;
+     /**
+      * Gets or sets the element controlled by the input.
+      */
+     commandForElement: Element | null;
+     /**
+      * Gets or sets the element controlled by the interest invoker.
+      */
+     interestForElement: Element | null;
+   }
+   interface HTMLTextAreaElement {
+     /**
+      * Gets or sets the command string for the textarea.
+      */
+     command: string;
+     /**
+      * Gets or sets the element controlled by the textarea.
+      */
+     commandForElement: Element | null;
+     /**
+      * Gets or sets the element controlled by the interest invoker.
+      */
+     interestForElement: Element | null;
+   }
   interface HTMLAnchorElement {
     /**
      * Gets or sets the element controlled by the interest invoker.
@@ -779,8 +807,11 @@ export function apply() {
     true,
   );
 
-  // Apply the `command` and `commandfor` properties to HTMLButtonElement
-  applyInvokerMixin(HTMLButtonElement);
+   // Apply the `command` and `commandfor` properties to HTMLButtonElement
+   applyInvokerMixin(HTMLButtonElement);
+   // Also apply to input and textarea elements for command-on support
+   applyInvokerMixin(HTMLInputElement);
+   applyInvokerMixin(HTMLTextAreaElement);
 
   // Observe newly attached Shadow DOM roots
   observeShadowRoots(HTMLElement, (shadow) => {

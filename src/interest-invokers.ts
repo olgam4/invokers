@@ -213,26 +213,19 @@ class InterestInvokersPolyfill {
       enumerable: true,
       configurable: true,
       get(this: HTMLElement): Element | null {
-        return (this as any).getInterestForTarget();
+        const id = this.getAttribute('interestfor');
+        return id ? document.getElementById(id) : null;
       },
       set(this: HTMLElement, value: Element | null) {
         if (value === null) {
           this.removeAttribute('interestfor');
-        } else if (value instanceof Element) {
+        } else if (value && typeof value === 'object' && 'id' in value) {
           this.setAttribute('interestfor', value.id || '');
         } else {
           throw new TypeError('interestForElement must be an element or null');
         }
       }
     });
-
-    // Add helper method if it doesn't already exist
-    if (!ElementClass.prototype.getInterestForTarget) {
-      ElementClass.prototype.getInterestForTarget = function(this: HTMLElement): Element | null {
-        const id = this.getAttribute('interestfor');
-        return id ? document.getElementById(id) : null;
-      };
-    }
   }
 
   /**
@@ -445,7 +438,11 @@ class InterestInvokersPolyfill {
         // Show popover if applicable
         try {
           if (target.hasAttribute('popover') && typeof (target as any).showPopover === 'function') {
-            (target as any).showPopover({ source: invoker });
+            (target as any).showPopover();
+            // If anchor positioning not supported, position manually
+            if (!this.supportsAnchorPositioning()) {
+              requestAnimationFrame(() => this.positionPopover(invoker, target));
+            }
           }
         } catch {}
 
@@ -456,7 +453,7 @@ class InterestInvokersPolyfill {
         }
         (target as any)[this.targetDataField].invoker = invoker;
 
-        // Setup popover toggle listener
+        // Setup popover toggle listener if popover
         if (target.hasAttribute('popover')) {
           const toggleListener = this.createPopoverToggleListener();
           (target as any)[this.targetDataField].toggleListener = toggleListener;
@@ -544,33 +541,117 @@ class InterestInvokersPolyfill {
   }
 
   /**
+   * Check if anchor positioning is supported
+   */
+   private supportsAnchorPositioning(): boolean {
+     return 'anchorName' in document.body.style;
+   }
+
+  /**
    * Setup anchor positioning between invoker and target
    */
-  private setupAnchorPositioning(
-    invoker: HTMLElement, 
-    target: HTMLElement, 
-    data: any
-  ): void {
-    const anchorName = `--interest-anchor-${Math.random().toString(36).substring(2)}`;
-    (invoker.style as any).anchorName = anchorName;
-    (target.style as any).positionAnchor = anchorName;
-    data.anchorName = anchorName;
+   private setupAnchorPositioning(
+     invoker: HTMLElement,
+     target: HTMLElement,
+     data: any
+   ): void {
+     const anchorName = `--interest-anchor-${Math.random().toString(36).substring(2)}`;
+     (invoker.style as any).anchorName = anchorName;
+     (target.style as any).positionAnchor = anchorName;
+     data.anchorName = anchorName;
+
+  if (this.supportsAnchorPositioning()) {
+    // Add CSS for anchor positioning using position-area for automatic fallbacks
+    const className = `interest-anchored-${Math.random().toString(36).substring(2)}`;
+    const style = document.createElement('style');
+    style.textContent = `
+      .${className} {
+        margin: 0;
+        top: calc(anchor(${anchorName} bottom) - 4px);
+        left: anchor(${anchorName});
+        justify-self: center;
+      }
+    `;
+    document.head.appendChild(style);
+    target.classList.add(className);
+    data.styleElement = style;
+    data.className = className;
   }
+   }
+
+
 
   /**
    * Cleanup anchor positioning
    */
-  private cleanupAnchorPositioning(
-    invoker: HTMLElement, 
-    target: HTMLElement, 
-    data: any
-  ): void {
-    if (data.anchorName) {
-      (invoker.style as any).anchorName = "";
-      (target.style as any).positionAnchor = "";
-      data.anchorName = null;
+   private cleanupAnchorPositioning(
+     invoker: HTMLElement,
+     target: HTMLElement,
+     data: any
+   ): void {
+     if (data.anchorName) {
+       (invoker.style as any).anchorName = "";
+       (target.style as any).positionAnchor = "";
+       data.anchorName = null;
+     }
+     // Cleanup style element
+     if (data.styleElement) {
+       data.styleElement.remove();
+       data.styleElement = null;
+     }
+     // Cleanup class
+     if (data.className) {
+       target.classList.remove(data.className);
+       data.className = null;
+     }
+     // Cleanup manual positioning
+     (target as HTMLElement).style.position = "";
+     (target as HTMLElement).style.top = "";
+     (target as HTMLElement).style.left = "";
+     (target as HTMLElement).style.zIndex = "";
+   }
+
+  /**
+   * Position popover relative to invoker since top-layer popovers are centered by default
+   * Prefers positioning below (GitHub-style), then above if not enough space
+   */
+  private positionPopover(invoker: HTMLElement, target: HTMLElement): void {
+    const invokerRect = invoker.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let top: number;
+    let left: number;
+
+    // Position centered horizontally on the invoker
+    left = invokerRect.left + (invokerRect.width / 2) - (targetRect.width / 2);
+
+    // Try positioning below first
+    top = invokerRect.bottom - 4;
+
+    // Check if it fits below
+    if (top + targetRect.height > viewportHeight) {
+      // Try positioning above
+      top = invokerRect.top - targetRect.height + 4;
+      if (top < 0) {
+        // If above also doesn't fit, keep below and adjust
+        top = invokerRect.bottom + 8;
+      }
     }
+
+    // Ensure it doesn't go off-screen with final adjustments
+    const adjustedLeft = Math.max(8, Math.min(left, viewportWidth - targetRect.width - 8));
+    const adjustedTop = Math.max(8, Math.min(top, viewportHeight - targetRect.height - 8));
+
+    (target as HTMLElement).style.position = 'fixed';
+    (target as HTMLElement).style.top = `${adjustedTop}px`;
+    (target as HTMLElement).style.left = `${adjustedLeft}px`;
+    (target as HTMLElement).style.zIndex = '9999';
   }
+
+
 
   /**
    * Create popover toggle event listener

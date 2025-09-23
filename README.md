@@ -63,6 +63,30 @@ See Invokers in action with this copy-paste example:
 
 That's it! No event listeners, no DOM queries, no state management. The HTML describes the behavior, and Invokers makes it work.
 
+## 🎯 Comprehensive Demo
+
+For a deeper dive into Invokers' capabilities, check out our [comprehensive demo](examples/comprehensive-demo.html) that showcases:
+
+- **Advanced Event Handling** with `command-on` and dynamic interpolation
+- **Async Operations** with promises, error handling, and loading states
+- **Component Communication** through data binding and custom events
+- **Library Integration** with Chart.js and external APIs
+- **Advanced Templating** with loops, conditionals, and data injection
+- **Programmatic Triggering** using the JavaScript API
+- **Error Handling & Debugging** with detailed logging and recovery
+- **Command Queuing** for sequential execution
+
+The demo uses demo-specific commands that are separate from the core library. To use them in your own projects:
+
+```javascript
+import 'invokers'; // Core library
+import { registerDemoCommands } from 'invokers/demo-commands';
+
+registerDemoCommands(); // Only for demos/testing
+```
+
+Open `examples/comprehensive-demo.html` in your browser to explore all features interactively.
+
 ## 🤔 How Does This Compare?
 
 | Feature               | Vanilla JS | HTMX    | Alpine.js | **Invokers** |
@@ -204,21 +228,26 @@ For hover cards, tooltips, and contextual information that appears on user inter
 ### URL Manipulation Commands
 | Command                | Purpose                           | Example                                      |
 | ---------------------- | --------------------------------- | -------------------------------------------- |
-| `--url:params:get:key` | Get URL parameter                 | `command="--url:params:get:id"`              |
-| `--url:params:set:key:val` | Set URL parameter             | `command="--url:params:set:page:2"`          |
-| `--url:params:delete:key` | Delete URL parameter          | `command="--url:params:delete:id"`           |
-| `--url:params:clear`   | Clear all URL parameters         | `command="--url:params:clear"`               |
-| `--url:params:all`     | Get all URL parameters as JSON   | `command="--url:params:all"`                 |
-| `--url:hash:get`       | Get URL hash                     | `command="--url:hash:get"`                   |
-| `--url:hash:set:value` | Set URL hash                     | `command="--url:hash:set:section-1"`         |
-| `--url:hash:clear`     | Clear URL hash                   | `command="--url:hash:clear"`                 |
-| `--url:pathname:get`   | Get current pathname             | `command="--url:pathname:get"`               |
-| `--url:pathname:set:path` | Set pathname                  | `command="--url:pathname:set:/new-page"`     |
+| `--url:params-get:key` | Get URL parameter                 | `command="--url:params-get:id"`              |
+| `--url:params-set:key:val` | Set URL parameter             | `command="--url:params-set:page:2"`          |
+| `--url:params-set:key` | Set URL parameter from input      | `command="--url:params-set:query" commandfor="search-input"` |
+| `--url:params-delete:key` | Delete URL parameter          | `command="--url:params-delete:id"`           |
+| `--url:params-clear`   | Clear all URL parameters         | `command="--url:params-clear"`               |
+| `--url:params-all`     | Get all URL parameters as JSON   | `command="--url:params-all"`                 |
+| `--url:hash-get`       | Get URL hash                     | `command="--url:hash-get"`                   |
+| `--url:hash-set:value` | Set URL hash                     | `command="--url:hash-set:section-1"`         |
+| `--url:hash-set`       | Set URL hash from input          | `command="--url:hash-set" commandfor="hash-input"` |
+| `--url:hash-clear`     | Clear URL hash                   | `command="--url:hash-clear"`                 |
+| `--url:pathname-get`   | Get current pathname             | `command="--url:pathname-get"`               |
+| `--url:pathname-set:path` | Set pathname                  | `command="--url:pathname-set:/new-page"`     |
+| `--url:pathname-set`   | Set pathname from input          | `command="--url:pathname-set" commandfor="path-input"` |
 | `--url:reload`         | Reload the page                  | `command="--url:reload"`                     |
 | `--url:replace:url`    | Replace current URL              | `command="--url:replace:/new-page"`          |
 | `--url:navigate:url`   | Navigate to URL                  | `command="--url:navigate:/new-page"`         |
 | `--url:base`           | Get base URL (protocol+host)     | `command="--url:base"`                       |
 | `--url:full`           | Get full current URL             | `command="--url:full"`                       |
+
+**Input/Textarea Integration:** URL commands like `params-set`, `hash-set`, and `pathname-set` can get their values from `<input>` or `<textarea>` elements by using `commandfor` to target the input element. If no value is provided in the command string, the value will be taken from the target element's `value` property.
 
 ### History Commands
 | Command                | Purpose                           | Example                                      |
@@ -268,10 +297,22 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `--form:submit`        | Submit form                       | `command="--form:submit"`                    |
 | `--input:step:amount`  | Step number input                 | `command="--input:step:1"`                   |
 | `--dom:remove`         | Remove element from DOM           | `command="--dom:remove"`                     |
-| `--dom:replace`        | Replace with template content     | `command="--dom:replace" data-template-id="tpl"` |
-| `--dom:swap`           | Swap inner content with template  | `command="--dom:swap" data-template-id="tpl"`|
-| `--dom:append`         | Append template content           | `command="--dom:append" data-template-id="tpl"` |
-| `--dom:prepend`        | Prepend template content          | `command="--dom:prepend" data-template-id="tpl"` |
+| `--dom:replace[:inner|:outer]` | Replace with template content (inner/outer) | `command="--dom:replace:outer" data-template-id="tpl"` |
+| `--dom:swap[:inner|:outer]` | Swap content with template (inner/outer) | `command="--dom:swap:outer" data-template-id="tpl"`|
+| `--dom:append[:inner|:outer]` | Append template content (inner/outer) | `command="--dom:append:outer" data-template-id="tpl"` |
+| `--dom:prepend[:inner|:outer]` | Prepend template content (inner/outer) | `command="--dom:prepend:outer" data-template-id="tpl"` |
+| `--dom:wrap[:tag]`     | Wrap element with template/tag    | `command="--dom:wrap:div" data-wrapper-class="card"` |
+| `--dom:unwrap`         | Unwrap element from parent        | `command="--dom:unwrap"`                     |
+| `--dom:toggle-empty-class:class` | Toggle class based on children | `command="--dom:toggle-empty-class:empty"`   |
+| `--data:set:key:val`   | Set data attribute on element     | `command="--data:set:userId:123"`            |
+| `--data:copy:key`      | Copy data attribute between elements | `command="--data:copy:userId" data-copy-from="#src"` |
+| `--cookie:set:key:val` | Set browser cookie                | `command="--cookie:set:theme:dark"`          |
+| `--cookie:get:key`     | Get cookie value                  | `command="--cookie:get:theme"`               |
+| `--cookie:remove:key`  | Remove browser cookie             | `command="--cookie:remove:theme"`            |
+| `--command:trigger:event` | Trigger event on element       | `command="--command:trigger:click" commandfor="#btn"` |
+| `--command:delay:ms`   | Wait for milliseconds             | `command="--command:delay:2000"`             |
+| `--on:interval:ms`     | Execute command at intervals      | `command-on="load" command="--on:interval:5000" data-interval-command="--fetch:get"` |
+| `--bind:prop`          | Bind data between elements        | `command="--bind:value" data-bind-to="#output"` |
 | `--text:copy`          | Copy text between elements        | `command="--text:copy" data-copy-from="#source"` |
 | `--fetch:get`          | Fetch HTML and update element     | `command="--fetch:get" data-url="/api/data"` |
 | `--fetch:send`         | Send form data via fetch          | `command="--fetch:send"`                     |
@@ -396,6 +437,450 @@ Control command execution behavior with `data-state`:
 <!-- Completed, won't execute again -->
 <button command="--fetch:get" data-url="/api" data-state="completed">Load Data</button>
 ```
+
+## ⚡ Advanced Events (Opt-In)
+
+Invokers includes powerful advanced event features that transform it from a click-driven library into a fully reactive framework. These features are **opt-in** to keep the core library lightweight.
+
+### Enabling Advanced Events
+
+To use advanced event features, import and call `enableAdvancedEvents()` once in your application:
+
+```javascript
+// In your main application script (e.g., app.js)
+import 'invokers'; // Load the core library first
+import { enableAdvancedEvents } from 'invokers/advanced';
+
+// Call this function once to activate all new event features
+enableAdvancedEvents();
+```
+
+### New Attributes: `command-on` and `data-on-event`
+
+Once enabled, you gain access to two new declarative attributes for triggering commands from any DOM event.
+
+#### `command-on`: Trigger Commands from Any Event
+
+Allows any element to execute a command in response to *any* DOM event, not just button clicks.
+
+```html
+<!-- Self-submitting form (no submit button needed) -->
+<form id="contact-form"
+      command-on="submit"
+      command="--fetch:send"
+      commandfor="contact-form"
+      data-response-target="#result">
+  <input name="email" type="email">
+</form>
+
+<!-- Keyboard shortcuts -->
+<body command-on="keydown.window.ctrl.k.prevent"
+      command="show-modal"
+      commandfor="search-dialog">
+  ...
+</body>
+```
+
+#### `data-on-event`: Listen for Custom Events
+
+Allows elements to listen for custom events dispatched from anywhere on the page.
+
+```html
+<!-- Button emits a custom event -->
+<button command="--emit:notify:{\"message\":\"Profile Saved!\",\"type\":\"success\"}">
+  Save Profile
+</button>
+
+<!-- Separate toast listens for it -->
+<div id="toast-notification"
+     data-on-event="notify"
+     command="--show">
+  Notification will appear here!
+</div>
+```
+
+### Dynamic Data with `{{...}}` Syntax
+
+Inject dynamic data from events directly into command attributes using `{{...}}` placeholders. Supports full JavaScript-like expressions for complex data manipulation.
+
+```html
+<!-- Live search input -->
+<input type="search"
+       name="query"
+       placeholder="Search articles..."
+       command-on="input"
+       command="--fetch:get"
+       commandfor="#search-results"
+       data-url="/api/search?q={{ this.value }}">
+
+<div id="search-results"></div>
+```
+
+#### Expression Syntax
+
+The `{{...}}` syntax supports a safe subset of JavaScript expressions:
+
+**Arithmetic & Logic:**
+```html
+<!-- Calculate values -->
+<button command="--media:seek:{{ this.currentTime + 30 }}">Skip 30s</button>
+
+<!-- Conditional logic -->
+<div command-on="click"
+     command="{{ this.classList.contains('active') ? '--hide' : '--show' }}"
+     commandfor="panel">
+  Toggle Panel
+</div>
+```
+
+**Property Access:**
+```html
+<!-- Deep property access -->
+<span>{{ event.detail.user.profile.name }}</span>
+
+<!-- Array access -->
+<img src="{{ this.images[this.currentIndex] }}"
+     command-on="click"
+     command="--set:{{ this.currentIndex + 1 }}"
+     commandfor="currentIndex">
+```
+
+**String Operations:**
+```html
+<!-- String concatenation -->
+<data-url="/api/search?q={{ this.value + '&limit=10' }}"></data-url>
+
+<!-- String length checks -->
+<input command-on="input"
+       command="{{ this.value.length > 50 ? '--show' : '--hide' }}"
+       commandfor="warning-message">
+```
+
+**Complex Expressions:**
+```html
+<!-- Multi-step calculations -->
+<progress value="{{ (this.completed / this.total) * 100 }}"></progress>
+
+<!-- Nested conditionals -->
+<div class="{{ this.status === 'error' ? 'text-red' : this.status === 'success' ? 'text-green' : 'text-gray' }}">
+  {{ this.message }}
+</div>
+```
+
+#### Available Context Variables
+
+- `{{ this }}`: The element that triggered the event
+- `{{ event }}`: The raw DOM event object
+- `{{ detail }}`: Data from CustomEvent.detail
+- `{{ target }}`: The commandfor target element
+
+#### Expression Security & Limitations
+
+**✅ Safe Operations:**
+- Arithmetic: `+`, `-`, `*`, `/`, `%`
+- Comparisons: `===`, `!==`, `==`, `!=`, `<`, `>`, `<=`, `>=`
+- Logic: `&&`, `||`, `!`
+- Property access: `obj.prop`, `obj['key']`, `arr[0]`
+- Ternary conditionals: `condition ? true : false`
+- Parentheses for grouping
+
+**❌ Not Supported (Security):**
+- Function calls: `obj.method()` (methods are accessible but not callable)
+- Object/array creation: `{}`, `[]`, `new`
+- Global access: `window`, `document`, `console`
+- Loops, assignments, or any imperative code
+- Template literals or other ES6+ features
+
+**Performance & Caching:**
+Expressions are automatically cached for optimal performance. Parsed expressions are stored in an LRU cache, making repeated evaluations of the same expression extremely fast.
+
+**Error Handling:**
+Invalid expressions return `undefined` and log helpful error messages to the console. Your UI gracefully degrades when expressions fail.
+
+```html
+<!-- Safe fallback: if expression fails, attribute uses empty value -->
+<button command="--set:{{ nonexistent.property }}">Click me</button>
+```
+
+### Event Modifiers
+
+Enhance event handling with modifiers:
+
+| Modifier | Description | Example |
+| :--- | :--- | :--- |
+| `.prevent` | Calls `event.preventDefault()` | `command-on="submit.prevent"` |
+| `.stop` | Calls `event.stopPropagation()` | `command-on="click.stop"` |
+| `.once` | Listener removes itself after one trigger | `command-on="mouseenter.once"` |
+| `.window` | Attaches to global window object | `command-on="keydown.window.ctrl.s"` |
+| `.debounce` | Waits for pause in events (250ms default) | `command-on="input.debounce"` |
+| `.debounce.<ms>` | Custom debounce delay | `command-on="input.debounce.300"` |
+| `.{key}` | Only triggers on specific key | `command-on="keydown.enter.prevent"` |
+
+### Command Chaining with Expressions
+
+Combine expressions with command chaining for dynamic, data-driven workflows:
+
+```html
+<!-- Dynamic command sequences based on form state -->
+<form command-on="submit.prevent"
+      command="{{ this.elements.namedItem('agree').checked ? '--fetch:send' : '--show' }}"
+      commandfor="{{ this.elements.namedItem('agree').checked ? 'submit-success' : 'agree-warning' }}"
+      data-and-then="{{ this.elements.namedItem('agree').checked ? '--reset' : '' }}"
+      data-and-then-commandfor="{{ this.elements.namedItem('agree').checked ? 'contact-form' : '' }}">
+
+  <input name="agree" type="checkbox" required>
+  <label>Agree to terms</label>
+
+  <button type="submit">Submit</button>
+</form>
+
+<!-- Multi-step wizard with conditional navigation -->
+<div id="wizard-step-1">
+  <select name="user-type">
+    <option value="individual">Individual</option>
+    <option value="business">Business</option>
+  </select>
+
+  <button command-on="click"
+          command="--hide"
+          commandfor="wizard-step-1"
+          data-and-then="--show"
+          data-and-then-commandfor="wizard-step-{{ event.target.form.elements.namedItem('user-type').value === 'business' ? '2b' : '2a' }}">
+    Next
+  </button>
+</div>
+```
+
+### Advanced Event Examples
+
+**Real-time Form Validation:**
+```html
+<form>
+  <input name="email"
+         type="email"
+         command-on="input"
+         command="{{ this.validity.valid ? '--hide' : '--show' }}"
+         commandfor="email-error">
+
+  <div id="email-error" hidden>Invalid email address</div>
+</form>
+```
+
+**Dynamic API Calls:**
+```html
+<select name="category"
+        command-on="change"
+        command="--fetch:get"
+        commandfor="products-list"
+        data-url="/api/products?category={{ this.value }}&limit={{ this.dataset.limit || 10 }}">
+  <option value="electronics">Electronics</option>
+  <option value="books">Books</option>
+</select>
+```
+
+**Keyboard Shortcuts with Context:**
+```html
+<body command-on="keydown.window.ctrl.s.prevent"
+      command="{{ document.activeElement?.tagName === 'INPUT' ? '--emit:save-form' : '--emit:save-document' }}">
+```
+
+### ⚠️ Important Considerations & Gotchas
+
+**Expression Evaluation Context:**
+- Expressions run in a sandboxed environment with no access to global objects
+- `this` refers to the element that triggered the event, not your component's `this`
+- Property access follows JavaScript rules: `obj.undefinedProp` returns `undefined`
+- Array bounds are not checked: `arr[999]` returns `undefined`
+
+**Performance Considerations:**
+- Expressions are evaluated on every event trigger
+- Complex expressions with deep property access may impact performance
+- Consider debouncing rapid events like `input` or `mousemove`
+
+**Error Handling:**
+- Invalid expressions return `undefined` and log to console
+- Your UI should gracefully handle undefined values
+- Test expressions thoroughly in development
+
+**Security:**
+- Only safe property access and arithmetic operations are allowed
+- No function calls, object creation, or global access
+- Expressions cannot modify data, only read it
+
+**Browser Support:**
+- Advanced events require a modern browser with Proxy support
+- Falls back gracefully in unsupported browsers (expressions become literal text)
+
+**Debugging:**
+- Check browser console for expression errors
+- Use browser dev tools to inspect the context variables
+- Test expressions in isolation before using in production
+
+## 🎯 Advanced `commandfor` Selectors
+
+Invokers supports powerful contextual selectors that go beyond simple IDs, enabling complex DOM targeting patterns without JavaScript.
+
+### Contextual Selectors
+
+| Selector | Description | Example |
+| -------- | ----------- | ------- |
+| `@closest(selector)` | Target the closest ancestor matching the selector | `commandfor="@closest(.card)"` |
+| `@child(selector)` | Target direct children matching the selector | `commandfor="@child(.item)"` |
+| `@children(selector)` | Target all children matching the selector | `commandfor="@children(.item)"` |
+
+### Global CSS Selectors
+
+You can also use any standard CSS selector directly:
+
+```html
+<!-- Target all elements with a class -->
+<button command="--hide" commandfor=".modal">Close All Modals</button>
+
+<!-- Target elements within a specific container -->
+<button command="--toggle" commandfor="#sidebar .menu-item">Toggle Menu Items</button>
+
+<!-- Complex selectors work too -->
+<button command="--class:add:active" commandfor="article[data-category='featured']">
+  Mark Featured Articles
+</button>
+```
+
+### Selector Examples
+
+**Accordion with Contextual Targeting:**
+```html
+<div class="accordion">
+  <div class="accordion-item">
+    <button command="--toggle" commandfor="@closest(.accordion-item .content)">
+      Toggle Section
+    </button>
+    <div class="content" hidden>Content here...</div>
+  </div>
+</div>
+```
+
+**List Management:**
+```html
+<ul class="todo-list">
+  <li class="todo-item">
+    <input type="checkbox" command="--class:toggle:completed" commandfor="@closest(.todo-item)">
+    <span>Task description</span>
+    <button command="--dom:remove" commandfor="@closest(.todo-item)">Delete</button>
+  </li>
+</ul>
+```
+
+**Tab Interface:**
+```html
+<div class="tabs">
+  <button command="--class:add:active" commandfor="@closest(.tab)" data-and-then="--class:remove:active" data-and-then-commandfor="@closest(.tabs .tab)">
+    Tab 1
+  </button>
+  <div class="tab-content">Tab 1 content</div>
+</div>
+```
+
+## 🎨 Declarative Templating
+
+Create dynamic, data-driven interfaces without JavaScript using declarative templates and data injection.
+
+### Template Data Injection
+
+Use `data-with-json` to inject JSON data into templates, and `data-tpl-*` attributes to customize template rendering.
+
+```html
+<!-- Template with data injection -->
+<template id="user-card-template">
+  <div class="user-card">
+    <h3 data-tpl-text="name"></h3>
+    <p data-tpl-text="role"></p>
+    <img data-tpl-src="avatar" data-tpl-alt="name">
+    <button data-tpl-command="followCommand" data-tpl-commandfor="followTarget">
+      Follow
+    </button>
+  </div>
+</template>
+
+<!-- Button that renders the template -->
+<button type="button"
+        command="--dom:replace"
+        commandfor="user-container"
+        data-template-id="user-card-template"
+        data-with-json='{"name":"Alice","role":"Developer","avatar":"/alice.jpg","followCommand":"--emit:follow:alice","followTarget":"follow-stats"}'>
+  Show User Card
+</button>
+
+<div id="user-container"></div>
+```
+
+### Unique ID Generation
+
+Use `{{__uid}}` placeholders for generating unique IDs across template instances:
+
+```html
+<template id="modal-template">
+  <div class="modal" id="modal-{{__uid}}">
+    <div class="modal-content">
+      <h2 data-tpl-text="title"></h2>
+      <p data-tpl-text="message"></p>
+      <button command="--hide" commandfor="#modal-{{__uid}}">Close</button>
+    </div>
+  </div>
+</template>
+```
+
+### Selector Rewriting
+
+Templates automatically rewrite `@closest` selectors to use generated unique IDs, enabling proper scoping:
+
+```html
+<template id="item-template">
+  <div class="item" id="item-{{__uid}}">
+    <span data-tpl-text="name"></span>
+    <button command="--class:toggle:active" commandfor="@closest(.item)">
+      Toggle
+    </button>
+  </div>
+</template>
+
+<!-- The @closest selector becomes #item-123 when rendered -->
+```
+
+### Complete Example: Todo List
+
+```html
+<!-- Template for todo items -->
+<template id="todo-item-template">
+  <div class="todo-item" id="todo-{{__uid}}">
+    <input type="checkbox"
+           command="--class:toggle:completed"
+           commandfor="@closest(.todo-item)">
+    <span data-tpl-text="text"></span>
+    <button command="--dom:remove" commandfor="@closest(.todo-item)">
+      Delete
+    </button>
+  </div>
+</template>
+
+<!-- Form to add new todos -->
+<form command-on="submit.prevent"
+      command="--dom:append"
+      commandfor="todo-list"
+      data-template-id="todo-item-template"
+      data-with-json='{"text": ""}'>
+  <input name="todo-text" placeholder="Add a todo..." required>
+  <button type="submit">Add</button>
+</form>
+
+<!-- Container for todo items -->
+<ul id="todo-list" class="todo-list"></ul>
+```
+
+This creates a fully functional todo list where:
+- New items are added via the form
+- Checkboxes toggle completion state
+- Delete buttons remove items
+- Each item has a unique ID for proper scoping
 
 ## 🚀 Installation
 
@@ -1266,9 +1751,19 @@ Dynamically update page content with template-based operations.
   Replace Content
 </button>
 
-<!-- Swap inner content -->
+<!-- Swap inner content (default behavior) -->
 <button command="--dom:swap" commandfor="container" data-template-id="new-item-template">
   Swap Content
+</button>
+
+<!-- Swap inner content explicitly -->
+<button command="--dom:swap:inner" commandfor="container" data-template-id="new-item-template">
+  Swap Inner Content
+</button>
+
+<!-- Swap entire element (outer replacement) -->
+<button command="--dom:swap:outer" commandfor="container" data-template-id="new-item-template">
+  Replace Element
 </button>
 
 <!-- Add content -->

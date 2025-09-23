@@ -1,714 +1,713 @@
+### **The Basics of the New Advanced Event API**
 
-# Invokers Command Chaining & Lifecycle Implementation Spec
+The new event handling system is a powerful, **opt-in** extension to the core Invokers library. Its purpose is to evolve Invokers from a `click`-driven library into a fully reactive one, allowing you to build highly dynamic interfaces without writing custom JavaScript.
 
-## Overview
+The entire system is designed to be tree-shakeable. If you don't enable it, your users won't download the extra code.
 
-This specification defines extensions to the Invokers library to support command chaining, lifecycle management, and stateful command sequences. These features address the current limitation where only simple `data-then-command` chaining is possible.
+#### **1. Step One: Enabling the Advanced API**
 
-## Core Concepts
+By default, these new features are turned off to keep the core library small. To activate them, you must import and call a special function once in your application's main script file.
 
-### 1. Command Lifecycle States
-Commands can have execution states that determine their behavior:
-- `active` - Command is ready to execute (default)
-- `completed` - Command has executed and should not run again
-- `disabled` - Command is temporarily disabled
-- `once` - Command will self-destruct after first execution
+```javascript
+// In your main application script (e.g., app.js)
+import 'invokers'; // Load the core library first
+import { enableAdvancedEvents } from 'invokers/advanced';
 
-### 2. Command Chaining Methods
-Three primary approaches for chaining commands:
+// Call this function once to activate all new event features
+enableAdvancedEvents();
+```
 
-#### A. Enhanced Attribute-Based Chaining
-#### B. Declarative `<and-then>` Elements  
-#### C. Template-Based Command Pipelines
+Calling this function "wakes up" the advanced event listeners and the dynamic data capabilities across your entire application.
 
----
+#### **2. The New Attributes: `command-on` and `data-on-event`**
 
-## Method A: Enhanced Attribute-Based Chaining
+Once enabled, you gain access to two new declarative attributes.
 
-### Syntax Extensions
+##### **A) `command-on`: Triggering Commands from Any DOM Event**
+
+This is the most direct upgrade. It allows any element to execute a command in response to *any* DOM event, not just a button `click`.
+
+The syntax is `command-on="<event-name>.<modifier>`:
+
+**Example: A Self-Submitting Form (No Button Needed)**
+Instead of a separate button, the form itself handles submission.
 
 ```html
-<!-- Multiple commands with conditional execution -->
-<button command="--fetch:get" 
-        commandfor="content"
-        data-after-success="--class:add:loaded,--dom:remove:spinner"
-        data-after-error="--text:set:Error loading content"
-        data-after-complete="--attr:set:aria-busy:false">
-  Load Content
-</button>
-
-<!-- State-aware chaining -->
-<button command="--show" 
-        commandfor="step-2"
-        data-then-command="--class:add:completed"
-        data-then-target="step-1"
-        data-then-state="once">
-  Next Step
-</button>
-```
-
-### New Attributes
-
-| Attribute | Purpose | Values |
-|-----------|---------|---------|
-| `data-after-success` | Commands to run on successful completion | Comma-separated command list |
-| `data-after-error` | Commands to run on error/failure | Comma-separated command list |
-| `data-after-complete` | Commands to run after any completion | Comma-separated command list |
-| `data-then-target` | Override target for chained command | Element ID |
-| `data-then-state` | Execution state for chained command | `once`, `disabled`, `active` |
-
-### Implementation in `CommandContext`
-
-```typescript
-interface CommandContext {
-  // ... existing properties
+<!-- The form listens for the "submit" event and triggers a fetch command -->
+<form id="contact-form"
+      command-on="submit"
+      command="--fetch:send"
+      commandfor="contact-form"
+      data-response-target="#result">
   
-  /**
-   * Execute a follow-up command after the current command completes
-   */
-  executeAfter: (command: string, target?: string, state?: CommandState) => void;
-  
-  /**
-   * Execute different commands based on success/error state
-   */
-  executeConditional: (options: {
-    onSuccess?: string[];
-    onError?: string[];
-    onComplete?: string[];
-  }) => void;
-}
+  <input name="email" type="email">
+  <button type="submit">Subscribe</button>
+</form>
 
-type CommandState = 'active' | 'completed' | 'disabled' | 'once';
+<div id="result"></div>
 ```
+Invokers will automatically call `event.preventDefault()` on form submissions to prevent a page reload.
 
----
-
-## Method B: Declarative `<and-then>` Elements
-
-### Basic Syntax
+**Example: Keyboard Shortcuts**
+You can add powerful modifiers to the event name.
 
 ```html
-<button command="--fetch:get" commandfor="content">
-  Load Data
-  <and-then command="--class:add:loaded" commandfor="content" data-state="active">
-    <and-then command="--dom:remove" commandfor="loading-spinner" data-once="true">
-    </and-then>
-  </and-then>
-</button>
+<!-- Show a search modal when the user presses Ctrl+K anywhere on the page -->
+<body command-on="keydown.window.ctrl.k.prevent"
+      command="show-modal"
+      commandfor="search-dialog">
+  ...
+</body>
 ```
 
-### `<and-then>` Element Specification
+##### **B) `data-on-event`: Listening for Custom Events**
 
-#### Attributes
-- `command` - The command to execute (required)
-- `commandfor` - Target element ID (defaults to parent's target)
-- `data-state` - Current execution state (`active`, `completed`, `disabled`, `once`)
-- `data-once` - Boolean, removes element after execution
-- `data-condition` - Conditional execution (`success`, `error`, `always`)
-- `data-delay` - Delay in milliseconds before execution
+This attribute decouples your components. It allows an element to listen for custom events dispatched from anywhere on the page and execute a command in response.
 
-#### Behavior
-1. `<and-then>` elements are inert until their parent command executes
-2. Tree traversal searches for the closest `<and-then>[data-state="active"]` going up the DOM
-3. After execution, state can change or element can self-destruct
-4. Nested `<and-then>` elements create sequential chains
-
-### Tree Traversal Algorithm
-
-```typescript
-function executeAndThen(invokerElement: HTMLButtonElement, context: CommandExecutionResult) {
-  let current: Element | null = invokerElement;
-  
-  while (current) {
-    const andThen = current.querySelector(':scope > and-then[data-state="active"]');
-    if (andThen) {
-      const condition = andThen.getAttribute('data-condition') || 'always';
-      
-      if (shouldExecuteCondition(condition, context)) {
-        executeAndThenCommand(andThen as HTMLElement, context);
-        
-        // Handle state transitions
-        if (andThen.hasAttribute('data-once')) {
-          andThen.remove();
-        } else {
-          andThen.setAttribute('data-state', 'completed');
-        }
-        
-        return; // Stop after first match
-      }
-    }
-    current = current.parentElement;
-  }
-}
-
-function shouldExecuteCondition(condition: string, context: CommandExecutionResult): boolean {
-  switch (condition) {
-    case 'success': return context.success === true;
-    case 'error': return context.success === false;
-    case 'always': 
-    default: return true;
-  }
-}
-```
-
-### Complex Example
+**Example: A Notification System**
+A save button can emit a `notify` event, and a completely separate `toast` element can listen for it.
 
 ```html
-<div class="multi-step-process">
-  <button command="--fetch:post" commandfor="api-endpoint" data-url="/submit">
-    Submit Form
-    
-    <!-- Success chain -->
-    <and-then command="--class:add:success" commandfor="form-container" data-condition="success">
-      <and-then command="--text:set" commandfor="status-message" 
-                data-text-value="Submitted successfully!" data-delay="500">
-        <and-then command="--show" commandfor="success-panel" data-once="true">
-        </and-then>
-      </and-then>
-    </and-then>
-    
-    <!-- Error chain -->
-    <and-then command="--class:add:error" commandfor="form-container" data-condition="error">
-      <and-then command="--text:set" commandfor="error-message" 
-                data-text-value="Submission failed. Please try again.">
-      </and-then>
-    </and-then>
-  </button>
+<!-- The button emits a custom event with data -->
+<button command="--emit:notify:{\"message\":\"Profile Saved!\",\"type\":\"success\"}">
+  Save Profile
+</button>
+
+<!-- A separate toast element, anywhere on the page, listens for it -->
+<div id="toast-notification"
+     data-on-event="notify"
+     command="--show">
+  <!-- We'll see how to use the message data in the next step -->
+  Notification will appear here!
 </div>
 ```
 
----
+#### **3. The Superpower: Dynamic Data with `{{...}}`**
 
-## Method C: Template-Based Command Pipelines
+This is what makes the new event system truly powerful. You can inject dynamic data from the event directly into your command attributes using `{{...}}` syntax.
 
-### Syntax
+When an event triggers a command, you have access to a context object:
 
-```html
-<button command="--pipeline:execute" data-pipeline="user-registration">
-  Register User
-</button>
+*   `{{ this }}`: Refers to the element that the trigger is on. E.g., `{{ this.value }}`, `{{ this.dataset.id }}`.
+*   `{{ event }}`: The raw DOM event. E.g., `{{ event.key }}`, `{{ event.clientX }}`.
+*   `{{ detail }}`: The `detail` payload from a `CustomEvent`. E.g., `{{ detail.message }}`.
 
-<template id="user-registration" data-pipeline="true">
-  <pipeline-step command="--form:validate" target="registration-form" />
-  <pipeline-step command="--fetch:post" target="api-endpoint" data-url="/register" 
-                  condition="success" />
-  <pipeline-step command="--class:add:registered" target="user-profile" 
-                  condition="success" once="true" />
-  <pipeline-step command="--text:set" target="error-display" 
-                  data-text-value="Registration failed" condition="error" />
-</template>
-```
+**Putting It All Together: A Live Search Example**
 
-### Pipeline Execution Engine
-
-```typescript
-interface PipelineStep {
-  command: string;
-  target: string;
-  condition?: 'success' | 'error' | 'always';
-  once?: boolean;
-  delay?: number;
-}
-
-class PipelineManager {
-  async executePipeline(pipelineId: string, context: CommandContext): Promise<void> {
-    const template = document.getElementById(pipelineId) as HTMLTemplateElement;
-    if (!template?.hasAttribute('data-pipeline')) return;
-    
-    const steps = this.parsePipelineSteps(template);
-    let previousResult = { success: true };
-    
-    for (const step of steps) {
-      if (this.shouldExecuteStep(step, previousResult)) {
-        if (step.delay) {
-          await new Promise(resolve => setTimeout(resolve, step.delay));
-        }
-        
-        previousResult = await this.executeStep(step, context);
-        
-        if (step.once) {
-          this.removeStepFromTemplate(template, step);
-        }
-      }
-    }
-  }
-}
-```
-
----
-
-## Integration with Existing Architecture
-
-### Extending `InvokerManager`
-
-```typescript
-export class InvokerManager {
-  private pipelineManager = new PipelineManager();
-  private andThenManager = new AndThenManager();
-  
-  private createContext(event: CommandEvent, fullCommand: string, params: readonly string[]): CommandContext {
-    // ... existing implementation
-    
-    const executeAfter = (command: string, target?: string, state: CommandState = 'active') => {
-      this.scheduleCommand(command, target || targetElement.id, state, event);
-    };
-    
-    const executeConditional = (options: ConditionalCommands) => {
-      this.conditionalExecutor.schedule(options, event);
-    };
-    
-    return {
-      // ... existing properties
-      executeAfter,
-      executeConditional
-    };
-  }
-  
-  private async executeCustomCommand(commandStr: string, event: CommandEvent): Promise<CommandExecutionResult> {
-    // ... existing implementation
-    
-    const result = await this.executeCommand(callback, context);
-    
-    // Process and-then elements
-    await this.andThenManager.processAndThen(event.source as HTMLButtonElement, result);
-    
-    // Process attribute-based chaining
-    await this.processAttributeChaining(event.source as HTMLButtonElement, result);
-    
-    return result;
-  }
-}
-```
-
-### New Command Registration
-
-```typescript
-// Pipeline command
-window.Invoker.register('--pipeline', async ({ params, invoker }) => {
-  const [action, pipelineId] = params;
-  if (action === 'execute' && pipelineId) {
-    await pipelineManager.executePipeline(pipelineId, context);
-  }
-});
-```
-
----
-
-## Backward Compatibility
-
-All existing functionality remains unchanged:
-- Current `data-then-command` continues to work
-- Existing command syntax is preserved
-- No breaking changes to the API
-
-The new features are additive and opt-in.
-
----
-
-## Use Cases & Examples
-
-### 1. Multi-Step Form Wizard
+This example combines `command-on` and dynamic data to create a live search input that hits a server endpoint as the user types, all with zero custom JavaScript.
 
 ```html
-<div class="wizard">
-  <button command="--show" commandfor="step-2">
-    Continue to Step 2
-    <and-then command="--class:add:completed" commandfor="step-1" data-once="true">
-      <and-then command="--attr:set" commandfor="progress-bar" 
-                data-attr-name="value" data-attr-value="2">
-      </and-then>
-    </and-then>
-  </button>
+<!-- The search input -->
+<input type="search"
+       name="query"
+       placeholder="Search articles..."
+       command-on="input"
+       command="--fetch:get"
+       commandfor="#search-results"
+       data-url="/api/search?q={{ this.value }}">
+
+<!-- The container where results will be rendered -->
+<div id="search-results"></div>
+```
+
+**How it works:**
+1.  `command-on="input"` tells Invokers to run a command every time the user types in the input field.
+2.  The `--fetch:get` command is executed.
+3.  The `data-url` attribute uses `{{ this.value }}`. Invokers replaces this placeholder with the current value of the input field *at the moment the event fires*.
+4.  The request is sent to a URL like `/api/search?q=declarative`, and the HTML response is placed into the `#search-results` div.
+
+This new API layer transforms Invokers from a tool for pre-defined interactions into a dynamic and reactive framework for building modern web applications.
+
+### **Advanced Event API: In-Depth Details**
+
+This API is an opt-in layer. It is **inactive by default** and must be enabled by calling `enableAdvancedEvents()` from the `invokers/advanced` module. Once enabled, the following features become available.
+
+#### **1. The `command-on` Attribute**
+
+This attribute allows any element to become an invoker in response to a DOM event.
+
+**Syntax:** `command-on="<event-name>[.<modifier1>.<modifier2>...]"`
+
+*   **`<event-name>`:** Any standard DOM event name (e.g., `input`, `submit`, `change`, `mouseenter`, `keydown`).
+*   **`<modifier>`:** Optional flags that alter the listener's behavior.
+
+**Required Companion Attributes:**
+An element with `command-on` **must** also have `command` and `commandfor` attributes to specify what action to perform and on which target.
+
+```html
+<input type="text"
+       command-on="input"
+       command="--text:copy"
+       commandfor="#char-count"
+       data-copy-from="#source-for-length"> <!-- This pattern will be improved by dynamic data -->
+```
+
+**Available Modifiers:**
+
+| Modifier | Description | Example |
+| :--- | :--- | :--- |
+| `.prevent` | Calls `event.preventDefault()`. Crucial for `submit` and `keydown` events. | `command-on="submit.prevent"` |
+| `.stop` | Calls `event.stopPropagation()`. Prevents the event from bubbling up. | `command-on="click.stop"` |
+| `.once` | The event listener will be automatically removed after it is triggered once. | `command-on="mouseenter.once"` |
+| `.window` | Attaches the listener to the global `window` object instead of the element. | `command-on="keydown.window.ctrl.s"` |
+| `.document`| Attaches the listener to the global `document` object. | `command-on="scroll.document"` |
+| `.debounce`| Waits for a pause in event firing before executing. Default is 250ms. | `command-on="input.debounce"` |
+| `.debounce.<ms>`| Debounces with a specific millisecond delay. | `command-on="input.debounce.300"` |
+| `.throttle.<ms>`| Executes the command at most once per specified interval. | `command-on="scroll.throttle.100"` |
+| `.{key}` | For `keydown` or `keyup`, only triggers if the specified key was pressed. | `command-on="keydown.enter.prevent"` |
+
+**Key-Specific Modifiers:**
+You can chain key modifiers for shortcuts: `keydown.ctrl.alt.delete`. Common aliases are supported: `enter`, `escape`, `arrow-up`, `tab`, etc.
+
+#### **2. The `data-on-event` Attribute**
+
+This attribute allows an element to listen for custom events dispatched from anywhere. It's the key to creating decoupled, component-like behavior.
+
+**Syntax:** `data-on-event="<custom-event-name>"`
+
+**Required Companion Attributes:**
+Like `command-on`, it requires `command` and `commandfor`.
+
+```html
+<!-- Somewhere in the app, a button dispatches an event -->
+<button command="--emit:cart:add:{\"id\":123,\"price\":99}">Add to Cart</button>
+
+<!-- A totally separate component listens for it -->
+<div id="cart-total"
+     data-on-event="cart:add"
+     command="--cart:update:{{detail.price}}"
+     commandfor="#cart-total">
+  <!-- Custom command would handle the logic -->
 </div>
 ```
 
-### 2. Progressive Data Loading
+**Key Difference from `command-on`:**
+*   `command-on` is for listening to *native DOM events* on the element itself (or `window`/`document`).
+*   `data-on-event` is for listening to *custom events* that bubble up to the element. By default, it listens on `document`, making it a global listener. Modifiers like `.self` could be added to restrict listening to the element itself.
+
+#### **3. Dynamic Data Interpolation: `{{...}}`**
+
+This is the core of the reactive system. When an event is handled by `command-on` or `data-on-event`, Invokers populates a context object that can be accessed inside any command attribute on that element.
+
+**The Context Object (`{{...}}`)**
+
+| Path | Type | Description | Example Usage |
+| :--- | :--- | :--- | :--- |
+| `{{ this }}` | `HTMLElement` | The element the listener is attached to. | `{{ this.value }}`, `{{ this.id }}`, `{{ this.dataset.userId }}` |
+| `{{ event }}` | `Event` | The raw DOM event that triggered the command. | `{{ event.key }}`, `{{ event.clientX }}`, `{{ event.target.value }}` |
+| `{{ detail }}` | `any` | The `detail` property of a `CustomEvent`. | `{{ detail.id }}`, `{{ detail.message }}` |
+| `{{ target }}`| `HTMLElement` | The element targeted by the `commandfor` attribute. | `{{ target.textContent }}` |
+
+**How It Works:**
+Before a command is executed, Invokers scans all `data-*` attributes and the `command` attribute on the invoker element. It replaces any `{{...}}` placeholders with the corresponding values from the context.
+
+**Example: Real-time Form Validation**
+This example shows an input field that, upon losing focus (`blur`), runs a (hypothetical) custom command to validate its own content.
 
 ```html
-<button command="--fetch:get" 
-        commandfor="content"
-        data-after-success="--class:remove:loading,--class:add:loaded"
-        data-after-error="--text:set:Failed to load data">
-  Load More Content
-</button>
-```
+<!-- Assuming a custom '--validate' command has been registered -->
+<input type="email" name="email"
+       command-on="blur"
+       command="--validate:email:{{this.value}}"
+       commandfor="#email-error-message">
 
-### 3. One-Time Tutorial Steps
+<div id="email-error-message"></div>
+```
+*   `command-on="blur"`: The trigger.
+*   The `command` attribute is dynamically constructed *at the moment of the blur event*. If the user typed "test@a.com", the command executed would be `--validate:email:test@a.com`.
+
+**Example: Data from a Custom Event**
+Using the shopping cart example from before, we can now display the data.
 
 ```html
-<button command="--show" commandfor="tutorial-step-1">
-  Start Tutorial
-  <and-then command="--class:add:tutorial-active" commandfor="app" data-once="true">
-    <and-then command="--dom:remove" commandfor="self" data-once="true">
-    </and-then>
-  </and-then>
-</button>
+<!-- The button emits an event -->
+<button command="--emit:notify:{\"message\":\"Item Added!\"}">Add Item</button>
+
+<!-- The listener uses the event's detail -->
+<div id="toast"
+     data-on-event="notify"
+     command="--text:set:{{detail.message}}"
+     data-and-then="--show"
+     commandfor="toast">
+</div>
 ```
+1.  User clicks the button.
+2.  A `CustomEvent` named `notify` is dispatched with `detail: { message: "Item Added!" }`.
+3.  The `#toast` div's listener catches this event.
+4.  The `command` attribute is interpolated to `"--text:set:Item Added!"`.
+5.  This command is executed on `#toast`, setting its text.
+6.  The `data-and-then` command then runs, making the toast visible.
 
-### 4. Complex API Workflow
+**Security:**
+The interpolation mechanism is **safe**. It does not use `eval()`. It performs a simple property lookup on the context object. An expression like `{{window.alert('xss')}}` will not execute; it will resolve to an empty string because `window` is not a property of the provided context.
 
-```html
-<button command="--pipeline:execute" data-pipeline="user-onboarding">
-  Complete Registration
-</button>
+#### **4. Execution Flow**
 
-<template id="user-onboarding" data-pipeline="true">
-  <pipeline-step command="--form:validate" target="registration-form" />
-  <pipeline-step command="--fetch:post" target="user-endpoint" condition="success" />
-  <pipeline-step command="--fetch:post" target="profile-endpoint" condition="success" />
-  <pipeline-step command="--show" target="welcome-screen" condition="success" once="true" />
-  <pipeline-step command="--text:set" target="error-display" condition="error" />
-</template>
-```
+Understanding the order of operations is key:
 
----
+1.  An event (e.g., `input`) fires on an element with `command-on`.
+2.  The `EventManager`'s listener catches it and handles any modifiers (`.prevent`, `.debounce`, etc.).
+3.  The manager constructs the dynamic `interpolationContext` (`this`, `event`, `detail`).
+4.  It reads the `command` attribute string from the element (e.g., `"--fetch:get?q={{this.value}}"`).
+5.  It runs the **interpolation** step, creating the final command string (e.g., `"--fetch:get?q=my-query"`).
+6.  It dispatches this final, interpolated command string as part of a `CommandEvent` to the specified `commandfor` target.
+7.  The core `InvokerManager` receives this `CommandEvent` and executes the command as it always has.
 
-## Implementation Priority
+This flow ensures that the advanced, optional event layer is a clean "pre-processor" that feeds into the stable, existing command execution pipeline.
 
-1. **Phase 1**: Enhanced attribute-based chaining (`data-after-success`, etc.)
-2. **Phase 2**: Basic `<and-then>` element support
-3. **Phase 3**: Full tree traversal and state management
-4. **Phase 4**: Template-based pipeline system
+### **Implementation Preamble: Integrating Modular, Opt-In Event Support**
 
-This approach allows incremental implementation while providing immediate value to users who need more sophisticated command chaining.
+#### **1. The Vision: Evolving Invokers into a Reactive, Event-Driven Library**
+
+This document outlines the plan to transform Invokers from a powerful, `click`-driven library into a fully-fledged, reactive, event-driven one. The goal is to empower developers to build even more complex, dynamic user interfaces—like live search, real-time validation, and decoupled components—while retaining the declarative simplicity of writing interactions directly in HTML.
+
+#### **2. The Core Challenge & Guiding Principle: "Modularity and Performance First"**
+
+The primary challenge is to add this significant new functionality *without compromising the library's core promise of being lightweight and minimal.* Many users choose Invokers specifically for its tiny footprint. Forcing them to include code for advanced event handling they may never use would be a betrayal of that trust.
+
+Therefore, our guiding principle for this implementation is **Modularity and Performance First**. This means:
+
+> Users must not pay the bundle-size or performance cost for advanced features they do not use.
+
+Every architectural decision in the following plan is made through this lens. The new features must be implemented as a distinct, tree-shakeable layer that is explicitly activated by the developer.
+
+#### **3. The High-Level Plan: A Three-Pillar Approach**
+
+To achieve our goal while adhering to our principle, the implementation is broken into three pillars:
+
+1.  **Keep the Core Lean:** The default `invokers` import will remain small and fast. Its responsibility will continue to be the standards-based polyfill for `click`-driven commands on `<button>` elements. It will contain no logic for advanced event triggers or data interpolation by default.
+
+2.  **Isolate Advanced Features:** All new logic for handling custom event triggers (`command-on`, `data-on-event`) and dynamic data interpolation (`{{...}}`) will be built in separate, self-contained modules (`event-trigger-manager.ts`, `interpolation.ts`). These modules will not be included in the main library bundle by default.
+
+3.  **Provide an Explicit Opt-In:** We will introduce a single, clear public function, `enableAdvancedEvents()`, exposed via a separate entry point (e.g., `invokers/advanced`). A developer who wants the new features will make a conscious decision to import and call this function once in their application. This call will act as the "on switch," initializing the advanced modules and wiring them into the core library.
+
+#### **4. Architectural Strategy in a Nutshell**
+
+The `EventTriggerManager` will be responsible for scanning the DOM and attaching the necessary listeners for attributes like `command-on`. The `Interpolation` utility will handle safely parsing `{{...}}` syntax.
+
+Crucially, both of these systems will funnel their work back into the existing `InvokerManager` pipeline by dispatching a standard `CommandEvent`. This is a key architectural decision: **we are not building a separate execution pipeline**. We are simply creating new, optional "on-ramps" to the robust command processing, chaining, and plugin system that already exists. This maximizes code reuse and ensures a consistent developer experience.
+
+#### **5. What Success Looks Like**
+
+Upon completion, we will have achieved the best of both worlds:
+
+*   **For Library Users:** The default bundle remains tiny for simple use cases. A single import and function call unlocks a powerful suite of reactive, declarative patterns without needing to pull in another library like Alpine.js.
+*   **For End Users:** Websites built with Invokers will continue to load instantly. Developers will have the tools to create richer, more responsive UIs that feel modern and dynamic, all while writing less custom JavaScript.
+
+This modular approach will significantly expand the capabilities of Invokers, solidifying its place as a versatile tool for modern web development while staying true to its minimalist ethos. The following plan details the specific steps to make this vision a reality.
 
 
-## Version 0
 
-Here is the complete, fully-detailed implementation that brings universal `data-and-then` chaining to **every single command**, both synchronous and asynchronous.
+### **Revised Implementation Plan: Modular Event Support**
 
-### The Strategy:
+#### **Phase 0: Core Refinements (Preparation)**
 
-1.  **Elevate Chaining to a Core Feature:** The logic for handling the follow-up command will be moved from the individual `fetch` commands into the central `InvokerManager`.
-2.  **Embrace Asynchronicity:** The `CommandCallback` type will be updated to allow returning a `Promise`. The `InvokerManager` will `await` every command's execution, ensuring it correctly waits for async tasks (like `fetch`) to complete before chaining.
-3.  **Improve Developer Experience (DX):** We'll introduce a new, more readable attribute, `data-and-then`, as the primary way to chain commands. For backwards compatibility, we will still support the old `data-then-command` as a fallback.
-4.  **Update All Documentation:** The README and example files will be updated to showcase this powerful new universal capability with clear, compelling examples.
+1.  **Centralized `CommandEvent` Dispatch (Minor Refactor):**
+    *   **File:** `src/index.ts`
+    *   **Action:** Export a helper function `_dispatchCommandEvent` (or similar, underscore for internal use but still accessible). This function will take the `source` element, the `command` string, the `targetElement`, and the `triggeringEvent` (the original DOM event).
+    *   **Reason:** This function encapsulates the `CommandEvent` creation and dispatch, ensuring consistency and making it easier for new event sources (like `command-on`) to funnel into the core Invokers pipeline.
 
----
+2.  **`CommandContext` Enhancement (Internal):**
+    *   **File:** `src/index.ts`
+    *   **Action:** Add `triggeringEvent?: Event;` to the `CommandContext` interface.
+    *   **Reason:** Allows commands to access the raw DOM event that initiated them, which is crucial for features like `event.preventDefault()` in command callbacks or accessing `event.detail` for custom events.
 
-### 1. `src/index.ts` (Core Library, Updated for Universal Chaining)
+#### **Phase 1: Dynamic Data Interpolation Utility (Opt-in Core Functionality)**
 
-This is the most critical change. The `executeCustomCommand` method is now `async` and contains the universal chaining logic.
+This enables `{{...}}` syntax in command strings. It needs to be available to `InvokerManager` for chained commands, but only if activated.
 
-```typescript
-/**
- * @file index.ts
- * @version 1.1.0
- * @summary A lightweight, zero-dependency polyfill and superset for the upcoming native HTML Invoker Commands API.
- * @license MIT
- * @author Patrick Glenn
- * @see https://github.com/doeixd/invokers
- * @description
- * This library provides a robust polyfill for the W3C/WHATWG `command` attribute proposal
- * and extends it with a powerful set of custom commands (prefixed with `--`).
- * It features universal command chaining via the `data-and-then` attribute, allowing you
- * to create complex, declarative workflows in pure HTML.
- */
-
-// (The polyfill is assumed to be imported and applied)
-// import './polyfill.ts';
-
-// --- Command String Utilities --- (No changes needed here)
-export function parseCommandString(commandString: string): string[] {
-  // ... (implementation remains the same)
-}
-export function createCommandString(...parts: string[]): string {
-  // ... (implementation remains the same)
-}
-
-// --- Core Type Definitions ---
-
-export interface CommandContext {
-  // ... (interface remains the same)
-}
-
-/**
- * The function signature for a custom library command's implementation logic.
- * Callbacks can now be synchronous (return void) or asynchronous (return a Promise).
- * The library will await the result before proceeding with any chained commands.
- */
-export type CommandCallback = (context: CommandContext) => void | Promise<void>;
-
-// --- Global Type Augmentations --- (No changes needed here)
-declare global {
-  // ... (declarations remain the same)
-}
-
-// --- List of native command keywords --- (No changes needed here)
-const NATIVE_COMMAND_KEYWORDS = new Set([/*...*/]);
-
-// --- The Main Invoker Class (Updated) ---
-
-export class InvokerManager {
-  private readonly commands = new Map<string, CommandCallback>();
-  private sortedCommandKeys: string[] = [];
-
-  constructor() {
-    if (typeof window !== "undefined" && typeof document !== "undefined") {
-      this.registerCoreLibraryCommands();
-      this.listen();
-    }
-  }
-
-  public register(name: string, callback: CommandCallback): void {
-    // ... (implementation remains the same)
-  }
-
-  /**
-   * Handles incoming `CommandEvent`s. This is now an async method to allow
-   * for awaiting the full command chain.
-   */
-  private async handleCommand(event: CommandEvent): Promise<void> {
-    const commandStr = event.command;
-
-    if (commandStr.startsWith('--')) {
-      await this.executeCustomCommand(commandStr, event);
-    } else if (!NATIVE_COMMAND_KEYWORDS.has(commandStr) && commandStr !== "") {
-      console.warn(`Invokers (Compatibility): Non-spec-compliant command "${commandStr}" detected. Please update your HTML to use '--${commandStr}'. Attempting to handle...`);
-      await this.executeCustomCommand(`--${commandStr}`, event);
-    }
-  }
-
-  /**
-   * Executes a custom command and then triggers a follow-up command if specified.
-   * This is the new heart of the chaining mechanism.
-   */
-  private async executeCustomCommand(commandStr: string, event: CommandEvent): Promise<void> {
-    for (const registeredCommand of this.sortedCommandKeys) {
-      if (commandStr.startsWith(registeredCommand) && (commandStr.length === registeredCommand.length || commandStr[registeredCommand.length] === ":")) {
-        const callback = this.commands.get(registeredCommand);
-        if (callback) {
-          event.preventDefault();
-          const params = parseCommandString(commandStr.substring(registeredCommand.length + 1));
-          const context = this.createContext(event, commandStr, params);
+1.  **Create Interpolation Utility Module:**
+    *   **File:** `src/interpolation.ts` (New File)
+    *   **Content:**
+        ```typescript
+        // src/interpolation.ts
+        
+        // Safely access nested properties of an object using a dot-notation string.
+        function getDeepValue(obj: any, path: string): any {
+          if (typeof obj !== 'object' || obj === null || !path) return undefined;
           
-          // Await the primary command. This works for both sync and async callbacks.
-          await callback(context);
-
-          // After the primary command is complete, trigger the follow-up.
-          this.triggerFollowup(context.invoker, context.targetElement);
+          return path.split('.').reduce((acc, part) => {
+            if (typeof acc !== 'object' || acc === null) return undefined;
+            return acc[part];
+          }, obj);
         }
-        return;
-      }
-    }
-  }
+        
+        // Interpolates a string with placeholders like {{path.to.value}}
+        export function interpolateString(template: string, context: Record<string, any>): string {
+          return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
+            const value = getDeepValue(context, key.trim());
+            return value !== undefined && value !== null ? String(value) : ''; // Return empty string for undefined/null
+          });
+        }
+        ```
 
-  /**
-   * Triggers a follow-up command. This is now a core utility of the InvokerManager.
-   * It looks for `data-and-then` (preferred) or `data-then-command` (legacy).
-   */
-  private triggerFollowup(originalInvoker: HTMLButtonElement, primaryTarget: HTMLElement): void {
-    const followupCommand = originalInvoker.dataset.andThen || originalInvoker.dataset.thenCommand;
-    if (!followupCommand || !primaryTarget.id) {
-      if (followupCommand) console.warn("Invokers: A chained command requires the target element to have an ID.", primaryTarget);
-      return;
-    }
+2.  **Integrate Conditional Interpolation into `InvokerManager`:**
+    *   **File:** `src/index.ts`
+    *   **Action:**
+        *   Add a private flag: `private _interpolationEnabled = false;`
+        *   Add a public setter to enable it: `public _enableInterpolation(): void { this._interpolationEnabled = true; }` (underscore for internal activation by the public `enableAdvancedEvents` later).
+        *   Modify `executeCustomCommand` (and potentially `triggerFollowup` for `data-and-then` attributes) to use an internal interpolation helper:
+            ```typescript
+            // src/index.ts (inside InvokerManager class)
 
-    const syntheticInvoker = document.createElement("button");
-    syntheticInvoker.setAttribute("type", "button");
-    syntheticInvoker.setAttribute("command", followupCommand.startsWith('--') ? followupCommand : `--${followupCommand}`);
-    syntheticInvoker.setAttribute("commandfor", primaryTarget.id);
+            // ... (existing imports)
+            // import { interpolateString } from './interpolation'; // NOT directly imported here to enable tree-shaking
 
-    // Transfer `data-then-*` and `data-and-then-*` attributes to the new invoker
-    for (const attr in originalInvoker.dataset) {
-      const thenPrefix = "then";
-      const andThenPrefix = "andThen";
-      let newAttrName: string | null = null;
 
-      if (attr.startsWith(andThenPrefix) && attr !== andThenPrefix) {
-        newAttrName = attr.charAt(andThenPrefix.length).toLowerCase() + attr.slice(andThenPrefix.length + 1);
-      } else if (attr.startsWith(thenPrefix) && attr !== thenPrefix) {
-        // Legacy support
-        newAttrName = attr.charAt(thenPrefix.length).toLowerCase() + attr.slice(thenPrefix.length + 1);
-      }
-      
-      if (newAttrName) {
-        syntheticInvoker.dataset[newAttrName] = originalInvoker.dataset[attr];
-      }
-    }
-    
-    // The polyfill works by intercepting clicks. A programmatic click is the most
-    // reliable way to re-enter the event loop and trigger the next command.
-    syntheticInvoker.click();
-  }
+            private _interpolationEnabled = false;
 
-  private createContext(/*...*/) {
-    // ... (implementation remains the same)
-  }
+            // Internal method to safely try interpolation
+            // Will only call interpolateString if enabled, otherwise returns template as-is
+            private _tryInterpolate(template: string, context: Record<string, any>): string {
+              if (this._interpolationEnabled && typeof window.Invoker?.getInterpolationUtility === 'function') {
+                const interpolate = window.Invoker.getInterpolationUtility();
+                return interpolate(template, context);
+              }
+              return template;
+            }
 
-  private listen(): void {
-    // The listener now calls the async handleCommand method.
-    document.addEventListener("command", (e) => this.handleCommand(e as CommandEvent), true);
-  }
+            // ...
 
-  private registerCoreLibraryCommands(): void {
-    // ... (All core command registrations remain the same. No changes needed.)
-  }
-}
+            /**
+             * Executes a custom command and then triggers a follow-up command if specified.
+             * This is the new heart of the chaining mechanism.
+             */
+            private async executeCustomCommand(commandStr: string, event: CommandEvent): Promise<void> {
+              const source = event.source as HTMLButtonElement; // The original invoker
 
-// --- Initialize and Expose API ---
-// ... (No changes needed here)
-```
+              // Create base interpolation context for the current command
+              const interpolationContext = {
+                event: (event as any).triggeringEvent, // The original DOM event
+                this: source, // The invoker element itself
+                target: event.target, // The command target element
+                detail: ((event as any).triggeringEvent as CustomEvent)?.detail, // Detail from CustomEvent
+              };
 
-### 2. `src/invoker-commands.ts` (Simplified `fetch` Commands)
+              // The command string from the attribute might contain {{...}} from external triggers
+              // We interpolate the current command before finding its callback
+              const interpolatedCommandStr = this._tryInterpolate(commandStr, interpolationContext);
 
-The `fetch` commands are now much simpler because they no longer need their own custom `triggerFollowup` logic.
+              for (const registeredCommand of this.sortedCommandKeys) {
+                if (interpolatedCommandStr.startsWith(registeredCommand) && 
+                    (interpolatedCommandStr.length === registeredCommand.length || interpolatedCommandStr[registeredCommand.length] === ":")) {
+                  const callback = this.commands.get(registeredCommand);
+                  if (callback) {
+                    event.preventDefault();
+                    const params = parseCommandString(interpolatedCommandStr.substring(registeredCommand.length + 1));
+                    const context = this.createContext(event, interpolatedCommandStr, params); // Pass interpolated command
 
-```typescript
-// ... (all other commands like --media:*, --dom:*, etc., remain the same)
+                    await callback(context); // Await the primary command
 
-  /**
-   * `--fetch:get`: Performs a GET request. Chaining is now handled by the core library
-   * via the `data-and-then` attribute on the invoker.
-   */
-  "--fetch:get": async (context: CommandContext) => {
-    const { invoker, targetElement } = context;
-    const url = invoker.dataset.url;
-    if (!url) {
-      console.warn("Invokers: `--fetch:get` requires a `data-url` attribute.", invoker);
-      return;
-    }
+                    // After the primary command is complete, trigger the follow-up.
+                    this.triggerFollowup(source, event.target as HTMLElement, (event as any).triggeringEvent);
+                  }
+                  return;
+                }
+              }
+            }
 
-    setBusyState(invoker, true);
-    showFeedbackState(invoker, targetElement, "data-loading-template");
+            /**
+             * Triggers a follow-up command (data-and-then, <and-then>).
+             * This method also needs to interpolate the chained command string.
+             */
+            private triggerFollowup(originalInvoker: HTMLElement, primaryTarget: HTMLElement, triggeringEvent?: Event): void {
+              const followupCommandTemplate = originalInvoker.dataset.andThen || originalInvoker.dataset.thenCommand;
+              if (!followupCommandTemplate || !primaryTarget.id) {
+                if (followupCommandTemplate) console.warn("Invokers: A chained command requires the target element to have an ID.", primaryTarget);
+                return;
+              }
 
-    try {
-      const response = await fetch(url, { /* ... */ });
-      if (!response.ok) throw new Error(/* ... */);
-      const html = await response.text();
-      const newContent = parseHTML(html);
+              // Create interpolation context for the chained command
+              const interpolationContext = {
+                event: triggeringEvent, // Original event for context
+                this: originalInvoker, // The invoker that defined the chain
+                target: primaryTarget, // The primary target of the chain
+                detail: (triggeringEvent as CustomEvent)?.detail, // Detail from CustomEvent
+              };
 
-      const updateDOM = () => targetElement.replaceChildren(newContent);
-      // We still await the transition to ensure the DOM is updated before any chained command runs.
-      await (document.startViewTransition ? document.startViewT_ransition(updateDOM).finished : Promise.resolve(updateDOM()));
-      
-      // The explicit call to triggerFollowup() is REMOVED from here.
-    } catch (error) {
-      console.error("Invokers: `--fetch:get` failed.", error, invoker);
-      showFeedbackState(invoker, targetElement, "data-error-template");
-    } finally {
-      setBusyState(invoker, false);
-    }
-  },
+              // Interpolate the chained command string
+              const interpolatedFollowupCommand = this._tryInterpolate(followupCommandTemplate, interpolationContext);
 
-  /**
-   * `--fetch:send`: Performs a form submission. Chaining is now handled by the core
-   * library via the `data-and-then` attribute on the invoker.
-   */
-  "--fetch:send": async (context: CommandContext) => {
-    // ... (setup logic remains the same)
-    setBusyState(invoker, true);
-    showFeedbackState(invoker, responseTarget, "data-loading-template");
+              // Create a synthetic event to trigger the next command
+              const syntheticInvoker = document.createElement("button");
+              syntheticInvoker.setAttribute("type", "button");
+              syntheticInvoker.setAttribute("command", interpolatedFollowupCommand);
+              syntheticInvoker.setAttribute("commandfor", primaryTarget.id);
 
-    try {
-      // ... (fetch logic remains the same)
-      const html = await response.text();
-      const newContent = parseHTML(html);
-      
-      const updateDOM = () => responseTarget.replaceChildren(newContent);
-      await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
-      
-      // The explicit call to triggerFollowup() is REMOVED from here.
-    } catch (error) {
-      console.error(/* ... */);
-      showFeedbackState(invoker, responseTarget, "data-error-template");
-    } finally {
-      setBusyState(invoker, false);
-    }
-  },
+              // Transfer data-then-* and data-and-then-* attributes for further chaining
+              for (const attr in originalInvoker.dataset) {
+                  // ... (logic for transferring attributes remains the same) ...
+              }
 
-// ... (all other commands and helper functions remain the same)
-// The `triggerFollowup` helper function should be DELETED from this file.
-```
+              // Use the centralized dispatcher to send the (potentially interpolated) chained command
+              _dispatchCommandEvent(syntheticInvoker, triggeringEvent);
+            }
+            ```
 
-### 3. `README.md` (Updated to Showcase Universal Chaining)
+#### **Phase 2: Event Trigger Manager (`command-on`, `data-on-event`)**
 
-Here is a new, powerful section to add to your README, ideally under an "Advanced Patterns" heading.
+This module will handle attaching listeners for non-click DOM events and custom events.
 
-```markdown
-### Universal Command Chaining (`data-and-then`)
+1.  **Create Event Trigger Manager Module:**
+    *   **File:** `src/event-trigger-manager.ts` (New File)
+    *   **Content:**
+        ```typescript
+        // src/event-trigger-manager.ts
+        
+        import { _dispatchCommandEvent, InvokerManager } from './index'; // Access the central dispatcher
+        import { interpolateString } from './interpolation'; // This is required for interpolation logic here
 
-One of the most powerful features of `invokers` is the ability to chain commands. The `data-and-then` attribute allows you to specify a follow-up command that will run **after any command successfully completes**. This works for both synchronous (like `--class:toggle`) and asynchronous (like `--fetch:get`) commands.
+        // Event modifiers that have special handling
+        const MODIFIERS: Record<string, (e: Event) => void> = {
+          'prevent': (e: Event) => e.preventDefault(),
+          'stop': (e: Event) => e.stopPropagation(),
+          'once': (e: Event) => e.currentTarget?.removeEventListener(e.type, handleTrigger),
+          // Add other modifiers like `self`, `capture`, `passive`, `debounce.<ms>`, `throttle.<ms>` etc. as needed
+        };
 
-#### Chaining Synchronous Commands
+        // Handles any DOM event that triggers a command (from command-on or data-on-event)
+        function handleTrigger(event: Event) {
+          const source = event.currentTarget as HTMLElement;
+          const commandAttribute = source.getAttribute('command') || source.dataset.onEventCommand; // command for custom event listener
+          const commandforAttribute = source.getAttribute('commandfor') || source.dataset.onEventCommandfor; // commandfor for custom event listener
 
-Create powerful, multi-step UI interactions without a single line of JavaScript. This example first adds a highlight class, and *then* updates a status message.
+          if (!commandAttribute || !commandforAttribute) {
+            console.warn("Invokers: Missing 'command' or 'commandfor' attribute on event triggered element:", source);
+            return;
+          }
 
-```html
-<!-- This button performs two actions in sequence -->
-<button type="button"
-  command="--class:add:is-highlighted"
-  commandfor="status-box"
-  data-and-then="--text:set"
-  data-text-value="Status has been updated!">
-  Highlight and Update Text
-</button>
+          // Handle modifiers like .prevent and .stop
+          const triggerAttr = source.getAttribute('command-on') || source.dataset.onEvent!;
+          const modifiers = triggerAttr.split('.').slice(1);
+          for (const mod of modifiers) {
+            MODIFIERS[mod]?.(event);
+          }
 
-<div id="status-box" class="status">Initial Text</div>
-```
+          // Create interpolation context for this specific event trigger
+          const interpolationContext = {
+            event: event,
+            this: source,
+            target: document.getElementById(commandforAttribute) || null, // Best guess at target for context
+            detail: (event as CustomEvent)?.detail,
+          };
 
-#### Chaining Asynchronous Commands
+          // Interpolate the command string using the activated utility
+          // This ensures the interpolation code is only run if `enableAdvancedEvents` was called
+          const interpolatedCommand = interpolateString(commandAttribute, interpolationContext);
+          
+          // Now dispatch the CommandEvent to the core InvokerManager
+          _dispatchCommandEvent(source, interpolatedCommand, commandforAttribute, event);
+        }
 
-This is perfect for providing feedback after a server action. The `invokers` library will automatically wait for the `--fetch:get` promise to resolve before executing the `--class:add:loaded` command.
+        // --- Scanning and Observing DOM for Event Triggers ---
 
-```html
-<!-- After fetching, this button will run '--class:add:loaded' on the target -->
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/content"
-  commandfor="content-box"
-  data-and-then="--class:add:loaded">
-  Load and Animate
-</button>
-<div id="content-box"></div>
-```
+        function attachListeners(element: HTMLElement) {
+          // command-on (any DOM event)
+          if (element.hasAttribute('command-on') && !element.dataset.commandOnAttached) {
+            const triggerAttr = element.getAttribute('command-on')!;
+            const eventName = triggerAttr.split('.')[0];
+            element.addEventListener(eventName, handleTrigger);
+            element.dataset.commandOnAttached = 'true';
+          }
 
-> **Backwards Compatibility:** The library still supports the older `data-then-command` attribute as a fallback, but the new `data-and-then` is recommended for its improved readability.
-```
+          // data-on-event (custom events)
+          if (element.hasAttribute('data-on-event') && !element.dataset.onEventAttached) {
+            const eventName = element.dataset.onEvent!;
+            // For data-on-event, the `command` and `commandfor` attributes are implied
+            // to be present on the same element, or can be specified as `data-on-event-command`
+            // and `data-on-event-commandfor` to avoid conflicts.
+            // For simplicity in this plan, assume `command` and `commandfor` are present.
+            // If the element has `data-on-event-command` and `data-on-event-commandfor`, use those.
+            if (!element.hasAttribute('command') && !element.hasAttribute('data-on-event-command')) {
+                console.warn(`Invokers: Element with 'data-on-event="${eventName}"' must also have a 'command' or 'data-on-event-command' attribute.`, element);
+                return;
+            }
+            if (!element.hasAttribute('commandfor') && !element.hasAttribute('data-on-event-commandfor')) {
+                console.warn(`Invokers: Element with 'data-on-event="${eventName}"' must also have a 'commandfor' or 'data-on-event-commandfor' attribute.`, element);
+                return;
+            }
 
-### 4. `example.html` (Updated with a Better Chaining Demo)
+            element.addEventListener(eventName, handleTrigger);
+            element.dataset.onEventAttached = 'true';
+          }
+        }
 
-Add this new section to your `example.html` to clearly demonstrate the new capability.
+        function disconnectListeners(element: HTMLElement) {
+          if (element.dataset.commandOnAttached) {
+            const triggerAttr = element.getAttribute('command-on')!;
+            const eventName = triggerAttr.split('.')[0];
+            element.removeEventListener(eventName, handleTrigger);
+            delete element.dataset.commandOnAttached;
+          }
+          if (element.dataset.onEventAttached) {
+            const eventName = element.dataset.onEvent!;
+            element.removeEventListener(eventName, handleTrigger);
+            delete element.dataset.onEventAttached;
+          }
+        }
 
-```html
-    <!-- =================================================================== -->
-    <h2 id="chaining">Part 3: Universal Command Chaining</h2>
-    <!-- =================================================================== -->
-    <p>The <code>data-and-then</code> attribute allows you to chain commands together, creating powerful sequences. This works for <strong>all</strong> commands, both synchronous and asynchronous.</p>
+        // MutationObserver to attach/detach listeners for dynamically added/removed elements
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === 'childList') {
+              mutation.addedNodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                  const element = node as HTMLElement;
+                  if (element.hasAttribute('command-on') || element.hasAttribute('data-on-event')) {
+                    attachListeners(element);
+                  }
+                  element.querySelectorAll<HTMLElement>('[command-on], [data-on-event]').forEach(attachListeners);
+                }
+              });
+              mutation.removedNodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                  const element = node as HTMLElement;
+                  disconnectListeners(element);
+                  element.querySelectorAll<HTMLElement>('[command-on], [data-on-event]').forEach(disconnectListeners);
+                }
+              });
+            } else if (mutation.type === 'attributes') {
+              const element = mutation.target as HTMLElement;
+              // If command-on or data-on-event attribute changes/is added/removed, re-evaluate
+              if (
+                  (mutation.attributeName === 'command-on' && element.hasAttribute('command-on') && !element.dataset.commandOnAttached) ||
+                  (mutation.attributeName === 'data-on-event' && element.hasAttribute('data-on-event') && !element.dataset.onEventAttached)
+              ) {
+                  attachListeners(element);
+              } else if (
+                  (mutation.attributeName === 'command-on' && !element.hasAttribute('command-on') && element.dataset.commandOnAttached) ||
+                  (mutation.attributeName === 'data-on-event' && !element.hasAttribute('data-on-event') && element.dataset.onEventAttached)
+              ) {
+                  disconnectListeners(element);
+              }
+            }
+          }
+        });
 
-    <h3>Chaining Synchronous Commands</h3>
-    <div class="demo-box">
-        <div id="sync-chain-target" style="padding: 1rem; border: 2px dashed var(--border-color); border-radius: 4px; transition: all 0.3s;">
-            Initial State
-        </div>
-        <p style="margin-top: 1rem;">
-            This button will first add a highlight class, and then immediately update the text content.
-        </p>
-        <button type="button"
-            command="--class:add:is-active"
-            commandfor="sync-chain-target"
-            data-and-then="--text:set"
-            data-text-value="✅ Highlighted and Updated!">
-            Run Synchronous Chain
-        </button>
-    </div>
+        export class EventTriggerManager {
+          private static instance: EventTriggerManager;
 
-    <h3>Chaining Asynchronous Commands (e.g., after Fetch)</h3>
-    <div class="demo-box">
-        <p>This button will fetch content and, only upon successful completion, run a second command to add a 'loaded' class, triggering a CSS animation.</p>
-        <div id="async-chain-target" class="content-box"></div>
-        <button type="button"
-            command="--fetch:get"
-            data-url="https://jsonplaceholder.typicode.com/posts/2"
-            commandfor="async-chain-target"
-            data-loading-template="spinner-template"
-            data-and-then="--class:add:loaded">
-            Fetch and Animate on Complete
-        </button>
-        <style>
-            .content-box.loaded { animation: fadeIn 0.5s ease-out; }
-        </style>
-    </div>
-```
+          public static getInstance(): EventTriggerManager {
+            if (!EventTriggerManager.instance) {
+              EventTriggerManager.instance = new EventTriggerManager();
+            }
+            return EventTriggerManager.instance;
+          }
 
-By implementing these changes, your library becomes significantly more powerful and intuitive. The ability to chain *any* action declaratively in HTML is a game-changer for building complex UIs simply.
+          public initialize(root: Node = document.body) {
+            // Scan existing DOM
+            root.querySelectorAll<HTMLElement>('[command-on], [data-on-event]').forEach(attachListeners);
+            // Observe future changes
+            observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['command-on', 'data-on-event'] });
+            console.log('Invokers EventTriggerManager initialized.');
+          }
+
+          public shutdown() {
+            observer.disconnect();
+            document.querySelectorAll<HTMLElement>('[command-on][data-command-on-attached], [data-on-event][data-on-event-attached]').forEach(disconnectListeners);
+            console.log('Invokers EventTriggerManager shut down.');
+          }
+        }
+        ```
+
+#### **Phase 3: Public Activation Function (`enableAdvancedEvents()`)**
+
+This function ties everything together and acts as the public API for opting into advanced event features.
+
+1.  **Create Public Activation Module:**
+    *   **File:** `src/advanced-events.ts` (New File)
+    *   **Content:**
+        ```typescript
+        // src/advanced-events.ts
+
+        import { InvokerManager } from './index';
+        import { EventTriggerManager } from './event-trigger-manager';
+        import { interpolateString } from './interpolation'; // Import the interpolation utility
+
+        /**
+         * Enables advanced event triggering (e.g., `command-on`, `data-on-event`)
+         * and dynamic data interpolation (e.g., `{{this.value}}`) in Invokers.
+         *
+         * Call this function once in your application if you want to use these features.
+         * If not called, the code for these features will be tree-shaken out of your bundle.
+         */
+        export function enableAdvancedEvents(): void {
+          const invokerInstance = InvokerManager.getInstance();
+
+          // 1. Enable interpolation in the core InvokerManager
+          invokerInstance._enableInterpolation(); // Marks interpolation as active
+          
+          // 2. Register the interpolation utility on a global accessor (used by InvokerManager)
+          // This avoids directly importing interpolation.ts into index.ts, improving tree-shaking
+          if (typeof window !== 'undefined' && window.Invoker) {
+              (window.Invoker as any).getInterpolationUtility = () => interpolateString;
+          }
+
+          // 3. Initialize the EventTriggerManager
+          EventTriggerManager.getInstance().initialize();
+
+          console.log("Invokers: Advanced event features (command-on, data-on-event, interpolation) enabled.");
+        }
+        ```
+
+2.  **Expose the new function:**
+    *   **File:** `pridepack.json`
+    *   **Action:** Add a new entrypoint:
+        ```json
+        {
+          // ... existing entries ...
+          "./advanced": "./src/advanced-events.ts"
+        }
+        ```
+    *   **File:** `package.json`
+    *   **Action:** Add a new export:
+        ```json
+        "exports": {
+          // ... existing exports ...
+          "./advanced": {
+            "types": "./dist/types/advanced-events.d.ts",
+            "development": {
+              "require": "./dist/cjs/development/advanced.js",
+              "import": "./dist/esm/development/advanced.js"
+            },
+            "require": "./dist/cjs/production/advanced.js",
+            "import": "./dist/esm/production/advanced.js"
+          }
+        }
+        ```
+    *   **File:** `src/index.ts`
+    *   **Action:** Export `_enableInterpolation()` and `getInterpolationUtility` for internal use by `advanced-events.ts` and `_tryInterpolate` in `InvokerManager`.
+        ```typescript
+        // src/index.ts (add to InvokerManager class and exports)
+        
+        // ... Inside InvokerManager ...
+        public _enableInterpolation(): void { this._interpolationEnabled = true; }
+
+        // And in the global window.Invoker API:
+        // (window.Invoker as any).getInterpolationUtility = () => interpolateString; // This is added by advanced-events.ts
+        ```
+
+#### **Phase 4: Documentation, Examples & Testing**
+
+1.  **Update `README.md`:**
+    *   Clearly distinguish core features from advanced, opt-in features.
+    *   Add a new section: **"Enabling Advanced Events (Opt-In)"** explaining how to `import { enableAdvancedEvents } from 'invokers/advanced';` and call it.
+    *   Update relevant examples (`--fetch:get` with `data-url` using `{{this.value}}`, live character counter, form `submit` trigger) to use the new `command-on` or `data-on-event` attributes and dynamic data interpolation.
+
+2.  **Create `examples/advanced-events-demo.html`:**
+    *   This demo should explicitly `import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';` and call it.
+    *   Showcases:
+        *   `command-on="submit"` for a form.
+        *   `command-on="input"` for a live character counter (`{{this.value.length}}`).
+        *   `command-on="mouseover"` to show/hide elements.
+        *   `data-on-event="custom:update"` listening for custom events (`{{event.detail.id}}`).
+        *   Keyboard shortcuts with modifiers (`command-on="keydown.enter"`).
+
+3.  **Create `test/advanced-events.test.ts`:**
+    *   Tests should `import { enableAdvancedEvents } from '../src/advanced-events';` and call it in `beforeEach`.
+    *   Test cases:
+        *   `command-on="submit"` on a form: Check form submission prevented, command executed.
+        *   `command-on="input"` with `{{this.value}}`: Verify dynamic text updates.
+        *   `data-on-event="custom:event"` with `{{event.detail}}`: Verify command executes and uses event detail.
+        *   Event modifiers (`.prevent`, `.stop`, `.once`): Assert their behavior.
+        *   **Crucially, add a test that asserts tree-shaking is effective:** In a test file that *does not* import `advanced-events.ts`, ensure that code related to `EventTriggerManager` or `interpolation.ts` is not accidentally pulled in (this might require inspecting bundle sizes or mocking global behavior if `enableAdvancedEvents` is never called).

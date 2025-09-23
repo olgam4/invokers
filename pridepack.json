@@ -3,6 +3,11 @@
   "entrypoints": {
     ".": "./src/index.ts",
     "./commands": "./src/invoker-commands.ts",
-    "./interest": "./src/interest-invokers.ts"
-  }
+    "./demo-commands": "./src/demo-commands.ts",
+    "./interest": "./src/interest-invokers.ts",
+    "./advanced": "./src/advanced-events.ts"
+  },
+  "external": [],
+  "minify": false,
+  "sourcemap": true
 }

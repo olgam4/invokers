@@ -17,7 +17,9 @@
  */
 
 import type { CommandContext, CommandCallback } from "./index";
-import { createInvokerError, ErrorSeverity, validateElement, sanitizeHTML } from "./index";
+import { createInvokerError, ErrorSeverity, validateElement, sanitizeHTML, isInterpolationEnabled } from "./index";
+import { interpolateString } from "./interpolation";
+import { resolveTargets } from "./target-resolver";
 
 type CommandRegistry = Record<string, CommandCallback>;
 
@@ -168,9 +170,9 @@ export const commands: CommandRegistry = {
     };
 
     document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
-  },
+    },
 
-  // --- Clipboard and Form Commands ---
+    // --- Clipboard and Form Commands ---
 
   /**
    * `--clipboard:copy`: Copies the text content (or value for inputs) of the target
@@ -295,69 +297,1131 @@ export const commands: CommandRegistry = {
     document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
   },
 
-  /**
-   * `--dom:replace`: Replaces the target element with content from a `<template>`.
-   * @example `<button command="--dom:replace" commandfor="placeholder" data-template-id="content">Load</button>`
-   */
-  "--dom:replace": ({ invoker, targetElement }: CommandContext) => {
-    const sourceNode = getSourceNode(invoker, 'replace');
-    const updateDOM = () => targetElement.replaceWith(sourceNode.cloneNode(true));
-    document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
-  },
+    /**
+     * `--dom:replace`: Replaces the target element with content from a `<template>`.
+     * Supports `:outer` (default) to replace the entire element, or `:inner` to replace inner content.
+     * Alias for `--dom:swap:outer` and `--dom:swap:inner` respectively.
+     * Supports advanced templating with `data-with-json` and `data-tpl-*` attributes when advanced events are enabled.
+     * @example `<button command="--dom:replace" commandfor="placeholder" data-template-id="content">Load</button>`
+     * @example `<button command="--dom:replace:inner" commandfor="content-area" data-template-id="panel-2">Update Content</button>`
+     */
+    "--dom:replace": ({ invoker, targetElement, params }: CommandContext) => {
+      const style = params[0] || 'outer';
+      let fragment = getSourceNode(invoker, 'replace').cloneNode(true) as DocumentFragment;
 
-  /**
-   * `--dom:swap`: Swaps the inner content of the target with content from a `<template>`.
-   * @example `<button command="--dom:swap" commandfor="content-area" data-template-id="panel-2">Load Panel 2</button>`
-   */
-  "--dom:swap": ({ invoker, targetElement }: CommandContext) => {
-    const sourceNode = getSourceNode(invoker, 'swap');
-    const updateDOM = () => targetElement.replaceChildren(sourceNode.cloneNode(true));
-    document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
-  },
+       // Process the fragment if advanced templating is enabled
+       if (isInterpolationEnabled()) {
+         fragment = processTemplateFragment(fragment, invoker);
+       }
 
-  /**
-   * `--dom:append`: Appends content from a `<template>` to the target.
-   * @example `<button command="--dom:append" commandfor="item-list" data-template-id="new-item">Add</button>`
-   */
-  "--dom:append": ({ invoker, targetElement }: CommandContext) => {
-    const sourceNode = getSourceNode(invoker, 'append');
-    targetElement.append(sourceNode.cloneNode(true));
-  },
+      const updateDOM = () => {
+        if (style === 'inner') {
+          targetElement.replaceChildren(fragment);
+        } else {
+          // Default to 'outer'
+          targetElement.replaceWith(fragment);
+        }
+      };
 
-  /**
-   * `--dom:prepend`: Prepends content from a `<template>` to the target.
-   * @example `<button command="--dom:prepend" commandfor="log" data-template-id="new-log">Log</button>`
-   */
-  "--dom:prepend": ({ invoker, targetElement }: CommandContext) => {
-    const sourceNode = getSourceNode(invoker, 'prepend');
-    targetElement.prepend(sourceNode.cloneNode(true));
-  },
+      document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+    },
+
+    /**
+     * `--dom:swap`: Swaps content of the target with content from a `<template>`.
+     * Supports `:inner` (default) to replace inner content, or `:outer` to replace the entire element.
+     * Supports advanced templating with `data-with-json` and `data-tpl-*` attributes when advanced events are enabled.
+     * @example `<button command="--dom:swap" commandfor="content-area" data-template-id="panel-2">Load Panel 2</button>`
+     * @example `<button command="--dom:swap:outer" commandfor="content-area" data-template-id="panel-2">Replace Element</button>`
+     */
+     "--dom:swap": ({ invoker, targetElement, params }: CommandContext) => {
+       const [swapType = 'inner'] = params;
+       let fragment = getSourceNode(invoker, 'swap').cloneNode(true) as DocumentFragment;
+
+        // Interpolate the template content if advanced events are enabled
+        if (isInterpolationEnabled()) {
+          const context = {
+            this: {
+              ...invoker,
+              dataset: { ...invoker.dataset },
+              value: (invoker as any).value || '',
+            },
+            data: document.body.dataset,
+            event: (invoker as any).triggeringEvent,
+          };
+
+          // Convert fragment to string, interpolate, then back to fragment
+          const tempDiv = document.createElement('div');
+          tempDiv.appendChild(fragment.cloneNode(true));
+          const html = tempDiv.innerHTML;
+          const interpolatedHtml = interpolateString(html, context);
+          tempDiv.innerHTML = interpolatedHtml;
+          const interpolatedFragment = document.createDocumentFragment();
+          while (tempDiv.firstChild) {
+            interpolatedFragment.appendChild(tempDiv.firstChild);
+          }
+          fragment = processTemplateFragment(interpolatedFragment, invoker);
+        }
+
+      const updateDOM = () => {
+        if (swapType === 'outer') {
+          targetElement.replaceWith(fragment);
+        } else {
+          // Default to 'inner' behavior
+          targetElement.replaceChildren(fragment);
+        }
+      };
+
+      document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+    },
+
+    /**
+     * `--dom:append`: Appends content from a `<template>` to the target.
+     * Supports `:inner` (default) to append as last child, or `:outer` to insert after the target.
+     * Supports advanced templating with `data-with-json` and `data-tpl-*` attributes when advanced events are enabled.
+     * @example `<button command="--dom:append" commandfor="item-list" data-template-id="new-item">Add</button>`
+     * @example `<button command="--dom:append:outer" commandfor="#item-1" data-template-id="item-2">Load Next</button>`
+     */
+    "--dom:append": ({ invoker, targetElement, params }: CommandContext) => {
+      const style = params[0] || 'inner';
+      let fragment = getSourceNode(invoker, 'append').cloneNode(true) as DocumentFragment;
+
+       // Process the fragment if advanced templating is enabled
+       if (isInterpolationEnabled()) {
+         fragment = processTemplateFragment(fragment, invoker);
+       }
+
+      const updateDOM = () => {
+        if (style === 'outer') {
+          targetElement.after(fragment);
+        } else {
+          // Default to 'inner'
+          targetElement.append(fragment);
+        }
+      };
+
+      document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+    },
+
+    /**
+     * `--dom:prepend`: Prepends content from a `<template>` to the target.
+     * Supports `:inner` (default) to prepend as first child, or `:outer` to insert before the target.
+     * Supports advanced templating with `data-with-json` and `data-tpl-*` attributes when advanced events are enabled.
+     * @example `<button command="--dom:prepend" commandfor="log" data-template-id="new-log">Log</button>`
+     * @example `<button command="--dom:prepend:outer" commandfor="#item-2" data-template-id="item-1">Insert Before</button>`
+     */
+    "--dom:prepend": ({ invoker, targetElement, params }: CommandContext) => {
+      const style = params[0] || 'inner';
+      let fragment = getSourceNode(invoker, 'prepend').cloneNode(true) as DocumentFragment;
+
+       // Process the fragment if advanced templating is enabled
+       if (isInterpolationEnabled()) {
+         fragment = processTemplateFragment(fragment, invoker);
+       }
+
+      const updateDOM = () => {
+        if (style === 'outer') {
+          targetElement.before(fragment);
+        } else {
+          // Default to 'inner'
+          targetElement.prepend(fragment);
+        }
+      };
+
+       document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+     },
+
+     /**
+      * `--dom:wrap`: Wraps the target element with content from a `<template>` or a simple tag.
+     * Supports `--dom:wrap:tagname` for simple wrappers with optional class/id.
+     * @example `<button command="--dom:wrap" commandfor="#my-image" data-template-id="figure-tpl">Add Caption</button>`
+     * @example `<button command="--dom:wrap:div" commandfor="#content" data-wrapper-class="card">Wrap in Card</button>`
+     */
+    "--dom:wrap": ({ invoker, targetElement, params }: CommandContext) => {
+      const wrapperTag = params[0] || null;
+      let wrapperElement: HTMLElement;
+
+      if (wrapperTag) {
+        // Simple tag wrapper like --dom:wrap:div
+        wrapperElement = document.createElement(wrapperTag);
+        const wrapperClass = invoker.dataset.wrapperClass;
+        const wrapperId = invoker.dataset.wrapperId;
+        if (wrapperClass) wrapperElement.className = wrapperClass;
+        if (wrapperId) wrapperElement.id = wrapperId;
+      } else {
+        // Template-based wrapper
+        let fragment = getSourceNode(invoker, 'wrap').cloneNode(true) as DocumentFragment;
+
+        // Process the fragment if advanced templating is enabled
+        if (isInterpolationEnabled()) {
+          fragment = processTemplateFragment(fragment, invoker);
+        }
+
+        // Assume the fragment has a single root element
+        const children = Array.from(fragment.children);
+        if (children.length !== 1) {
+          throw createInvokerError('Wrap template must contain exactly one root element', ErrorSeverity.ERROR, {
+            command: '--dom:wrap', element: invoker
+          });
+        }
+        wrapperElement = children[0] as HTMLElement;
+      }
+
+      const updateDOM = () => {
+        targetElement.replaceWith(wrapperElement);
+        wrapperElement.appendChild(targetElement);
+      };
+
+      document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+    },
+
+    /**
+     * `--dom:unwrap`: Removes the parent of the target element, promoting it up one level in the DOM tree.
+     * @example `<button command="--dom:unwrap" commandfor="#content">Remove Wrapper</button>`
+     */
+    "--dom:unwrap": ({ targetElement }: CommandContext) => {
+      const parent = targetElement.parentElement;
+      if (!parent) return; // Already at root level
+
+      const updateDOM = () => {
+        parent.replaceWith(targetElement);
+      };
+
+      document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+    },
+
+    /**
+     * `--dom:toggle-empty-class`: Adds or removes a class on the target based on whether it has child elements.
+     * @example `<button command="--dom:toggle-empty-class:list-is-empty" commandfor="#todo-list">Remove Item</button>`
+     */
+    "--dom:toggle-empty-class": ({ targetElement, params }: CommandContext) => {
+      const className = params[0];
+      if (!className) {
+        throw createInvokerError('Toggle empty class command requires a class name parameter', ErrorSeverity.ERROR, {
+          command: '--dom:toggle-empty-class', element: targetElement
+        });
+      }
+
+      const hasChildren = targetElement.children.length > 0;
+      targetElement.classList.toggle(className, !hasChildren);
+    },
+
+
+
+    /**
+     * `--data:set`: Sets a data attribute on the target element.
+     * @example `<button command="--data:set:userId:123" commandfor="#profile">Set User ID</button>`
+     */
+    "--data:set": ({ invoker, targetElement, params }: CommandContext) => {
+      const key = params[0];
+      let value = params[1];
+      if (!key) {
+        throw createInvokerError('Data set command requires a key parameter', ErrorSeverity.ERROR, {
+          command: '--data:set', element: invoker
+        });
+      }
+
+      // Interpolate value if interpolation is enabled
+      if (isInterpolationEnabled() && value) {
+        const context = {
+          this: {
+            ...invoker,
+            dataset: { ...invoker.dataset },
+            value: (invoker as any).value || '',
+          },
+          data: document.body.dataset,
+          event: (invoker as any).triggeringEvent,
+        };
+        value = interpolateString(value, context);
+      }
+
+      targetElement.dataset[key] = value || '';
+    },
+
+    /**
+     * `--data:copy`: Copies a data attribute from a source element to the target.
+     * @example `<button command="--data:copy:userId" commandfor="#edit-form" data-copy-from="#user-profile">Edit User</button>`
+     */
+    "--data:copy": ({ invoker, targetElement, params }: CommandContext) => {
+      const key = params[0];
+      if (!key) {
+        throw createInvokerError('Data copy command requires a key parameter', ErrorSeverity.ERROR, {
+          command: '--data:copy', element: invoker
+        });
+      }
+
+      const sourceSelector = invoker.dataset.copyFrom;
+      let sourceElement: HTMLElement | null = invoker;
+
+      if (sourceSelector) {
+        sourceElement = document.querySelector(sourceSelector);
+        if (!sourceElement) {
+          throw createInvokerError(`Source element with selector "${sourceSelector}" not found`, ErrorSeverity.ERROR, {
+            command: '--data:copy', element: invoker
+          });
+        }
+      }
+
+      const value = sourceElement.dataset[key];
+      if (value !== undefined) {
+        targetElement.dataset[key] = value;
+      }
+    },
+
+    /**
+     * `--data:set:array:push`: Adds an item to the end of an array stored in a data attribute.
+     * @example `<button command="--data:set:array:push:todos" data-value='{"title": "New Task"}' commandfor="#app">Add Todo</button>`
+     */
+    "--data:set:array:push": ({ invoker, targetElement, params }: CommandContext) => {
+      const arrayKey = params[0];
+      if (!arrayKey) {
+        throw createInvokerError('Array push command requires an array key parameter', ErrorSeverity.ERROR, {
+          command: '--data:set:array:push', element: invoker
+        });
+      }
+
+      const valueToAdd = invoker.dataset.value;
+      if (!valueToAdd) {
+        throw createInvokerError('Array push command requires a data-value attribute', ErrorSeverity.ERROR, {
+          command: '--data:set:array:push', element: invoker
+        });
+      }
+
+      let arrayData: any[] = [];
+      try {
+        const existingData = targetElement.dataset[arrayKey];
+        arrayData = existingData ? JSON.parse(existingData) : [];
+      } catch (e) {
+        arrayData = [];
+      }
+
+      try {
+        const newItem = JSON.parse(valueToAdd);
+        arrayData.push(newItem);
+        targetElement.dataset[arrayKey] = JSON.stringify(arrayData);
+      } catch (e) {
+        throw createInvokerError('Invalid JSON in data-value attribute', ErrorSeverity.ERROR, {
+          command: '--data:set:array:push', element: invoker
+        });
+      }
+    },
+
+    /**
+     * `--data:set:array:remove`: Removes an item at a specific index from an array stored in a data attribute.
+     * @example `<button command="--data:set:array:remove:todos" data-index="2" commandfor="#app">Remove Item</button>`
+     */
+    "--data:set:array:remove": ({ invoker, targetElement, params }: CommandContext) => {
+      const arrayKey = params[0];
+      if (!arrayKey) {
+        throw createInvokerError('Array remove command requires an array key parameter', ErrorSeverity.ERROR, {
+          command: '--data:set:array:remove', element: invoker
+        });
+      }
+
+      const indexToRemove = parseInt(invoker.dataset.index || '0', 10);
+      if (isNaN(indexToRemove)) {
+        throw createInvokerError('Array remove command requires a valid data-index attribute', ErrorSeverity.ERROR, {
+          command: '--data:set:array:remove', element: invoker
+        });
+      }
+
+      let arrayData: any[] = [];
+      try {
+        const existingData = targetElement.dataset[arrayKey];
+        arrayData = existingData ? JSON.parse(existingData) : [];
+      } catch (e) {
+        arrayData = [];
+      }
+
+      if (indexToRemove >= 0 && indexToRemove < arrayData.length) {
+        arrayData.splice(indexToRemove, 1);
+        targetElement.dataset[arrayKey] = JSON.stringify(arrayData);
+      }
+    },
+
+    /**
+     * `--data:set:array:update`: Updates an item at a specific index in an array stored in a data attribute.
+     * @example `<button command="--data:set:array:update:todos" data-index="1" data-value='{"title": "Updated"}' commandfor="#app">Update Item</button>`
+     */
+    "--data:set:array:update": ({ invoker, targetElement, params }: CommandContext) => {
+      const arrayKey = params[0];
+      if (!arrayKey) {
+        throw createInvokerError('Array update command requires an array key parameter', ErrorSeverity.ERROR, {
+          command: '--data:set:array:update', element: invoker
+        });
+      }
+
+      const indexToUpdate = parseInt(invoker.dataset.index || '0', 10);
+      const valueToUpdate = invoker.dataset.value;
+
+      if (isNaN(indexToUpdate)) {
+        throw createInvokerError('Array update command requires a valid data-index attribute', ErrorSeverity.ERROR, {
+          command: '--data:set:array:update', element: invoker
+        });
+      }
+
+      if (!valueToUpdate) {
+        throw createInvokerError('Array update command requires a data-value attribute', ErrorSeverity.ERROR, {
+          command: '--data:set:array:update', element: invoker
+        });
+      }
+
+      let arrayData: any[] = [];
+      try {
+        const existingData = targetElement.dataset[arrayKey];
+        arrayData = existingData ? JSON.parse(existingData) : [];
+      } catch (e) {
+        arrayData = [];
+      }
+
+      if (indexToUpdate >= 0 && indexToUpdate < arrayData.length) {
+        try {
+          const updateData = JSON.parse(valueToUpdate);
+          arrayData[indexToUpdate] = { ...arrayData[indexToUpdate], ...updateData };
+          targetElement.dataset[arrayKey] = JSON.stringify(arrayData);
+        } catch (e) {
+          throw createInvokerError('Invalid JSON in data-value attribute', ErrorSeverity.ERROR, {
+            command: '--data:set:array:update', element: invoker
+          });
+        }
+      }
+     },
+
+     /**
+      * `--data:set:array:insert`: Inserts an item at a specific index in an array stored in a data attribute.
+      * @example `<button command="--data:set:array:insert:todos" data-index="1" data-value='{"title": "Inserted Item"}' commandfor="#app">Insert at Position 1</button>`
+      */
+     "--data:set:array:insert": ({ invoker, targetElement, params }: CommandContext) => {
+       const arrayKey = params[0];
+       if (!arrayKey) {
+         throw createInvokerError('Array insert command requires an array key parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:array:insert', element: invoker
+         });
+       }
+
+       const indexToInsert = parseInt(invoker.dataset.index || '0', 10);
+       const valueToInsert = invoker.dataset.value;
+
+       if (isNaN(indexToInsert)) {
+         throw createInvokerError('Array insert command requires a valid data-index attribute', ErrorSeverity.ERROR, {
+           command: '--data:set:array:insert', element: invoker
+         });
+       }
+
+       if (!valueToInsert) {
+         throw createInvokerError('Array insert command requires a data-value attribute', ErrorSeverity.ERROR, {
+           command: '--data:set:array:insert', element: invoker
+         });
+       }
+
+       let arrayData: any[] = [];
+       try {
+         const existingData = targetElement.dataset[arrayKey];
+         arrayData = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         arrayData = [];
+       }
+
+       if (indexToInsert >= 0 && indexToInsert <= arrayData.length) {
+         try {
+           const newItem = JSON.parse(valueToInsert);
+           arrayData.splice(indexToInsert, 0, newItem);
+           targetElement.dataset[arrayKey] = JSON.stringify(arrayData);
+         } catch (e) {
+           throw createInvokerError('Invalid JSON in data-value attribute', ErrorSeverity.ERROR, {
+             command: '--data:set:array:insert', element: invoker
+           });
+         }
+       }
+     },
+
+     /**
+      * `--data:set:array:unshift`: Adds an item to the beginning of an array stored in a data attribute.
+      * @example `<button command="--data:set:array:unshift:todos" data-value='{"title": "First Item"}' commandfor="#app">Add to Beginning</button>`
+      */
+     "--data:set:array:unshift": ({ invoker, targetElement, params }: CommandContext) => {
+       const arrayKey = params[0];
+       if (!arrayKey) {
+         throw createInvokerError('Array unshift command requires an array key parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:array:unshift', element: invoker
+         });
+       }
+
+       const valueToAdd = invoker.dataset.value;
+       if (!valueToAdd) {
+         throw createInvokerError('Array unshift command requires a data-value attribute', ErrorSeverity.ERROR, {
+           command: '--data:set:array:unshift', element: invoker
+         });
+       }
+
+       let arrayData: any[] = [];
+       try {
+         const existingData = targetElement.dataset[arrayKey];
+         arrayData = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         arrayData = [];
+       }
+
+       try {
+         const newItem = JSON.parse(valueToAdd);
+         arrayData.unshift(newItem);
+         targetElement.dataset[arrayKey] = JSON.stringify(arrayData);
+       } catch (e) {
+         throw createInvokerError('Invalid JSON in data-value attribute', ErrorSeverity.ERROR, {
+           command: '--data:set:array:unshift', element: invoker
+         });
+       }
+     },
+
+     /**
+      * `--data:set:array:clear`: Removes all items from an array stored in a data attribute.
+      * @example `<button command="--data:set:array:clear:todos" commandfor="#app">Clear All Todos</button>`
+      */
+     "--data:set:array:clear": ({ targetElement, params }: CommandContext) => {
+       const arrayKey = params[0];
+       if (!arrayKey) {
+         throw createInvokerError('Array clear command requires an array key parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:array:clear', element: targetElement
+         });
+       }
+
+       targetElement.dataset[arrayKey] = JSON.stringify([]);
+     },
+
+     /**
+      * `--data:set:array:sort`: Sorts an array stored in a data attribute.
+      * @example `<button command="--data:set:array:sort:todos" data-sort-by="priority" data-sort-order="desc" commandfor="#app">Sort by Priority</button>`
+      */
+     "--data:set:array:sort": ({ invoker, targetElement, params }: CommandContext) => {
+       const arrayKey = params[0];
+       if (!arrayKey) {
+         throw createInvokerError('Array sort command requires an array key parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:array:sort', element: invoker
+         });
+       }
+
+       const sortBy = invoker.dataset.sortBy || invoker.dataset.sort_by;
+       const sortOrder = invoker.dataset.sortOrder || invoker.dataset.sort_order || 'asc';
+
+       if (!sortBy) {
+         throw createInvokerError('Array sort command requires a data-sort-by attribute', ErrorSeverity.ERROR, {
+           command: '--data:set:array:sort', element: invoker
+         });
+       }
+
+       let arrayData: any[] = [];
+       try {
+         const existingData = targetElement.dataset[arrayKey];
+         arrayData = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         arrayData = [];
+       }
+
+       arrayData.sort((a, b) => {
+         const aVal = a[sortBy];
+         const bVal = b[sortBy];
+
+         let comparison = 0;
+         if (aVal < bVal) comparison = -1;
+         else if (aVal > bVal) comparison = 1;
+
+         return sortOrder === 'desc' ? -comparison : comparison;
+       });
+
+       targetElement.dataset[arrayKey] = JSON.stringify(arrayData);
+     },
+
+     /**
+      * `--data:set:array:filter`: Filters an array stored in a data attribute and stores the result in a new key.
+      * @example `<button command="--data:set:array:filter:todos" data-filter-by="completed" data-filter-value="false" data-result-key="filtered-todos" commandfor="#app">Show Pending</button>`
+      */
+     "--data:set:array:filter": ({ invoker, targetElement, params }: CommandContext) => {
+       const arrayKey = params[0];
+       if (!arrayKey) {
+         throw createInvokerError('Array filter command requires an array key parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:array:filter', element: invoker
+         });
+       }
+
+       const filterBy = invoker.dataset.filterBy || invoker.dataset.filter_by;
+       const filterValue = invoker.dataset.filterValue || invoker.dataset.filter_value;
+       const resultKey = invoker.dataset.resultKey || invoker.dataset.result_key || `${arrayKey}-filtered`;
+
+       if (!filterBy) {
+         throw createInvokerError('Array filter command requires a data-filter-by attribute', ErrorSeverity.ERROR, {
+           command: '--data:set:array:filter', element: invoker
+         });
+       }
+
+       let arrayData: any[] = [];
+       try {
+         const existingData = targetElement.dataset[arrayKey];
+         arrayData = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         arrayData = [];
+       }
+
+       const filteredData = arrayData.filter(item => {
+         const itemValue = item[filterBy];
+         if (filterValue === 'true') return itemValue === true;
+         if (filterValue === 'false') return itemValue === false;
+         return String(itemValue) === filterValue;
+       });
+
+       targetElement.dataset[resultKey] = JSON.stringify(filteredData);
+     },
+
+     /**
+      * `--data:set:new-todo`: Adds a new todo item to the todos array.
+      * @example `<form command="--data:set:new-todo" data-bind-to="#form-data" data-bind-as="data:new-todo-json">`
+      */
+       "--data:set:new-todo": ({ invoker, targetElement }: CommandContext) => {
+         // Get the form data
+         const formData = getFormData(invoker as unknown as HTMLFormElement);
+
+        // Generate unique ID and add metadata
+        const newTodo = {
+          id: generateId(),
+          title: formData.title || '',
+          description: formData.description || '',
+          priority: formData.priority || 'medium',
+          tags: formData.tags || '',
+          completed: false,
+          created: new Date().toLocaleDateString()
+        };
+
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       todos.push(newTodo);
+       targetElement.dataset.todos = JSON.stringify(todos);
+
+       // Dispatch event for UI updates
+       targetElement.dispatchEvent(new CustomEvent('todo-updated', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:filter:status`: Sets the status filter for todos.
+      * @example `<select command="--data:set:filter:status" data-bind-to="body" data-bind-as="data:filter-status">`
+      */
+     "--data:set:filter:status": ({ invoker, targetElement }: CommandContext) => {
+       const filterValue = (invoker as unknown as HTMLSelectElement).value;
+       targetElement.dataset.filterStatus = filterValue;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('filter-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:filter:priority`: Sets the priority filter for todos.
+      * @example `<select command="--data:set:filter:priority" data-bind-to="body" data-bind-as="data:filter-priority">`
+      */
+     "--data:set:filter:priority": ({ invoker, targetElement }: CommandContext) => {
+       const filterValue = (invoker as unknown as HTMLSelectElement).value;
+       targetElement.dataset.filterPriority = filterValue;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('filter-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:search`: Sets the search term for todos.
+      * @example `<input command="--data:set:search" data-bind-to="body" data-bind-as="data:search-term">`
+      */
+     "--data:set:search": ({ invoker, targetElement }: CommandContext) => {
+       const searchTerm = (invoker as unknown as HTMLInputElement).value;
+       targetElement.dataset.searchTerm = searchTerm;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('filter-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:sort:by`: Sets the sort field for todos.
+      * @example `<select command="--data:set:sort:by" data-bind-to="body" data-bind-as="data:sort-by">`
+      */
+     "--data:set:sort:by": ({ invoker, targetElement }: CommandContext) => {
+       const sortBy = (invoker as unknown as HTMLSelectElement).value;
+       targetElement.dataset.sortBy = sortBy;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('filter-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:sort:order`: Sets the sort order for todos.
+      * @example `<select command="--data:set:sort:order" data-bind-to="body" data-bind-as="data:sort-order">`
+      */
+     "--data:set:sort:order": ({ invoker, targetElement }: CommandContext) => {
+       const sortOrder = (invoker as unknown as HTMLSelectElement).value;
+       targetElement.dataset.sortOrder = sortOrder;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('filter-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:toggle:{id}`: Toggles the completed status of a todo item.
+      * @example `<input command="--data:set:toggle:123" data-bind-to="body" data-bind-as="data:toggle-item">`
+      */
+     "--data:set:toggle": ({ invoker, targetElement, params }: CommandContext) => {
+       const todoId = params[0];
+       if (!todoId) {
+         throw createInvokerError('Toggle command requires a todo ID parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:toggle', element: invoker
+         });
+       }
+
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       const todoIndex = todos.findIndex(t => t.id === todoId);
+       if (todoIndex !== -1) {
+         todos[todoIndex].completed = !todos[todoIndex].completed;
+         targetElement.dataset.todos = JSON.stringify(todos);
+         // Dispatch event for UI updates
+         targetElement.dispatchEvent(new CustomEvent('todo-updated', { bubbles: true }));
+       }
+     },
+
+     /**
+      * `--data:set:edit:{id}`: Sets a todo item into edit mode.
+      * @example `<button command="--data:set:edit:123" data-bind-to="body" data-bind-as="data:edit-item">`
+      */
+     "--data:set:edit": ({ invoker, targetElement, params }: CommandContext) => {
+       const todoId = params[0];
+       if (!todoId) {
+         throw createInvokerError('Edit command requires a todo ID parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:edit', element: invoker
+         });
+       }
+
+       targetElement.dataset.editingId = todoId;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('edit-mode-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:delete:{id}`: Deletes a todo item.
+      * @example `<button command="--data:set:delete:123" data-bind-to="body" data-bind-as="data:delete-item">`
+      */
+     "--data:set:delete": ({ invoker, targetElement, params }: CommandContext) => {
+       const todoId = params[0];
+       if (!todoId) {
+         throw createInvokerError('Delete command requires a todo ID parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:delete', element: invoker
+         });
+       }
+
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       const filteredTodos = todos.filter(t => t.id !== todoId);
+       targetElement.dataset.todos = JSON.stringify(filteredTodos);
+       // Dispatch event for UI updates
+       targetElement.dispatchEvent(new CustomEvent('todo-updated', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:cancel-edit:{id}`: Cancels edit mode for a todo item.
+      * @example `<button command="--data:set:cancel-edit:123" data-bind-to="body" data-bind-as="data:cancel-edit">`
+      */
+     "--data:set:cancel-edit": ({ invoker, targetElement, params }: CommandContext) => {
+       const todoId = params[0];
+       if (!todoId) {
+         throw createInvokerError('Cancel edit command requires a todo ID parameter', ErrorSeverity.ERROR, {
+           command: '--data:set:cancel-edit', element: invoker
+         });
+       }
+
+       delete targetElement.dataset.editingId;
+       // Trigger re-render
+       targetElement.dispatchEvent(new CustomEvent('edit-mode-changed', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:save-edit:{id}`: Saves changes to a todo item in edit mode.
+      * @example `<button command="--data:set:save-edit:123" data-bind-to="#edit-form" data-bind-as="data:save-edit-json">`
+      */
+      "--data:set:save-edit": ({ invoker, targetElement, params }: CommandContext) => {
+        const todoId = params[0];
+        if (!todoId) {
+          throw createInvokerError('Save edit command requires a todo ID parameter', ErrorSeverity.ERROR, {
+            command: '--data:set:save-edit', element: invoker
+          });
+        }
+
+        const editForm = document.getElementById(`edit-form-${todoId}`);
+        if (!editForm) {
+          throw createInvokerError(`Edit form for id ${todoId} not found`, ErrorSeverity.ERROR, {
+            command: '--data:set:save-edit', element: invoker
+          });
+        }
+
+        const updateData = {
+          title: editForm.dataset.title || '',
+          description: editForm.dataset.description || '',
+          priority: editForm.dataset.priority || 'medium'
+        };
+
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       const todoIndex = todos.findIndex(t => t.id === todoId);
+       if (todoIndex !== -1) {
+         todos[todoIndex] = { ...todos[todoIndex], ...updateData };
+         targetElement.dataset.todos = JSON.stringify(todos);
+         delete targetElement.dataset.editingId;
+         // Dispatch event for UI updates
+         targetElement.dispatchEvent(new CustomEvent('todo-updated', { bubbles: true }));
+       }
+      },
+
+      /**
+       * `--data:set:bulk-action:complete-all`: Marks all pending todos as completed.
+      * @example `<button command="--data:set:bulk-action:complete-all" data-bind-to="body" data-bind-as="data:bulk-action">`
+      */
+     "--data:set:bulk-action:complete-all": ({ targetElement }: CommandContext) => {
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       const updatedTodos = todos.map(todo =>
+         todo.completed ? todo : { ...todo, completed: true }
+       );
+
+       targetElement.dataset.todos = JSON.stringify(updatedTodos);
+       // Dispatch event for UI updates
+       targetElement.dispatchEvent(new CustomEvent('todo-updated', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:bulk-action:clear-completed`: Removes all completed todos.
+      * @example `<button command="--data:set:bulk-action:clear-completed" data-bind-to="body" data-bind-as="data:bulk-action">`
+      */
+     "--data:set:bulk-action:clear-completed": ({ targetElement }: CommandContext) => {
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       const filteredTodos = todos.filter(todo => !todo.completed);
+       targetElement.dataset.todos = JSON.stringify(filteredTodos);
+       // Dispatch event for UI updates
+       targetElement.dispatchEvent(new CustomEvent('todo-updated', { bubbles: true }));
+     },
+
+     /**
+      * `--data:set:bulk-action:export`: Exports todos as JSON.
+      * @example `<button command="--data:set:bulk-action:export" data-bind-to="body" data-bind-as="data:bulk-action">`
+      */
+     "--data:set:bulk-action:export": ({ targetElement }: CommandContext) => {
+       let todos: any[] = [];
+       try {
+         const existingData = targetElement.dataset.todos;
+         todos = existingData ? JSON.parse(existingData) : [];
+       } catch (e) {
+         todos = [];
+       }
+
+       const dataStr = JSON.stringify(todos, null, 2);
+       const dataBlob = new Blob([dataStr], { type: 'application/json' });
+       const url = URL.createObjectURL(dataBlob);
+
+       const link = document.createElement('a');
+       link.href = url;
+       link.download = `todos-${new Date().toISOString().split('T')[0]}.json`;
+       document.body.appendChild(link);
+       link.click();
+       document.body.removeChild(link);
+       URL.revokeObjectURL(url);
+     },
+
+
+
+     /**
+      * `--cookie:set`: Sets a browser cookie.
+      * @example `<button command="--cookie:set:theme:dark" data-cookie-expires="365">Set Dark Theme</button>`
+      */
+    "--cookie:set": ({ invoker, params }: CommandContext) => {
+      const key = params[0];
+      const value = params[1];
+      if (!key) {
+        throw createInvokerError('Cookie set command requires a key parameter', ErrorSeverity.ERROR, {
+          command: '--cookie:set', element: invoker
+        });
+      }
+
+      let cookieString = `${encodeURIComponent(key)}=${encodeURIComponent(value || '')}`;
+      const expires = invoker.dataset.cookieExpires;
+      if (expires) {
+        const days = parseInt(expires, 10);
+        if (!isNaN(days)) {
+          const date = new Date();
+          date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+          cookieString += `; expires=${date.toUTCString()}`;
+        }
+      }
+      cookieString += '; path=/';
+      document.cookie = cookieString;
+    },
+
+    /**
+     * `--cookie:get`: Gets a cookie value and sets it on the target element.
+     * @example `<button command="--cookie:get:theme" commandfor="#theme-display">Show Theme</button>`
+     */
+    "--cookie:get": ({ targetElement, params }: CommandContext) => {
+      const key = params[0];
+      if (!key) {
+        throw createInvokerError('Cookie get command requires a key parameter', ErrorSeverity.ERROR, {
+          command: '--cookie:get', element: targetElement
+        });
+      }
+
+      const cookies = document.cookie.split(';');
+      for (const cookie of cookies) {
+        const [cookieKey, cookieValue] = cookie.trim().split('=');
+        if (decodeURIComponent(cookieKey) === key) {
+          targetElement.textContent = decodeURIComponent(cookieValue || '');
+          return;
+        }
+      }
+      targetElement.textContent = ''; // Not found
+    },
+
+    /**
+     * `--cookie:remove`: Removes a browser cookie.
+     * @example `<button command="--cookie:remove:theme">Clear Theme</button>`
+     */
+    "--cookie:remove": ({ params }: CommandContext) => {
+      const key = params[0];
+      if (!key) {
+        throw createInvokerError('Cookie remove command requires a key parameter', ErrorSeverity.ERROR, {
+          command: '--cookie:remove'
+        });
+      }
+
+      document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    },
+
+    /**
+     * `--command:trigger`: Triggers an event on another element.
+     * @example `<button command="--command:trigger:click" commandfor="#save-btn" data-and-then="--command:trigger:click" data-then-target="#close-btn">Save and Close</button>`
+     */
+    "--command:trigger": ({ targetElement, params }: CommandContext) => {
+      const eventType = params[0] || 'click';
+      const event = new Event(eventType, { bubbles: true, cancelable: true });
+      targetElement.dispatchEvent(event);
+    },
+
+    /**
+     * `--command:delay`: Waits for a specified number of milliseconds.
+     * @example `<button command="--text:set:Saved!" commandfor="#status" data-and-then="--command:delay:2000" data-then-target="#status">Save</button>`
+     */
+    "--command:delay": ({ params }: CommandContext) => {
+      const delay = parseInt(params[0], 10);
+      if (isNaN(delay) || delay < 0) {
+        throw createInvokerError('Delay command requires a valid positive number of milliseconds', ErrorSeverity.ERROR, {
+          command: '--command:delay'
+        });
+      }
+      return new Promise(resolve => setTimeout(resolve, delay));
+    },
+
+    /**
+     * `--on:interval`: Executes a command repeatedly at a given interval.
+     * The interval is cleared when the element is removed from the DOM.
+     * @example `<div command-on="load" command="--on:interval:10000" commandfor="#live-data" data-interval-command="--fetch:get" data-url="/api/latest-stats">Loading...</div>`
+     */
+    "--on:interval": ({ invoker, targetElement, params }: CommandContext) => {
+      const intervalMs = parseInt(params[0], 10);
+      if (isNaN(intervalMs) || intervalMs <= 0) {
+        throw createInvokerError('Interval command requires a valid positive interval in milliseconds', ErrorSeverity.ERROR, {
+          command: '--on:interval', element: invoker
+        });
+      }
+
+      const intervalCommand = invoker.dataset.intervalCommand;
+      if (!intervalCommand) {
+        throw createInvokerError('Interval command requires data-interval-command attribute', ErrorSeverity.ERROR, {
+          command: '--on:interval', element: invoker
+        });
+      }
+
+      // Clear any existing interval
+      const existingIntervalId = (invoker as any)._invokerIntervalId;
+      if (existingIntervalId) {
+        clearInterval(existingIntervalId);
+      }
+
+      // Set up new interval
+      const intervalId = setInterval(() => {
+        // Execute the interval command programmatically
+        if (window.Invoker) {
+          const targetId = targetElement.id || `__invoker-target-${Date.now()}`;
+          if (!targetElement.id) targetElement.id = targetId;
+          window.Invoker.executeCommand(intervalCommand, targetId, invoker);
+        }
+      }, intervalMs);
+
+      // Store the interval ID
+      (invoker as any)._invokerIntervalId = intervalId;
+
+      // Clear interval when element is removed
+      const observer = new MutationObserver(() => {
+        if (!document.contains(invoker)) {
+          clearInterval(intervalId);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    },
+
+    /**
+     * `--bind`: Creates a one-way data binding from the target element to another element.
+     * @example `<input command-on="input" command="--bind:value" commandfor="#input" data-bind-to="#output" data-bind-as="text">`
+     */
+     "--bind": ({ invoker, targetElement, params }: CommandContext) => {
+       const sourceProperty = params.join(':');
+       if (!sourceProperty) {
+         throw createInvokerError('Bind command requires a source property (e.g., value, text, data:name)', ErrorSeverity.ERROR, {
+           command: '--bind', element: invoker
+         });
+       }
+
+       // Get the source value (prefer invoker if it has the property, otherwise targetElement)
+       let sourceValue: any;
+       const sourceElement = (sourceProperty === 'value' && (invoker instanceof HTMLInputElement || invoker instanceof HTMLTextAreaElement || invoker instanceof HTMLSelectElement)) ? invoker : targetElement;
+
+      if (sourceProperty === 'value' && (sourceElement instanceof HTMLInputElement || sourceElement instanceof HTMLTextAreaElement || sourceElement instanceof HTMLSelectElement)) {
+        sourceValue = sourceElement.value;
+      } else if (sourceProperty === 'text') {
+        sourceValue = sourceElement.textContent;
+      } else if (sourceProperty === 'html') {
+        sourceValue = sourceElement.innerHTML;
+      } else if (sourceProperty.startsWith('attr:')) {
+        const attrName = sourceProperty.substring(5);
+        sourceValue = sourceElement.getAttribute(attrName);
+      } else if (sourceProperty.startsWith('data:')) {
+        const dataName = sourceProperty.substring(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+        sourceValue = sourceElement.dataset[dataName];
+      } else {
+        throw createInvokerError(`Invalid source property for --bind: "${sourceProperty}"`, ErrorSeverity.ERROR, {
+          command: '--bind', element: invoker
+        });
+      }
+
+      // Find the destination (either data-bind-to or the targetElement)
+      const destinationSelector = invoker.dataset.bindTo;
+      const destinations = destinationSelector
+        ? resolveTargets(destinationSelector, invoker) as HTMLElement[]
+        : [targetElement];
+
+      // Apply to destinations
+      const destinationProperty = invoker.dataset.bindAs || 'text';
+
+      destinations.forEach(dest => {
+        if (destinationProperty === 'value' && (dest instanceof HTMLInputElement || dest instanceof HTMLTextAreaElement || dest instanceof HTMLSelectElement)) {
+          (dest as HTMLInputElement).value = sourceValue || '';
+        } else if (destinationProperty === 'text') {
+          dest.textContent = sourceValue || '';
+        } else if (destinationProperty === 'html') {
+          dest.innerHTML = sanitizeHTML(sourceValue || '');
+        } else if (destinationProperty.startsWith('attr:')) {
+          const attrName = destinationProperty.substring(5);
+          if (sourceValue === null || sourceValue === undefined) {
+            dest.removeAttribute(attrName);
+          } else {
+            dest.setAttribute(attrName, sourceValue);
+          }
+        } else if (destinationProperty.startsWith('data:')) {
+          const dataName = destinationProperty.substring(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+          if (sourceValue === null || sourceValue === undefined) {
+            delete dest.dataset[dataName];
+          } else {
+            dest.dataset[dataName] = sourceValue;
+          }
+        } else if (destinationProperty === 'class:add') {
+          if (sourceValue) dest.classList.add(sourceValue);
+         } else if (destinationProperty === 'class:remove') {
+           if (sourceValue) dest.classList.remove(sourceValue);
+         }
+       });
+     },
   
   /**
    * `--text:copy`: Copies the `textContent` from one element to another.
    * The source element is specified via a CSS selector in `data-copy-from` on the invoker.
    * If `data-copy-from` is omitted, it copies the invoker's own `textContent`.
    */
-  "--text:copy": (context: CommandContext) => {
-      const { invoker, targetElement } = context;
-      const sourceSelector = invoker.dataset.copyFrom;
-      let sourceElement: HTMLElement | null = invoker;
+   "--text:copy": (context: CommandContext) => {
+       const { invoker, targetElement } = context;
+       const sourceSelector = invoker.dataset.copyFrom;
+       let sourceElement: HTMLElement | null = invoker;
 
-      if (sourceSelector) {
-          sourceElement = document.querySelector(sourceSelector);
-          if (!sourceElement) {
-              throw createInvokerError(`Source element with selector "${sourceSelector}" not found`, ErrorSeverity.ERROR, {
-                  command: '--text:copy', element: invoker
-              });
-          }
-      }
+       if (sourceSelector) {
+           sourceElement = document.querySelector(sourceSelector);
+           if (!sourceElement) {
+               throw createInvokerError(`Source element with selector "${sourceSelector}" not found`, ErrorSeverity.ERROR, {
+                   command: '--text:copy', element: invoker
+               });
+           }
+       }
 
-      const textToCopy = (sourceElement instanceof HTMLInputElement || sourceElement instanceof HTMLTextAreaElement)
-          ? sourceElement.value
-          : sourceElement.textContent || '';
+       const textToCopy = (sourceElement instanceof HTMLInputElement || sourceElement instanceof HTMLTextAreaElement)
+           ? sourceElement.value
+           : sourceElement.textContent || '';
 
-      targetElement.textContent = textToCopy;
-  },
+       targetElement.textContent = textToCopy;
+   },
+
+    /**
+     * `--text:set`: Sets the text content of the target element.
+     * @example `<button command="--text:set:Hello World" commandfor="message">Set Text</button>`
+     */
+    "--text:set": ({ targetElement, params }: CommandContext) => {
+        targetElement.textContent = params.join(':');
+    },
+
+   /**
+    * `--attr:set`: Sets an attribute on the target element.
+    * @example `<button command="--attr:set:disabled:true" commandfor="button">Disable</button>`
+    */
+   "--attr:set": ({ targetElement, params }: CommandContext) => {
+       const attr = params[0];
+       const value = params.slice(1).join(':');
+       targetElement.setAttribute(attr, value);
+   },
+
+   /**
+    * `--attr:remove`: Removes an attribute from the target element.
+    * @example `<button command="--attr:remove:hidden" commandfor="toast">Show</button>`
+    */
+   "--attr:remove": ({ targetElement, params }: CommandContext) => {
+       const attr = params[0];
+       targetElement.removeAttribute(attr);
+   },
 
 
   // --- Fetch and Navigation Commands ---
@@ -380,11 +1444,30 @@ export const commands: CommandRegistry = {
    * ```
    */
   "--fetch:get": async ({ invoker, targetElement }: CommandContext) => {
-    const url = invoker.dataset.url;
+    let url = invoker.dataset.url;
     if (!url) {
       throw createInvokerError('Fetch GET command requires a data-url attribute', ErrorSeverity.ERROR, {
         command: '--fetch:get', element: invoker, recovery: 'Add data-url="/your/endpoint" to the button.'
       });
+    }
+
+    // Interpolate the URL
+    const context = {
+      this: {
+        ...invoker,
+        value: (invoker as any).value || '',
+      },
+      event: (invoker as any).triggeringEvent,
+    };
+    url = interpolateString(url, context);
+
+    // Dispatch fetch:before event for interceptors
+    const fetchEvent = new CustomEvent('fetch:before', { detail: { url, invoker }, cancelable: true });
+    window.dispatchEvent(fetchEvent);
+    if (fetchEvent.defaultPrevented) {
+      // Fetch was intercepted, skip actual fetch
+      setBusyState(invoker, false);
+      return;
     }
 
     setBusyState(invoker, true);
@@ -481,6 +1564,8 @@ export const commands: CommandRegistry = {
     }
   },
 
+
+
   /**
    * `--navigate:to`: Navigates to a new URL using the History API.
    *
@@ -504,6 +1589,44 @@ export const commands: CommandRegistry = {
       window.location.href = url;
     }
   },
+
+  /**
+   * `--emit`: Dispatches custom events for advanced interactions.
+   * The first parameter is the event type, remaining parameters form the event detail.
+   *
+   * @example
+   * ```html
+   * <button type="button" command="--emit:user-action:save-form">
+   *   Emit Save Event
+   * </button>
+   * ```
+   */
+   "--emit": ({ params, targetElement }: CommandContext) => {
+     const [eventType, ...detailParts] = params;
+     if (!eventType) {
+       throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
+         command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
+       });
+     }
+
+     let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
+     // Try to parse as JSON if it looks like JSON
+     if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
+       try {
+         detail = JSON.parse(detail);
+       } catch (e) {
+         // Keep as string if not valid JSON
+       }
+     }
+     const event = new CustomEvent(eventType, {
+       bubbles: true,
+       composed: true,
+       detail
+     });
+
+     // Dispatch to targetElement if available, otherwise to document.body
+     (targetElement || document.body).dispatchEvent(event);
+   },
 };
 
 /**
@@ -576,11 +1699,120 @@ function showFeedbackState(invoker: HTMLButtonElement, target: HTMLElement, temp
   target.replaceChildren(template.content.cloneNode(true));
 }
 
+function getFormData(form: HTMLFormElement): Record<string, string> {
+  const data: Record<string, string> = {};
+  const formData = new FormData(form);
+  for (const [key, value] of formData.entries()) {
+    data[key] = value as string;
+  }
+  return data;
+}
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
 function parseHTML(html: string): DocumentFragment {
   const sanitizedHTML = sanitizeHTML(html);
   const doc = new DOMParser().parseFromString(sanitizedHTML, "text/html");
   const fragment = document.createDocumentFragment();
   fragment.append(...Array.from(doc.body.childNodes));
+  return fragment;
+}
+
+/**
+ * Processes a template fragment with data injection and contextual selector rewriting.
+ * This is used by DOM commands when advanced templating features are enabled.
+ */
+function processTemplateFragment(fragment: DocumentFragment, invoker: HTMLButtonElement): DocumentFragment {
+  const jsonData = invoker.dataset.withJson;
+  if (!jsonData) return fragment; // If no data, return the raw fragment
+
+  // Interpolate the JSON string itself first, to resolve {{...}} and {{__uid}}
+  const textInput = document.getElementById('text-input') as HTMLInputElement | null;
+  const context = {
+    this: {
+      ...invoker,
+      value: textInput?.value || '',
+    },
+    event: (invoker as any).triggeringEvent,
+  };
+
+  let interpolatedJson: string;
+  try {
+    interpolatedJson = interpolateString(jsonData, context);
+  } catch (error) {
+    console.error("Invokers: Failed to interpolate data-with-json:", error);
+    return fragment; // Return raw fragment on interpolation error
+  }
+
+  let dataContext: Record<string, any>;
+  try {
+    dataContext = JSON.parse(interpolatedJson);
+  } catch (error) {
+    console.error("Invokers: Invalid JSON in data-with-json attribute:", error);
+    return fragment; // Return raw fragment on JSON parse error
+  }
+
+  // 1. Inject data into the template clone
+  // Process data-tpl-text attributes
+  fragment.querySelectorAll('[data-tpl-text]').forEach(el => {
+    const key = el.getAttribute('data-tpl-text');
+    if (key && dataContext.hasOwnProperty(key)) {
+      const value = String(dataContext[key]);
+      if (el.children.length === 0) {
+        el.textContent = value;
+      } else {
+        // Insert the text as the first child
+        const textNode = document.createTextNode(value);
+        el.insertBefore(textNode, el.firstChild);
+      }
+    }
+  });
+
+  // Process data-tpl-attr attributes (format: data-tpl-attr="id:id,class:cssClass")
+  fragment.querySelectorAll('[data-tpl-attr]').forEach(el => {
+    const attrMapping = el.getAttribute('data-tpl-attr');
+    if (attrMapping) {
+      attrMapping.split(',').forEach(mapping => {
+        const [attrName, key] = mapping.split(':').map(s => s.trim());
+        if (attrName && key && dataContext.hasOwnProperty(key)) {
+          el.setAttribute(attrName, String(dataContext[key]));
+        }
+      });
+    }
+  });
+
+  // Process data-tpl-value attributes
+  fragment.querySelectorAll('[data-tpl-value]').forEach(el => {
+    const key = el.getAttribute('data-tpl-value');
+    if (key && dataContext.hasOwnProperty(key) && 'value' in el) {
+      (el as HTMLInputElement).value = String(dataContext[key]);
+    }
+  });
+
+  // 2. Resolve contextual `commandfor` selectors within the fragment
+  // This is the crucial wiring step for advanced selectors
+  const firstElement = fragment.firstElementChild as HTMLElement;
+  if (firstElement?.id) {
+    // Rewrite @closest selectors to use the newly-set unique ID
+    fragment.querySelectorAll('[commandfor^="@"]').forEach(childInvoker => {
+      const originalSelector = childInvoker.getAttribute('commandfor');
+      if (originalSelector?.startsWith('@closest(')) {
+        // Extract the inner selector from @closest(selector)
+        const match = originalSelector.match(/^@closest\(([^)]+)\)$/);
+        if (match) {
+          const innerSelector = match[1];
+          // Check if the inner selector matches the first element
+          if (firstElement.matches(innerSelector)) {
+            childInvoker.setAttribute('commandfor', firstElement.id);
+          }
+        }
+      }
+      // Add logic for other @ selectors if needed
+    });
+  }
+
   return fragment;
 }
 

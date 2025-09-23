@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+    <title>Invokers Comprehensive Demo - Advanced Features Showcase</title>
+    <script type="module" src="../dist/esm/development/index.js"></script>
+    <script type="module">
+        import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
+
+        // Register demo commands as soon as Invokers is available
+        function registerDemoCommands() {
+            if (!window.Invoker) {
+                console.error("Invokers: Core library not found.");
+                return;
+            }
+
+            // Register the --demo:echo command used in the demo
+            window.Invoker.register("--demo:echo", ({ targetElement }) => {
+                targetElement.textContent = `Echo: ${new Date().toISOString()}`;
+            });
+
+            // Register --demo:clear command
+            window.Invoker.register("--demo:clear", ({ targetElement }) => {
+                targetElement.textContent = '';
+            });
+
+            console.log('Demo commands registered successfully');
+        }
+
+        if (window.Invoker) {
+            registerDemoCommands();
+        } else {
+            // Wait for Invokers to be available
+            const checkInvoker = () => {
+                if (window.Invoker) {
+                    registerDemoCommands();
+                } else {
+                    setTimeout(checkInvoker, 10);
+                }
+            };
+            checkInvoker();
+        }
+
+        // Enable advanced events
+        enableAdvancedEvents();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .demo-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .demo-header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .demo-header h2 {
+            margin: 0;
+            color: #667eea;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .demo-header p {
+            margin: 8px 0 0 0;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h3 {
+            margin-top: 0;
+            color: #495057;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            border: 1px solid #4a5568;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .btn.secondary {
+            background: #718096;
+        }
+
+        .btn.secondary:hover {
+            background: #5a67d8;
+        }
+
+        .btn.danger {
+            background: #e53e3e;
+        }
+
+        .btn.danger:hover {
+            background: #c53030;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success { background: #48bb78; }
+        .status-error { background: #e53e3e; }
+        .status-loading { background: #ed8936; }
+
+        .live-demo {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #4a5568;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .result-display {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #48bb78;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: #e53e3e;
+        }
+
+        .counter {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .tab-container {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .data-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .data-flow-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .data-flow-item:not(:last-child)::after {
+            content: '→';
+            font-size: 24px;
+            color: #667eea;
+            margin-left: 20px;
+        }
+
+        .data-flow-item h4 {
+            margin: 0 0 5px 0;
+            color: #4a5568;
+        }
+
+        .data-flow-item p {
+            margin: 0;
+            font-size: 12px;
+            color: #718096;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Invokers Comprehensive Demo</h1>
+    <p>This demo showcases the full power of Invokers: events, interpolation, async operations, component communication, library integration, and advanced patterns.</p>
+
+    <!-- Event Handling & Interpolation -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🎯 Event Handling & Interpolation</h2>
+            <p>Advanced event binding with command-on and dynamic interpolation</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Event Types & Interpolation</h3>
+                <p>Bind commands to any event with dynamic data interpolation</p>
+                <div class="live-demo">
+                    <div class="input-group">
+                        <label for="event-input">Type something:</label>
+                        <input type="text" id="event-input"
+                               command-on="input"
+                               command="--demo:echo"
+                               commandfor="event-display"
+                               data-bind-to="body"
+                               data-bind-as="data:last-input">
+                    </div>
+                    <div id="event-display" class="result-display">
+                        Event data will appear here...
+                        Last input: {{last-input}}
+                    </div>
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:clear"
+                            commandfor="event-display">Clear</button>
+                </div>
+                <div class="code-block">// Event binding with interpolation
+&lt;input command-on="input"
+       command="--demo:echo"
+       data-bind-to="body"
+       data-bind-as="data:last-input"&gt;
+
+&lt;div&gt;Last input: {{last-input}}&lt;/div&gt;</div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Advanced Event Patterns</h3>
+                <p>Complex event handling with modifiers and conditions</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:counter:increment"
+                            commandfor="counter-display"
+                            data-max-count="10">Increment Counter</button>
+                    <button class="btn secondary"
+                            command-on="dblclick"
+                            command="--demo:counter:reset"
+                            commandfor="counter-display">Double-click to Reset</button>
+                    <div id="counter-display" class="counter">0</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="code-block">// Event modifiers and conditions
+&lt;button command-on="click"
+        command="--demo:counter:increment"
+        data-max-count="10"&gt;
+
+&lt;button command-on="dblclick"
+        command="--demo:counter:reset"&gt;</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Async Operations & Promises -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>⚡ Async Operations & Promises</h2>
+            <p>Handle asynchronous operations with loading states and error handling</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Async Data Fetching</h3>
+                <p>Fetch data with loading states and error handling</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:fetch:api"
+                            commandfor="api-result"
+                            data-url="https://jsonplaceholder.typicode.com/posts/1">Fetch API Data</button>
+                    <button class="btn secondary"
+                            command-on="click"
+                            command="--demo:fetch:simulate-error"
+                            commandfor="api-result">Simulate Error</button>
+                    <div id="api-result" class="result-display">
+                        Click a button to fetch data...
+                    </div>
+                </div>
+                <div class="code-block">// Async command with loading states
+&lt;button command="--demo:fetch:api"
+        data-url="https://api.example.com/data"
+        commandfor="result-container"&gt;
+
+&lt;div id="result-container"&gt;
+  &lt;!-- Loading/error states handled automatically --&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Promise Chains & Sequencing</h3>
+                <p>Chain multiple async operations with proper sequencing</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:chain:start"
+                            commandfor="chain-result">Start Async Chain</button>
+                    <div id="chain-result" class="result-display">
+                        Chain execution log will appear here...
+                    </div>
+                </div>
+                <div class="code-block">// Command chaining with async operations
+&lt;button command="--demo:chain:start"
+        data-and-then="--demo:chain:step2"
+        data-then-target="next-element"&gt;
+
+&lt;!-- Commands execute in sequence --&gt;</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Component Communication -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🔄 Component Communication</h2>
+            <p>Components talking to each other through data binding and events</p>
+        </div>
+
+        <div class="data-flow">
+            <div class="data-flow-item">
+                <h4>Component A</h4>
+                <p>Input Control</p>
+            </div>
+            <div class="data-flow-item">
+                <h4>Data Binding</h4>
+                <p>Shared State</p>
+            </div>
+            <div class="data-flow-item">
+                <h4>Component B</h4>
+                <p>Display Update</p>
+            </div>
+            <div class="data-flow-item">
+                <h4>Component C</h4>
+                <p>Chart Update</p>
+            </div>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Data Binding Communication</h3>
+                <p>Components communicate through shared data attributes</p>
+                <div class="live-demo">
+                    <div class="input-group">
+                        <label>Shared Data Input:</label>
+                        <input type="text" id="shared-input"
+                               command-on="input"
+                               command="--bind:value"
+                               commandfor="shared-input"
+                               data-bind-to="body"
+                               data-bind-as="data:shared-value">
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1;">
+                            <h4>Component 1</h4>
+                            <div class="result-display">
+                                Shared value: {{shared-value}}
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <h4>Component 2</h4>
+                            <div class="result-display">
+                                Uppercase: {{shared-value | uppercase}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Event-Driven Communication</h3>
+                <p>Components communicate through custom events</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:event:publish"
+                            data-event-type="user-action"
+                            data-event-data='{"action": "button-click", "timestamp": "{{Date.now()}}"}'>Publish Event</button>
+                    <div id="event-log" class="result-display">
+                        Event log will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Library Integration -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>📊 Library Integration</h2>
+            <p>Seamlessly integrate with external libraries like Chart.js</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Chart.js Integration</h3>
+                <p>Update charts dynamically with Invokers commands</p>
+                <div class="live-demo">
+                    <div class="input-group">
+                        <label>Add Data Point:</label>
+                        <input type="number" id="chart-value" placeholder="Enter value">
+                        <button class="btn"
+                                command-on="click"
+                                command="--demo:chart:add-point"
+                                commandfor="chart-container"
+                                data-value-from="chart-value">Add to Chart</button>
+                        <button class="btn secondary"
+                                command-on="click"
+                                command="--demo:chart:clear"
+                                commandfor="chart-container">Clear Chart</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="demo-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <h3>External API Integration</h3>
+                <p>Fetch and display data from external APIs</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:api:github-user"
+                            commandfor="github-result"
+                            data-username="octocat">Load GitHub User</button>
+                    <div id="github-result" class="result-display">
+                        GitHub user data will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Templating -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🎨 Advanced Templating</h2>
+            <p>Complex templates with loops, conditionals, and data injection</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Template with Loops</h3>
+                <p>Render dynamic lists with template loops</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:template:load-list"
+                            commandfor="template-result">Load Template List</button>
+                    <div id="template-result" class="result-display">
+                        Template rendering will appear here...
+                    </div>
+                </div>
+                <div class="code-block">// Template with loops and conditionals
+&lt;template id="item-template"&gt;
+  &lt;div class="item {{#if completed}}completed{{/if}}"&gt;
+    &lt;h3&gt;{{title}}&lt;/h3&gt;
+    &lt;p&gt;{{description}}&lt;/p&gt;
+    {{#each tags}}
+      &lt;span class="tag"&gt;{{this}}&lt;/span&gt;
+    {{/each}}
+  &lt;/div&gt;
+&lt;/template&gt;</div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Conditional Rendering</h3>
+                <p>Show/hide content based on data conditions</p>
+                <div class="live-demo">
+                    <select id="condition-select"
+                            command-on="change"
+                            command="--demo:condition:update"
+                            commandfor="condition-result">
+                        <option value="loading">Loading</option>
+                        <option value="success">Success</option>
+                        <option value="error">Error</option>
+                    </select>
+                    <div id="condition-result" class="result-display">
+                        Select a condition to see conditional rendering...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Programmatic Triggering -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🎮 Programmatic Triggering</h2>
+            <p>Trigger commands programmatically from JavaScript</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>JavaScript API</h3>
+                <p>Use the Invokers API to trigger commands from code</p>
+                <div class="live-demo">
+                    <button class="btn" onclick="triggerProgrammaticDemo()">Run Programmatic Demo</button>
+                    <button class="btn secondary" onclick="triggerWithDelay()">Trigger with Delay</button>
+                    <div id="programmatic-result" class="result-display">
+                        Programmatic execution results will appear here...
+                    </div>
+                </div>
+                <div class="code-block">// Programmatic command triggering
+window.Invoker.executeCommand(
+  '--demo:programmatic',
+  'target-element',
+  triggerElement
+);
+
+// With custom data
+window.Invoker.executeCommand(
+  '--demo:with-data',
+  'target-element',
+  triggerElement,
+  { customData: 'value' }
+);</div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Command Queuing</h3>
+                <p>Queue multiple commands for sequential execution</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:queue:start"
+                            commandfor="queue-result">Start Command Queue</button>
+                    <div id="queue-result" class="result-display">
+                        Queue execution log will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Handling & Debugging -->
+    <div class="demo-container">
+        <div class="demo-header">
+            <h2>🛠️ Error Handling & Debugging</h2>
+            <p>Robust error handling with detailed debugging information</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Error Scenarios</h3>
+                <p>Test different error conditions and recovery</p>
+                <div class="live-demo">
+                    <button class="btn danger"
+                            command-on="click"
+                            command="--demo:error:network"
+                            commandfor="error-result">Network Error</button>
+                    <button class="btn danger"
+                            command-on="click"
+                            command="--demo:error:validation"
+                            commandfor="error-result">Validation Error</button>
+                    <button class="btn danger"
+                            command-on="click"
+                            command="--demo:error:timeout"
+                            commandfor="error-result">Timeout Error</button>
+                    <div id="error-result" class="result-display">
+                        Error details will appear here...
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Debug Information</h3>
+                <p>Enable debug mode for detailed command execution logs</p>
+                <div class="live-demo">
+                    <button class="btn"
+                            command-on="click"
+                            command="--demo:debug:toggle"
+                            commandfor="debug-result">Toggle Debug Mode</button>
+                    <button class="btn secondary"
+                            command-on="click"
+                            command="--demo:debug:execute"
+                            commandfor="debug-result">Execute with Debug</button>
+                    <div id="debug-result" class="result-display">
+                        Debug information will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="notification-template">
+        <div class="notification" data-type="{{type}}">
+            <strong>{{title}}</strong><br>
+            {{message}}
+        </div>
+    </template>
+
+    <template id="loading-template">
+        <div style="text-align: center; padding: 20px;">
+            <div class="status-indicator status-loading pulse"></div>
+            Loading...
+        </div>
+    </template>
+
+    <template id="error-template">
+        <div style="text-align: center; padding: 20px; color: #e53e3e;">
+            <div class="status-indicator status-error"></div>
+            Error: {{error}}
+        </div>
+    </template>
+
+    <script>
+        // Initialize the comprehensive demo
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            setupEventListeners();
+
+            // Initialize demo data
+            document.body.dataset.sharedValue = '';
+            document.body.dataset.counter = '0';
+            document.body.dataset.debugMode = 'false';
+        });
+
+        function initializeChart() {
+            const ctx = document.getElementById('demo-chart').getContext('2d');
+            window.demoChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Demo Data',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // Custom event listeners for demo features
+            document.addEventListener('demo-notification', function(e) {
+                showNotification(e.detail);
+            });
+
+            document.addEventListener('counter-updated', function(e) {
+                updateProgressBar(e.detail.count);
+            });
+        }
+
+        function showNotification(detail) {
+            const template = document.getElementById('notification-template');
+            const notification = template.content.cloneNode(true);
+
+            // Fill in template data
+            notification.querySelector('.notification').textContent =
+                `${detail.title}: ${detail.message}`;
+
+            if (detail.type === 'error') {
+                notification.querySelector('.notification').classList.add('error');
+            }
+
+            document.body.appendChild(notification);
+
+            // Show and auto-hide
+            setTimeout(() => {
+                const notif = document.querySelector('.notification');
+                if (notif) notif.classList.add('show');
+            }, 100);
+
+            setTimeout(() => {
+                const notif = document.querySelector('.notification');
+                if (notif) notif.remove();
+            }, 3000);
+        }
+
+        function updateProgressBar(count) {
+            const progress = document.getElementById('progress-fill');
+            const percentage = Math.min((count / 10) * 100, 100);
+            progress.style.width = percentage + '%';
+        }
+
+        // Programmatic triggering functions
+        function triggerProgrammaticDemo() {
+            const resultDiv = document.getElementById('programmatic-result');
+            resultDiv.textContent = 'Executing programmatic commands...\n';
+
+            // Execute commands programmatically
+            if (window.Invoker) {
+                window.Invoker.executeCommand('--demo:programmatic', 'programmatic-result')
+                    .then(() => {
+                        resultDiv.textContent += '✓ Programmatic execution completed\n';
+                    })
+                    .catch(error => {
+                        resultDiv.textContent += `✗ Error: ${error.message}\n`;
+                    });
+            }
+        }
+
+        function triggerWithDelay() {
+            const resultDiv = document.getElementById('programmatic-result');
+            resultDiv.textContent += 'Scheduling delayed execution...\n';
+
+            setTimeout(() => {
+                if (window.Invoker) {
+                    window.Invoker.executeCommand('--demo:delayed', 'programmatic-result');
+                }
+            }, 2000);
+        }
+
+        // Global helper functions for templates
+        window.escapeHtml = function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+
+        window.uppercase = function(text) {
+            return String(text || '').toUpperCase();
+        };
+    </script>
+</body>
+</html></content>
+</xai:function_call">  
+<xai:function_call name="write">
+<parameter name="filePath">test/comprehensive-demo.test.ts
