@@ -6,7 +6,7 @@
   <img src="https://raw.githubusercontent.com/doeixd/invokers/main/assets/logo.png" width="150" alt="Invokers Logo: A cute, friendly HTML tag character with a green arrow, signifying action.">
 </p>
 
-# ✨ Invokers: Write Interactive HTML Without JavaScript
+# ✨ Invokers: _Write Interactive HTML Without Writing JavaScript_
 
 **Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with a comprehensive set of extended commands automatically included for real-world needs like toggling, fetching, media controls, and complex workflow chaining. Think of it as **HTMX-lite**, but fully aligned with web standards.
 
