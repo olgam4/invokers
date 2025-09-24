@@ -1,16 +1,10 @@
-[![N_PM version](https://img.shields.io/npm/v/invokers.svg?style=flat)](https://www.npmjs.com/package/invokers)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub stars](https://img.shields.io/github/stars/doeixd/invokers?style=social)](https://github.com/doeixd/invokers)
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/doeixd/invokers/main/assets/logo.png" width="150" alt="Invokers Logo: A cute, friendly HTML tag character with a green arrow, signifying action.">
-</p>
-
 # ✨ Invokers: _Write Interactive HTML Without Writing JavaScript_
 
-**Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with a comprehensive set of extended commands automatically included for real-world needs like toggling, fetching, media controls, and complex workflow chaining. Think of it as **HTMX-lite**, but fully aligned with web standards.
+[![npm version](https://badge.fury.io/js/invokers.svg)](https://www.npmjs.com/package/invokers)
+[![Build Status](https://github.com/doeixd/invokers/workflows/CI/badge.svg)](https://github.com/doeixd/invokers/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Instead of writing event listeners and DOM manipulation code, you describe what should happen directly in your HTML. Your interfaces become self-documenting, accessible by default, and work without any build step.
+**Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with a comprehensive set of extended commands automatically included for real-world needs like toggling, fetching, media controls, and complex workflow chaining. Think of it as **HTMX-lite**, but fully aligned with web standards.
 
 -   ✅ **Standards-First:** Built on the W3C/WHATWG `command` attribute and Interest Invokers proposals. Learn future-proof skills, not framework-specific APIs.
 -   🧩 **Polyfill & Superset:** Provides the standard APIs in all modern browsers and extends them with a rich set of custom commands.
@@ -49,9 +43,7 @@ See Invokers in action with this copy-paste example:
   </nav>
 
   <!-- Hover cards work automatically with Interest Invokers -->
-  <a href="/profile" interestfor="profile-hint">
-    @username
-  </a>
+  <a href="/profile" interestfor="profile-hint">@username</a>
   <div id="profile-hint" popover="hint">
     <strong>John Doe</strong><br>
     Software Developer<br>
@@ -63,37 +55,12 @@ See Invokers in action with this copy-paste example:
 
 That's it! No event listeners, no DOM queries, no state management. The HTML describes the behavior, and Invokers makes it work.
 
-## 🎯 Comprehensive Demo
-
-For a deeper dive into Invokers' capabilities, check out our [comprehensive demo](examples/comprehensive-demo.html) that showcases:
-
-- **Advanced Event Handling** with `command-on` and dynamic interpolation
-- **Async Operations** with promises, error handling, and loading states
-- **Component Communication** through data binding and custom events
-- **Library Integration** with Chart.js and external APIs
-- **Advanced Templating** with loops, conditionals, and data injection
-- **Programmatic Triggering** using the JavaScript API
-- **Error Handling & Debugging** with detailed logging and recovery
-- **Command Queuing** for sequential execution
-
-The demo uses demo-specific commands that are separate from the core library. To use them in your own projects:
-
-```javascript
-import 'invokers'; // Core library
-import { registerDemoCommands } from 'invokers/demo-commands';
-
-registerDemoCommands(); // Only for demos/testing
-```
-
-Open `examples/comprehensive-demo.html` in your browser to explore all features interactively.
-
 ## 🤔 How Does This Compare?
 
 | Feature               | Vanilla JS | HTMX    | Alpine.js | **Invokers** |
 | --------------------- | ---------- | ------- | --------- | ------------ |
 | Declarative in HTML   | ❌          | ✅       | ✅         | ✅            |
 | Standards-aligned     | ❌          | ❌       | ❌         | ✅            |
-| Zero dependencies     | ✅          | ❌       | ❌         | ✅            |
 | Extended commands     | ❌          | ❌       | ❌         | ✅ (Auto)     |
 | Workflow chaining     | ❌          | Limited | Limited   | ✅            |
 | Accessible by default | ❌          | ❌       | ❌         | ✅            |
@@ -101,75 +68,189 @@ Open `examples/comprehensive-demo.html` in your browser to explore all features 
 
 <br />
 
-## The Vision: A More Declarative Web
+## 🎯 Why Invokers?
 
-For too long, creating interactive UIs has meant a disconnect between structure (HTML) and behavior (JavaScript). This leads to scattered code, accessibility oversights, and boilerplate that slows down development. The web platform is evolving to fix this.
-
-**Invokers embraces this evolution, letting you build complex interactions with the simplicity and elegance of plain HTML.**
-
-### Before: The Manual JavaScript Way
+**Write interactive UIs without JavaScript.** Invokers transforms static HTML into dynamic, interactive interfaces using declarative attributes. Perfect for progressive enhancement, component libraries, and reducing JavaScript complexity.
 
 ```html
-<!-- The button is just a button. Its purpose is hidden in a script file. -->
-<button id="menu-toggle">Menu</button>
-<nav id="main-menu" hidden>...</nav>
+<!-- Toggle a menu -->
+<button command="--toggle" commandfor="menu">Menu</button>
+<nav id="menu" hidden>...</nav>
 
-<script>
-  // Somewhere else in your project...
-  document.getElementById('menu-toggle').addEventListener('click', (e) => {
-    const menu = document.getElementById('main-menu');
-    menu.hidden = !menu.hidden;
-    // We have to remember to manually sync accessibility state.
-    e.target.setAttribute('aria-expanded', !menu.hidden);
-  });
-</script>
+<!-- Form with dynamic feedback -->
+<form command-on="submit.prevent" command="--fetch:send" commandfor="#result">
+  <input name="query" placeholder="Search...">
+  <button type="submit">Search</button>
+</form>
+<div id="result"></div>
 ```
 
-### After: The Invokers Way (The Future Standard)
+## 🚀 Modular Architecture
 
-With Invokers, your HTML becomes the single source of truth. It's clean, readable, and requires no custom JavaScript for this common pattern.
+**Choose exactly what you need.** Invokers now features a hyper-modular architecture with four tiers:
 
-```html
-<!-- The button's purpose is clear just by reading the markup. -->
-<button type="button" command="--toggle" commandfor="main-menu" aria-expanded="false">
-  Menu
-</button>
-<nav id="main-menu" hidden>...</nav>
+- **🏗️ Tier 0**: Core polyfill (25.8 kB) - Standards-compliant foundation
+- **⚡ Tier 1**: Essential commands (~30 kB) - Basic UI interactions  
+- **🔧 Tier 2**: Specialized packs (25-47 kB each) - Advanced functionality
+- **🌟 Tier 3**: Reactive engine (26-42 kB) - Dynamic templating & events
 
-<!-- Add Invokers to your page, and you're done. -->
-<script type="module" src="https://esm.sh/invokers"></script>
+## 📦 Installation & Basic Usage
+
+### Core Installation (25.8 kB)
+
+For developers who want just the standards polyfill:
+
+```bash
+npm install invokers
 ```
 
-<br />
-
-## 💡 Core Concepts
-
-Invokers provides two complementary interaction models:
-
-### Command Invokers
-Uses three simple pieces that work together:
-
-1.  **Invoker:** A `<button type="button">` that triggers an action
-2.  **Target:** The element that receives the action (identified by `commandfor="target-id"`)  
-3.  **Command:** What happens (like `--toggle` or `show-modal`)
-
-```html
-<!-- Invoker ↓        Command ↓       Target ↓ -->
-<button type="button" command="--toggle" commandfor="my-menu">Menu</button>
-<nav id="my-menu" hidden>...</nav>
+```javascript
+import 'invokers';
+// That's it! Now command/commandfor attributes work
 ```
 
-### Interest Invokers
-For hover cards, tooltips, and contextual information that appears on user interest:
+```html
+<!-- Native/polyfilled commands work immediately -->
+<button command="toggle-popover" commandfor="menu">Menu</button>
+<div id="menu" popover>Menu content</div>
+```
 
-1.  **Interest Source:** A `<button>`, `<a href>`, or `<area>` element that users can show interest in
-2.  **Interest Target:** The element that appears (identified by `interestfor="target-id"`)
-3.  **Interest Actions:** Automatic showing/hiding based on hover, focus, or long-press
+### Essential UI Commands (+30 kB)
+
+Add the most common interactive commands:
+
+```javascript
+import invokers from 'invokers';
+import { registerBaseCommands } from 'invokers/commands/base';
+import { registerFormCommands } from 'invokers/commands/form';
+
+registerBaseCommands(invokers);
+registerFormCommands(invokers);
+```
 
 ```html
-<!-- Interest Source ↓    Interest Target ↓ -->
-<a href="/docs" interestfor="docs-preview">Documentation</a>
-<div id="docs-preview" popover="hint">Quick reference guide...</div>
+<!-- Now you can use essential commands -->
+<button command="--toggle" commandfor="sidebar">Toggle Sidebar</button>
+<button command="--class:toggle:dark-mode" commandfor="body">Dark Mode</button>
+<button command="--text:set:Hello World!" commandfor="output">Set Text</button>
+```
+
+## 🎛️ Command Packs
+
+### Tier 1: Essential Commands
+
+#### Base Commands (`invokers/commands/base`) - 29.2 kB
+Essential UI state management without DOM manipulation.
+
+```javascript
+import { registerBaseCommands } from 'invokers/commands/base';
+registerBaseCommands(invokers);
+```
+
+**Commands:** `--toggle`, `--show`, `--hide`, `--class:*`, `--attr:*`
+
+```html
+<button command="--toggle" commandfor="menu">Menu</button>
+<button command="--class:add:active" commandfor="tab1">Activate Tab</button>
+<button command="--attr:set:aria-expanded:true" commandfor="dropdown">Expand</button>
+```
+
+#### Form Commands (`invokers/commands/form`) - 30.5 kB
+Form interactions and content manipulation.
+
+```javascript
+import { registerFormCommands } from 'invokers/commands/form';
+registerFormCommands(invokers);
+```
+
+**Commands:** `--text:*`, `--value:*`, `--focus`, `--disabled:*`, `--form:*`, `--input:step`
+
+```html
+<button command="--text:set:Form submitted!" commandfor="status">Submit</button>
+<button command="--value:set:admin@example.com" commandfor="email">Use Admin Email</button>
+<button command="--input:step:5" commandfor="quantity">+5</button>
+```
+
+### Tier 2: Specialized Commands
+
+#### DOM Manipulation (`invokers/commands/dom`) - 47.1 kB
+Dynamic content insertion and templating.
+
+```javascript
+import { registerDomCommands } from 'invokers/commands/dom';
+registerDomCommands(invokers);
+```
+
+**Commands:** `--dom:*`, `--template:*`
+
+```html
+<button command="--dom:append" commandfor="list" data-template-id="item-tpl">Add Item</button>
+<button command="--template:render:user-card" commandfor="output" 
+        data-name="John" data-email="john@example.com">Render User</button>
+```
+
+#### Flow Control (`invokers/commands/flow`) - 45.3 kB
+Async operations, navigation, and data binding.
+
+```javascript
+import { registerFlowCommands } from 'invokers/commands/flow';
+registerFlowCommands(invokers);
+```
+
+**Commands:** `--fetch:*`, `--navigate:*`, `--emit:*`, `--command:*`, `--bind:*`
+
+```html
+<button command="--fetch:get" data-url="/api/users" commandfor="user-list">Load Users</button>
+<button command="--navigate:to:/dashboard">Go to Dashboard</button>
+<input command-on="input" command="--bind:value" data-bind-to="#output" data-bind-as="text">
+```
+
+#### Media & Animation (`invokers/commands/media`) - 27.7 kB  
+Rich media controls and interactions.
+
+```javascript
+import { registerMediaCommands } from 'invokers/commands/media';
+registerMediaCommands(invokers);
+```
+
+**Commands:** `--media:*`, `--carousel:*`, `--scroll:*`, `--clipboard:*`
+
+```html
+<button command="--media:toggle" commandfor="video">Play/Pause</button>
+<button command="--carousel:nav:next" commandfor="slideshow">Next</button>
+<button command="--scroll:to" commandfor="section2">Scroll to Section</button>
+<button command="--clipboard:copy" commandfor="code">Copy Code</button>
+```
+
+#### Browser APIs (`invokers/commands/browser`) - 25.3 kB
+Cookie management and browser integration.
+
+```javascript
+import { registerBrowserCommands } from 'invokers/commands/browser';
+registerBrowserCommands(invokers);
+```
+
+**Commands:** `--cookie:*`
+
+```html
+<button command="--cookie:set:theme:dark" data-cookie-expires="365">Set Dark Theme</button>
+<button command="--cookie:get:theme" commandfor="current-theme">Show Theme</button>
+```
+
+#### Data Management (`invokers/commands/data`) - 45.2 kB
+Complex data operations and array manipulation.
+
+```javascript
+import { registerDataCommands } from 'invokers/commands/data';
+registerDataCommands(invokers);
+```
+
+**Commands:** `--data:*`, array operations, reactive data binding
+
+```html
+<button command="--data:set:userId:123" commandfor="profile">Set User ID</button>
+<button command="--data:set:array:push:todos" data-value='{"title":"New Task"}'
+        commandfor="app">Add Todo</button>
 ```
 
 ## 📋 Command Cheatsheet
@@ -297,10 +378,10 @@ For hover cards, tooltips, and contextual information that appears on user inter
 | `--form:submit`        | Submit form                       | `command="--form:submit"`                    |
 | `--input:step:amount`  | Step number input                 | `command="--input:step:1"`                   |
 | `--dom:remove`         | Remove element from DOM           | `command="--dom:remove"`                     |
-| `--dom:replace[:inner|:outer]` | Replace with template content (inner/outer) | `command="--dom:replace:outer" data-template-id="tpl"` |
-| `--dom:swap[:inner|:outer]` | Swap content with template (inner/outer) | `command="--dom:swap:outer" data-template-id="tpl"`|
-| `--dom:append[:inner|:outer]` | Append template content (inner/outer) | `command="--dom:append:outer" data-template-id="tpl"` |
-| `--dom:prepend[:inner|:outer]` | Prepend template content (inner/outer) | `command="--dom:prepend:outer" data-template-id="tpl"` |
+| `--dom:replace[:inner\:outer]` | Replace with template content (inner/outer) | `command="--dom:replace:outer" data-template-id="tpl"` |
+| `--dom:swap[:inner\:outer]` | Swap content with template (inner/outer) | `command="--dom:swap:outer" data-template-id="tpl"`|
+| `--dom:append[:inner\:outer]` | Append template content (inner/outer) | `command="--dom:append:outer" data-template-id="tpl"` |
+| `--dom:prepend[:inner\:outer]` | Prepend template content (inner/outer) | `command="--dom:prepend:outer" data-template-id="tpl"` |
 | `--dom:wrap[:tag]`     | Wrap element with template/tag    | `command="--dom:wrap:div" data-wrapper-class="card"` |
 | `--dom:unwrap`         | Unwrap element from parent        | `command="--dom:unwrap"`                     |
 | `--dom:toggle-empty-class:class` | Toggle class based on children | `command="--dom:toggle-empty-class:empty"`   |
@@ -391,7 +472,7 @@ Many commands support additional configuration via `data-*` attributes:
   data-animate-delay="500ms"
   data-animate-easing="ease-out"
   data-animate-iterations="3">
-  Animate
+  Custom Fade In
 </button>
 ```
 
@@ -438,481 +519,140 @@ Control command execution behavior with `data-state`:
 <button command="--fetch:get" data-url="/api" data-state="completed">Load Data</button>
 ```
 
-## ⚡ Advanced Events (Opt-In)
+### Tier 3: Advanced Features
 
-Invokers includes powerful advanced event features that transform it from a click-driven library into a fully reactive framework. These features are **opt-in** to keep the core library lightweight.
-
-### Enabling Advanced Events
-
-To use advanced event features, import and call `enableAdvancedEvents()` once in your application:
+#### Event Triggers (`invokers/advanced/events`) - 42.3 kB
+Advanced event binding with `command-on` attribute.
 
 ```javascript
-// In your main application script (e.g., app.js)
-import 'invokers'; // Load the core library first
-import { enableAdvancedEvents } from 'invokers/advanced';
+import { enableEventTriggers } from 'invokers/advanced/events';
+enableEventTriggers();
+```
 
-// Call this function once to activate all new event features
+```html
+<!-- Respond to any DOM event -->
+<form command-on="submit.prevent" command="--fetch:send">...</form>
+<input command-on="input:debounce:300" command="--text:set:{{this.value}}" commandfor="preview">
+```
+
+#### Expression Engine (`invokers/advanced/expressions`) - 26.2 kB
+Dynamic templating with `{{expression}}` syntax.
+
+```javascript
+import { enableExpressionEngine } from 'invokers/advanced/expressions';
+enableExpressionEngine();
+```
+
+```html
+<!-- Dynamic command parameters -->
+<button command="--text:set:Hello {{user.name}}!" commandfor="greeting">Greet</button>
+<button command="--class:toggle:{{this.dataset.theme}}-mode" commandfor="body">Theme</button>
+```
+
+#### Complete Advanced Features (`invokers/advanced`) - 42.4 kB
+Both event triggers and expressions in one import.
+
+```javascript
+import { enableAdvancedEvents } from 'invokers/advanced';
 enableAdvancedEvents();
 ```
 
-### New Attributes: `command-on` and `data-on-event`
-
-Once enabled, you gain access to two new declarative attributes for triggering commands from any DOM event.
-
-#### `command-on`: Trigger Commands from Any Event
-
-Allows any element to execute a command in response to *any* DOM event, not just button clicks.
-
 ```html
-<!-- Self-submitting form (no submit button needed) -->
-<form id="contact-form"
-      command-on="submit"
-      command="--fetch:send"
-      commandfor="contact-form"
-      data-response-target="#result">
-  <input name="email" type="email">
-</form>
-
-<!-- Keyboard shortcuts -->
-<body command-on="keydown.window.ctrl.k.prevent"
-      command="show-modal"
-      commandfor="search-dialog">
-  ...
-</body>
-```
-
-#### `data-on-event`: Listen for Custom Events
-
-Allows elements to listen for custom events dispatched from anywhere on the page.
-
-```html
-<!-- Button emits a custom event -->
-<button command="--emit:notify:{\"message\":\"Profile Saved!\",\"type\":\"success\"}">
-  Save Profile
-</button>
-
-<!-- Separate toast listens for it -->
-<div id="toast-notification"
-     data-on-event="notify"
-     command="--show">
-  Notification will appear here!
-</div>
-```
-
-### Dynamic Data with `{{...}}` Syntax
-
-Inject dynamic data from events directly into command attributes using `{{...}}` placeholders. Supports full JavaScript-like expressions for complex data manipulation.
-
-```html
-<!-- Live search input -->
-<input type="search"
-       name="query"
-       placeholder="Search articles..."
-       command-on="input"
-       command="--fetch:get"
-       commandfor="#search-results"
-       data-url="/api/search?q={{ this.value }}">
-
-<div id="search-results"></div>
-```
-
-#### Expression Syntax
-
-The `{{...}}` syntax supports a safe subset of JavaScript expressions:
-
-**Arithmetic & Logic:**
-```html
-<!-- Calculate values -->
-<button command="--media:seek:{{ this.currentTime + 30 }}">Skip 30s</button>
-
-<!-- Conditional logic -->
-<div command-on="click"
-     command="{{ this.classList.contains('active') ? '--hide' : '--show' }}"
-     commandfor="panel">
-  Toggle Panel
-</div>
-```
-
-**Property Access:**
-```html
-<!-- Deep property access -->
-<span>{{ event.detail.user.profile.name }}</span>
-
-<!-- Array access -->
-<img src="{{ this.images[this.currentIndex] }}"
-     command-on="click"
-     command="--set:{{ this.currentIndex + 1 }}"
-     commandfor="currentIndex">
-```
-
-**String Operations:**
-```html
-<!-- String concatenation -->
-<data-url="/api/search?q={{ this.value + '&limit=10' }}"></data-url>
-
-<!-- String length checks -->
-<input command-on="input"
-       command="{{ this.value.length > 50 ? '--show' : '--hide' }}"
-       commandfor="warning-message">
-```
-
-**Complex Expressions:**
-```html
-<!-- Multi-step calculations -->
-<progress value="{{ (this.completed / this.total) * 100 }}"></progress>
-
-<!-- Nested conditionals -->
-<div class="{{ this.status === 'error' ? 'text-red' : this.status === 'success' ? 'text-green' : 'text-gray' }}">
-  {{ this.message }}
-</div>
-```
-
-#### Available Context Variables
-
-- `{{ this }}`: The element that triggered the event
-- `{{ event }}`: The raw DOM event object
-- `{{ detail }}`: Data from CustomEvent.detail
-- `{{ target }}`: The commandfor target element
-
-#### Expression Security & Limitations
-
-**✅ Safe Operations:**
-- Arithmetic: `+`, `-`, `*`, `/`, `%`
-- Comparisons: `===`, `!==`, `==`, `!=`, `<`, `>`, `<=`, `>=`
-- Logic: `&&`, `||`, `!`
-- Property access: `obj.prop`, `obj['key']`, `arr[0]`
-- Ternary conditionals: `condition ? true : false`
-- Parentheses for grouping
-
-**❌ Not Supported (Security):**
-- Function calls: `obj.method()` (methods are accessible but not callable)
-- Object/array creation: `{}`, `[]`, `new`
-- Global access: `window`, `document`, `console`
-- Loops, assignments, or any imperative code
-- Template literals or other ES6+ features
-
-**Performance & Caching:**
-Expressions are automatically cached for optimal performance. Parsed expressions are stored in an LRU cache, making repeated evaluations of the same expression extremely fast.
-
-**Error Handling:**
-Invalid expressions return `undefined` and log helpful error messages to the console. Your UI gracefully degrades when expressions fail.
-
-```html
-<!-- Safe fallback: if expression fails, attribute uses empty value -->
-<button command="--set:{{ nonexistent.property }}">Click me</button>
-```
-
-### Event Modifiers
-
-Enhance event handling with modifiers:
-
-| Modifier | Description | Example |
-| :--- | :--- | :--- |
-| `.prevent` | Calls `event.preventDefault()` | `command-on="submit.prevent"` |
-| `.stop` | Calls `event.stopPropagation()` | `command-on="click.stop"` |
-| `.once` | Listener removes itself after one trigger | `command-on="mouseenter.once"` |
-| `.window` | Attaches to global window object | `command-on="keydown.window.ctrl.s"` |
-| `.debounce` | Waits for pause in events (250ms default) | `command-on="input.debounce"` |
-| `.debounce.<ms>` | Custom debounce delay | `command-on="input.debounce.300"` |
-| `.{key}` | Only triggers on specific key | `command-on="keydown.enter.prevent"` |
-
-### Command Chaining with Expressions
-
-Combine expressions with command chaining for dynamic, data-driven workflows:
-
-```html
-<!-- Dynamic command sequences based on form state -->
-<form command-on="submit.prevent"
-      command="{{ this.elements.namedItem('agree').checked ? '--fetch:send' : '--show' }}"
-      commandfor="{{ this.elements.namedItem('agree').checked ? 'submit-success' : 'agree-warning' }}"
-      data-and-then="{{ this.elements.namedItem('agree').checked ? '--reset' : '' }}"
-      data-and-then-commandfor="{{ this.elements.namedItem('agree').checked ? 'contact-form' : '' }}">
-
-  <input name="agree" type="checkbox" required>
-  <label>Agree to terms</label>
-
+<!-- Fully dynamic interactions -->
+<form command-on="submit.prevent" 
+      command="--text:set:Submitted {{this.elements.name.value}}" 
+      commandfor="status">
+  <input name="name" placeholder="Your name">
   <button type="submit">Submit</button>
 </form>
-
-<!-- Multi-step wizard with conditional navigation -->
-<div id="wizard-step-1">
-  <select name="user-type">
-    <option value="individual">Individual</option>
-    <option value="business">Business</option>
-  </select>
-
-  <button command-on="click"
-          command="--hide"
-          commandfor="wizard-step-1"
-          data-and-then="--show"
-          data-and-then-commandfor="wizard-step-{{ event.target.form.elements.namedItem('user-type').value === 'business' ? '2b' : '2a' }}">
-    Next
-  </button>
-</div>
 ```
 
-### Advanced Event Examples
+## 🎯 Comprehensive Demo
 
-**Real-time Form Validation:**
-```html
-<form>
-  <input name="email"
-         type="email"
-         command-on="input"
-         command="{{ this.validity.valid ? '--hide' : '--show' }}"
-         commandfor="email-error">
+For a deeper dive into Invokers' capabilities, check out our [comprehensive demo](examples/comprehensive-demo.html) that showcases:
 
-  <div id="email-error" hidden>Invalid email address</div>
-</form>
-```
+- **Advanced Event Handling** with `command-on` and dynamic interpolation
+- **Async Operations** with promises, error handling, and loading states
+- **Component Communication** through data binding and custom events
+- **Library Integration** with Chart.js and external APIs
+- **Advanced Templating** with loops, conditionals, and data injection
+- **Programmatic Triggering** using the JavaScript API
+- **Error Handling & Debugging** with detailed logging and recovery
+- **Command Queuing** for sequential execution
 
-**Dynamic API Calls:**
-```html
-<select name="category"
-        command-on="change"
-        command="--fetch:get"
-        commandfor="products-list"
-        data-url="/api/products?category={{ this.value }}&limit={{ this.dataset.limit || 10 }}">
-  <option value="electronics">Electronics</option>
-  <option value="books">Books</option>
-</select>
-```
-
-**Keyboard Shortcuts with Context:**
-```html
-<body command-on="keydown.window.ctrl.s.prevent"
-      command="{{ document.activeElement?.tagName === 'INPUT' ? '--emit:save-form' : '--emit:save-document' }}">
-```
-
-### ⚠️ Important Considerations & Gotchas
-
-**Expression Evaluation Context:**
-- Expressions run in a sandboxed environment with no access to global objects
-- `this` refers to the element that triggered the event, not your component's `this`
-- Property access follows JavaScript rules: `obj.undefinedProp` returns `undefined`
-- Array bounds are not checked: `arr[999]` returns `undefined`
-
-**Performance Considerations:**
-- Expressions are evaluated on every event trigger
-- Complex expressions with deep property access may impact performance
-- Consider debouncing rapid events like `input` or `mousemove`
-
-**Error Handling:**
-- Invalid expressions return `undefined` and log to console
-- Your UI should gracefully handle undefined values
-- Test expressions thoroughly in development
-
-**Security:**
-- Only safe property access and arithmetic operations are allowed
-- No function calls, object creation, or global access
-- Expressions cannot modify data, only read it
-
-**Browser Support:**
-- Advanced events require a modern browser with Proxy support
-- Falls back gracefully in unsupported browsers (expressions become literal text)
-
-**Debugging:**
-- Check browser console for expression errors
-- Use browser dev tools to inspect the context variables
-- Test expressions in isolation before using in production
-
-## 🎯 Advanced `commandfor` Selectors
-
-Invokers supports powerful contextual selectors that go beyond simple IDs, enabling complex DOM targeting patterns without JavaScript.
-
-### Contextual Selectors
-
-| Selector | Description | Example |
-| -------- | ----------- | ------- |
-| `@closest(selector)` | Target the closest ancestor matching the selector | `commandfor="@closest(.card)"` |
-| `@child(selector)` | Target direct children matching the selector | `commandfor="@child(.item)"` |
-| `@children(selector)` | Target all children matching the selector | `commandfor="@children(.item)"` |
-
-### Global CSS Selectors
-
-You can also use any standard CSS selector directly:
-
-```html
-<!-- Target all elements with a class -->
-<button command="--hide" commandfor=".modal">Close All Modals</button>
-
-<!-- Target elements within a specific container -->
-<button command="--toggle" commandfor="#sidebar .menu-item">Toggle Menu Items</button>
-
-<!-- Complex selectors work too -->
-<button command="--class:add:active" commandfor="article[data-category='featured']">
-  Mark Featured Articles
-</button>
-```
-
-### Selector Examples
-
-**Accordion with Contextual Targeting:**
-```html
-<div class="accordion">
-  <div class="accordion-item">
-    <button command="--toggle" commandfor="@closest(.accordion-item .content)">
-      Toggle Section
-    </button>
-    <div class="content" hidden>Content here...</div>
-  </div>
-</div>
-```
-
-**List Management:**
-```html
-<ul class="todo-list">
-  <li class="todo-item">
-    <input type="checkbox" command="--class:toggle:completed" commandfor="@closest(.todo-item)">
-    <span>Task description</span>
-    <button command="--dom:remove" commandfor="@closest(.todo-item)">Delete</button>
-  </li>
-</ul>
-```
-
-**Tab Interface:**
-```html
-<div class="tabs">
-  <button command="--class:add:active" commandfor="@closest(.tab)" data-and-then="--class:remove:active" data-and-then-commandfor="@closest(.tabs .tab)">
-    Tab 1
-  </button>
-  <div class="tab-content">Tab 1 content</div>
-</div>
-```
-
-## 🎨 Declarative Templating
-
-Create dynamic, data-driven interfaces without JavaScript using declarative templates and data injection.
-
-### Template Data Injection
-
-Use `data-with-json` to inject JSON data into templates, and `data-tpl-*` attributes to customize template rendering.
-
-```html
-<!-- Template with data injection -->
-<template id="user-card-template">
-  <div class="user-card">
-    <h3 data-tpl-text="name"></h3>
-    <p data-tpl-text="role"></p>
-    <img data-tpl-src="avatar" data-tpl-alt="name">
-    <button data-tpl-command="followCommand" data-tpl-commandfor="followTarget">
-      Follow
-    </button>
-  </div>
-</template>
-
-<!-- Button that renders the template -->
-<button type="button"
-        command="--dom:replace"
-        commandfor="user-container"
-        data-template-id="user-card-template"
-        data-with-json='{"name":"Alice","role":"Developer","avatar":"/alice.jpg","followCommand":"--emit:follow:alice","followTarget":"follow-stats"}'>
-  Show User Card
-</button>
-
-<div id="user-container"></div>
-```
-
-### Unique ID Generation
-
-Use `{{__uid}}` placeholders for generating unique IDs across template instances:
-
-```html
-<template id="modal-template">
-  <div class="modal" id="modal-{{__uid}}">
-    <div class="modal-content">
-      <h2 data-tpl-text="title"></h2>
-      <p data-tpl-text="message"></p>
-      <button command="--hide" commandfor="#modal-{{__uid}}">Close</button>
-    </div>
-  </div>
-</template>
-```
-
-### Selector Rewriting
-
-Templates automatically rewrite `@closest` selectors to use generated unique IDs, enabling proper scoping:
-
-```html
-<template id="item-template">
-  <div class="item" id="item-{{__uid}}">
-    <span data-tpl-text="name"></span>
-    <button command="--class:toggle:active" commandfor="@closest(.item)">
-      Toggle
-    </button>
-  </div>
-</template>
-
-<!-- The @closest selector becomes #item-123 when rendered -->
-```
-
-### Complete Example: Todo List
-
-```html
-<!-- Template for todo items -->
-<template id="todo-item-template">
-  <div class="todo-item" id="todo-{{__uid}}">
-    <input type="checkbox"
-           command="--class:toggle:completed"
-           commandfor="@closest(.todo-item)">
-    <span data-tpl-text="text"></span>
-    <button command="--dom:remove" commandfor="@closest(.todo-item)">
-      Delete
-    </button>
-  </div>
-</template>
-
-<!-- Form to add new todos -->
-<form command-on="submit.prevent"
-      command="--dom:append"
-      commandfor="todo-list"
-      data-template-id="todo-item-template"
-      data-with-json='{"text": ""}'>
-  <input name="todo-text" placeholder="Add a todo..." required>
-  <button type="submit">Add</button>
-</form>
-
-<!-- Container for todo items -->
-<ul id="todo-list" class="todo-list"></ul>
-```
-
-This creates a fully functional todo list where:
-- New items are added via the form
-- Checkboxes toggle completion state
-- Delete buttons remove items
-- Each item has a unique ID for proper scoping
-
-## 🚀 Installation
-
-Get up and running in seconds.
-
-### 1. Quick Start via CDN
-
-The easiest way to start. Place this at the end of your `<body>`. It includes the polyfill, core commands, and all extended commands automatically.
-
-```html
-<script type="module" src="https://esm.sh/invokers"></script>
-```
-
-### 2. Using npm/pnpm/yarn
-
-For projects with a build step, install the package from the npm registry:
-
-```bash
-npm install invokers
-```
-
-Then, import it into your main JavaScript file. This single import sets up the polyfill, core commands, and all extended commands automatically.
+The demo uses demo-specific commands that are separate from the core library. To use them in your own projects:
 
 ```javascript
-import 'invokers';
+import 'invokers'; // Core library
+import { registerDemoCommands } from 'invokers/demo-commands';
 
-// Your page now understands the Invoker Commands API and all of Invokers' custom commands.
+registerDemoCommands(); // Only for demos/testing
 ```
 
-<br />
+Open `examples/comprehensive-demo.html` in your browser to explore all features interactively.
 
-## 📖 Progressive Learning Guide
+## 🏃‍♂️ Quick Start Examples
+
+### Simple Tab System
+```javascript
+import invokers from 'invokers';
+import { registerBaseCommands } from 'invokers/commands/base';
+registerBaseCommands(invokers);
+```
+
+```html
+<div role="tablist">
+  <button command="--show" commandfor="tab1" role="tab">Tab 1</button>
+  <button command="--show" commandfor="tab2" role="tab">Tab 2</button>
+</div>
+<div id="tab1" role="tabpanel">Content 1</div>
+<div id="tab2" role="tabpanel" hidden>Content 2</div>
+```
+
+### Dynamic Form with Validation
+```javascript
+import invokers from 'invokers';
+import { registerFormCommands } from 'invokers/commands/form';
+import { registerFlowCommands } from 'invokers/commands/flow';
+import { enableAdvancedEvents } from 'invokers/advanced';
+
+registerFormCommands(invokers);
+registerFlowCommands(invokers);
+enableAdvancedEvents();
+```
+
+```html
+<form command-on="submit.prevent" command="--fetch:send" data-url="/api/contact">
+  <input name="email" command-on="blur" 
+         command="--text:set:Email: {{this.value}}" 
+         commandfor="email-preview" required>
+  <div id="email-preview"></div>
+  <button type="submit">Submit</button>
+</form>
+```
+
+### Rich Media Experience  
+```javascript
+import invokers from 'invokers';
+import { registerBaseCommands } from 'invokers/commands/base';
+import { registerMediaCommands } from 'invokers/commands/media';
+
+registerBaseCommands(invokers);
+registerMediaCommands(invokers);
+```
+
+```html
+<video id="player" src="video.mp4"></video>
+<div class="controls">
+  <button command="--media:toggle" commandfor="player" 
+          data-play-text="Pause" data-pause-text="Play">Play</button>
+  <button command="--media:seek:-10" commandfor="player">-10s</button>
+  <button command="--media:seek:10" commandfor="player">+10s</button>
+  <button command="--media:mute" commandfor="player">Mute</button>
+</div>
+```
+
+## 📚 Progressive Learning Guide
 
 Learn Invokers step by step, from basic interactions to complex workflows.
 
@@ -942,9 +682,7 @@ Create accessible hover cards and tooltips that work across all input methods:
 <a href="https://example.com/article" interestfor="article-preview">
   Read the full article
 </a>
-<div id="article-preview" popover="hint">
-  "Understanding Web Standards" - A deep dive into modern HTML APIs
-</div>
+<div id="article-preview" popover="hint">Quick reference guide...</div>
 
 <!-- Adjustable delay timing -->
 <style>
@@ -1075,7 +813,7 @@ Now add interactivity with text, classes, and attributes.
 <!-- Store user preferences -->
 <button type="button"
   command="--storage:local:set:theme:dark"
-  data-storage-expires="86400"
+  data-storage-expires="3600"
   data-and-then="--text:set:Preference saved!">
   Save Dark Theme
 </button>
@@ -1832,1072 +1570,648 @@ Copy text content to clipboard with feedback.
 ```html
 <code id="code-snippet">npm install invokers</code>
 
-<button type="button"
-  command="--clipboard:copy"
-  commandfor="code-snippet"
-  data-feedback-text="Copied!"
-  data-error-text="Copy failed">
-  Copy Code
-</button>
+<button type="button" command="--clipboard:copy" commandfor="code-snippet">Copy</button>
 ```
 
-### Fetch Commands
+## The Vision: A More Declarative Web
 
-Load and send data to servers with loading states and error handling.
+For too long, creating interactive UIs has meant a disconnect between structure (HTML) and behavior (JavaScript). This leads to scattered code, accessibility oversights, and boilerplate that slows down development. The web platform is evolving to fix this.
 
-#### GET Requests
+**Invokers embraces this evolution, letting you build complex interactions with the simplicity and elegance of plain HTML.**
+
+### Before: The Manual JavaScript Way
 
 ```html
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/latest-posts"
-  commandfor="posts-container"
-  data-loading-template="spinner"
-  data-error-template="error-msg"
-  data-response-target="#posts-container">
-  Load Posts
-</button>
-
-<div id="posts-container">Posts will load here...</div>
-
-<template id="spinner">
-  <div>Loading posts...</div>
-</template>
-
-<template id="error-msg">
-  <div>Failed to load posts</div>
-</template>
-```
-
-#### POST Requests (Form Submission)
-
-```html
-<form id="contact-form" action="/api/contact" method="post">
-  <input name="name" required>
-  <input name="email" required>
-  <textarea name="message"></textarea>
-</form>
-
-<button type="button"
-  command="--fetch:send"
-  commandfor="contact-form"
-  data-response-target="#result"
-  data-loading-template="sending">
-  Send Message
-</button>
-
-<div id="result"></div>
-```
-
-### Navigation Commands
-
-Programmatic navigation using the History API.
-
-```html
-<button command="--navigate:to:/about">Go to About</button>
-<button command="--navigate:to:/products?category=electronics">Go to Products</button>
-```
-
-### Native/Polyfilled Commands
-
-These commands work in all modern browsers through Invokers' polyfill. They implement upcoming web standards and provide fallbacks for older browsers.
-
-#### Dialog and Modal Commands
-
-```html
-<!-- Modal dialogs -->
-<button type="button" command="show-modal" commandfor="settings-dialog">
-  Open Settings
-</button>
-
-<dialog id="settings-dialog">
-  <h2>Settings</h2>
-  <p>Settings content...</p>
-  <button type="button" command="close" commandfor="settings-dialog">Close</button>
-</dialog>
-
-<!-- Request close (allows cancel) -->
-<button type="button" command="request-close" commandfor="confirm-dialog">
-  Cancel Action
-</button>
-```
-
-#### Popover Commands
-
-```html
-<!-- Popover toggles -->
-<button type="button" command="toggle-popover" commandfor="user-menu">
-  User Menu
-</button>
-
-<div id="user-menu" popover>
-  <a href="/profile">Profile</a>
-  <a href="/settings">Settings</a>
-  <a href="/logout">Logout</a>
-</div>
-
-<!-- Direct show/hide -->
-<button type="button" command="show-popover" commandfor="tooltip">Show Help</button>
-<button type="button" command="hide-popover" commandfor="tooltip">Hide Help</button>
-```
-
-#### Details/Summary Commands
-
-```html
-<!-- Expandable content -->
-<button type="button" command="toggle" commandfor="faq-1">Toggle FAQ</button>
-<details id="faq-1">
-  <summary>What is Invokers?</summary>
-  <p>Invokers is a library for declarative HTML interactions...</p>
-</details>
-
-<button type="button" command="open" commandfor="faq-2">Open FAQ</button>
-<details id="faq-2">
-  <summary>How does it work?</summary>
-  <p>It uses HTML attributes to describe interactions...</p>
-</details>
-```
-
-#### Media Element Commands
-
-```html
-<video id="main-video" src="demo.mp4" controls></video>
-
-<!-- Playback controls -->
-<button type="button" command="play-pause" commandfor="main-video">⏯️</button>
-<button type="button" command="play" commandfor="main-video">▶️</button>
-<button type="button" command="pause" commandfor="main-video">⏸️</button>
-<button type="button" command="toggle-muted" commandfor="main-video">🔇</button>
-```
-
-#### Fullscreen Commands
-
-```html
-<div id="fullscreen-target">
-  <h1>Fullscreen Content</h1>
-  <p>This can go fullscreen</p>
-</div>
-
-<button type="button" command="toggle-fullscreen" commandfor="fullscreen-target">
-  Toggle Fullscreen
-</button>
-
-<button type="button" command="request-fullscreen" commandfor="fullscreen-target">
-  Enter Fullscreen
-</button>
-
-<button type="button" command="exit-fullscreen">
-  Exit Fullscreen
-</button>
-```
-
-#### Picker Commands
-
-```html
-<!-- File picker -->
-<button type="button" command="show-picker" commandfor="file-input">Choose File</button>
-<input type="file" id="file-input" hidden>
-
-<!-- Date/time picker -->
-<button type="button" command="show-picker" commandfor="date-input">Pick Date</button>
-<input type="date" id="date-input">
-
-<!-- Number stepper -->
-<button type="button" command="step-up" commandfor="quantity">Increase</button>
-<input type="number" id="quantity" value="1" min="1" max="10">
-<button type="button" command="step-down" commandfor="quantity">Decrease</button>
-```
-
-#### Clipboard and Sharing Commands
-
-```html
-<!-- Copy text -->
-<code id="install-cmd">npm install invokers</code>
-<button type="button" command="copy-text" commandfor="install-cmd">Copy</button>
-
-<!-- Share content -->
-<span id="share-content">Check out Invokers: https://invokers.dev</span>
-<button type="button" command="share" commandfor="share-content">Share</button>
-```
-
-#### Openable Elements Commands
-
-```html
-<!-- Custom openable elements -->
-<div id="custom-panel" closed>
-  <h3>Panel Content</h3>
-  <p>This panel can be opened/closed</p>
-</div>
-
-<button type="button" command="toggle-openable" commandfor="custom-panel">Toggle Panel</button>
-<button type="button" command="open-openable" commandfor="custom-panel">Open Panel</button>
-<button type="button" command="close-openable" commandfor="custom-panel">Close Panel</button>
-```
-
-#### Browser Support Notes
-
-- **Dialog commands**: Work in all modern browsers; polyfilled for older ones
-- **Popover commands**: Native in Chrome/Edge; polyfilled in Firefox/Safari
-- **Media commands**: Full support in all browsers with HTML5 media elements
-- **Fullscreen commands**: Supported in all modern browsers
-- **Picker commands**: Native support varies; Invokers provides fallbacks
-- **Clipboard commands**: Requires secure context (HTTPS) in modern browsers
-
-### URL Manipulation Commands
-
-Control browser URL parameters, hash, and navigation programmatically.
-
-#### URL Parameters
-
-```html
-<!-- Set URL parameters -->
-<button command="--url:params:set:page:2">Go to Page 2</button>
-<button command="--url:params:set:sort:name">Sort by Name</button>
-
-<!-- Get parameter values -->
-<button command="--url:params:get:id" commandfor="item-id">Get Item ID</button>
-
-<!-- Delete parameters -->
-<button command="--url:params:delete:filter">Clear Filter</button>
-<button command="--url:params:clear">Clear All Params</button>
-
-<!-- Get all parameters as JSON -->
-<button command="--url:params:all" commandfor="params-display">Show All Params</button>
-```
-
-#### Hash Navigation
-
-```html
-<button command="--url:hash:set:section-about">Jump to About</button>
-<button command="--url:hash:get" commandfor="current-hash">Get Current Hash</button>
-<button command="--url:hash:clear">Clear Hash</button>
-```
-
-#### Navigation and History
-
-```html
-<button command="--url:reload">Reload Page</button>
-<button command="--url:replace:/new-page">Replace URL</button>
-<button command="--url:navigate:/new-page">Navigate to Page</button>
-```
-
-### History Commands
-
-Manipulate browser history with state management.
-
-```html
-<!-- Push new history entries -->
-<button command="--history:push:/settings">Go to Settings</button>
-<button command="--history:push:/profile:John:admin">Go to Profile with State</button>
-
-<!-- Navigate history -->
-<button command="--history:back">Go Back</button>
-<button command="--history:forward">Go Forward</button>
-<button command="--history:go:-2">Go Back 2 Pages</button>
-
-<!-- State management -->
-<button command="--history:state:get" commandfor="state-display">Get Current State</button>
-<button command="--history:state:set:{\"page\":1}">Set State</button>
-```
-
-### Device API Commands
-
-Access device features like geolocation, vibration, and battery status.
-
-#### Geolocation
-
-```html
-<button type="button"
-  command="--device:geolocation:get"
-  data-geo-high-accuracy="true"
-  data-geo-timeout="10000"
-  data-geo-max-age="300000">
-  Get My Location
-</button>
-```
-
-#### Vibration and Haptics
-
-```html
-<!-- Simple vibration -->
-<button command="--device:vibrate:200">Vibrate 200ms</button>
-
-<!-- Pattern vibration -->
-<button command="--device:vibrate:100:200:100">Vibrate Pattern</button>
-```
-
-#### Battery Status
-
-```html
-<button command="--device:battery:get" commandfor="battery-info">Check Battery</button>
-<div id="battery-info">Battery status will appear here</div>
-```
-
-#### Clipboard Operations
-
-```html
-<button command="--device:clipboard:read" commandfor="clipboard-content">Read Clipboard</button>
-<button command="--device:clipboard:write:Hello World">Write to Clipboard</button>
-```
-
-#### Wake Lock
-
-```html
-<button command="--device:wake-lock">Keep Screen On</button>
-<button command="--device:wake-lock:release">Allow Screen Off</button>
-```
-
-### Accessibility Commands
-
-Enhance accessibility with screen reader support and focus management.
-
-#### Screen Reader Announcements
-
-```html
-<button command="--a11y:announce:Item saved successfully">Save Item</button>
-<button command="--a11y:announce:Error: Invalid input" data-announce-priority="assertive">Submit Form</button>
-```
-
-#### Focus Management
-
-```html
-<button command="--a11y:focus" commandfor="search-input">Focus Search</button>
-<button command="--a11y:skip-to:main-content">Skip to Main Content</button>
-```
-
-#### Focus Trapping
-
-```html
-<button command="--a11y:focus-trap:enable" commandfor="modal">Open Modal</button>
-<button command="--a11y:focus-trap:disable">Close Modal</button>
-```
-
-#### ARIA Attributes
-
-```html
-<button command="--a11y:aria:set:label:Save document">Set Label</button>
-<button command="--a11y:aria:remove:label">Remove Label</button>
-<button command="--a11y:heading-level:2" commandfor="heading">Make H2</button>
-```
-
-## 🐞 Debugging & Common Issues
-
-### Quick Fixes for Common Problems
-
-| Problem | Solution |
-| ------- | -------- |
-| **Button reloads the page** | Add `type="button"` to your `<button>` |
-| **Nothing happens when clicked** | Check that `commandfor` points to a real `id` |
-| **Fetch command fails** | Your endpoint must return HTML, not JSON |
-| **ARIA not updating** | Use `aria-expanded="false"` on the button initially |
-| **Command not found** | Commands need `--` prefix: `command="--toggle"` |
-
-### Debugging Tips
-
-```html
-<!-- ✅ Good: All required attributes present -->
-<button type="button" command="--toggle" commandfor="menu" aria-expanded="false">Menu</button>
-<nav id="menu" hidden>...</nav>
-
-<!-- ❌ Bad: Missing type="button" will submit forms -->
-<button command="--toggle" commandfor="menu">Menu</button>
-
-<!-- ❌ Bad: Missing commandfor breaks the connection -->
-<button type="button" command="--toggle">Menu</button>
-
-<!-- ❌ Bad: Target element needs an ID -->
-<button type="button" command="--toggle" commandfor="menu">Menu</button>
-<nav>...</nav>
-```
-
-💡 **Pro tip:** Open your browser's console to see helpful warnings from Invokers when things aren't set up correctly.
-
-## 📖 Ready-to-Use Recipes
-
-Copy these common patterns and adapt them to your needs.
-
-### GitHub-Style Profile Hover Cards
-
-```html
-<style>
-  .user-mention { 
-    color: #0969da; 
-    text-decoration: none; 
-  }
-  .user-mention:hover { text-decoration: underline; }
-  
-  .user-card {
-    max-width: 300px;
-    padding: 16px;
-    border: 1px solid #d1d9e0;
-    border-radius: 8px;
-    background: white;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  }
-  
-  .user-avatar { 
-    width: 64px; 
-    height: 64px; 
-    border-radius: 50%; 
-    margin-right: 12px;
-  }
-  
-  .user-stats { 
-    display: flex; 
-    gap: 16px; 
-    margin-top: 12px; 
-    font-size: 0.875em;
-    color: #656d76;
-  }
-</style>
-
-<p>Great work on the PR, <a href="/users/alice" interestfor="alice-card" class="user-mention">@alice</a>!</p>
-
-<div id="alice-card" popover="auto" class="user-card">
-  <div style="display: flex; align-items: center;">
-    <img src="/avatars/alice.jpg" alt="Alice's avatar" class="user-avatar">
-    <div>
-      <h3 style="margin: 0; font-size: 1.1em;">Alice Johnson</h3>
-      <p style="margin: 0; color: #656d76;">Senior Frontend Developer</p>
-    </div>
-  </div>
-  <div class="user-stats">
-    <span><strong>127</strong> followers</span>
-    <span><strong>43</strong> repos</span>
-    <span><strong>1.2k</strong> contributions</span>
-  </div>
-  <button type="button" style="margin-top: 12px; padding: 8px 16px;">Follow</button>
-</div>
-```
-
-### Wikipedia-Style Reference Tooltips
-
-```html
-<style>
-  .reference-link { 
-    color: #0645ad; 
-    font-size: 0.8em; 
-    vertical-align: super; 
-    text-decoration: none;
-  }
-  .reference-tooltip {
-    max-width: 400px;
-    padding: 12px;
-    font-size: 0.9em;
-    line-height: 1.4;
-    background: #f8f9fa;
-    border-left: 4px solid #0645ad;
-  }
-</style>
-
-<p>
-  The Internet was first conceptualized in 1962<a href="#ref1" interestfor="ref1-tooltip" class="reference-link">[1]</a> 
-  and has since transformed global communication<a href="#ref2" interestfor="ref2-tooltip" class="reference-link">[2]</a>.
-</p>
-
-<div id="ref1-tooltip" popover="hint" class="reference-tooltip">
-  <strong>Licklider, J.C.R.</strong> "Memorandum for Members and Affiliates of the Intergalactic Computer Network" (1962). ARPANET archives.
-</div>
-
-<div id="ref2-tooltip" popover="hint" class="reference-tooltip">
-  <strong>Berners-Lee, T.</strong> "Information Management: A Proposal" (1989). CERN. The original proposal for the World Wide Web.
-</div>
-```
-
-### Documentation Quick Reference
-
-```html
-<style>
-  .api-method { 
-    font-family: monospace; 
-    background: #f1f3f4; 
-    padding: 2px 6px; 
-    border-radius: 3px; 
-  }
-  .quick-ref {
-    max-width: 350px;
-    padding: 16px;
-    font-family: monospace;
-    font-size: 0.875em;
-    background: #1e1e1e;
-    color: #d4d4d4;
-    border-radius: 8px;
-  }
-  .quick-ref h4 { color: #569cd6; margin-top: 0; }
-  .quick-ref .param { color: #9cdcfe; }
-  .quick-ref .type { color: #4ec9b0; }
-</style>
-
-<p>
-  Use the <code interestfor="fetch-ref" class="api-method">fetch()</code> API to make HTTP requests
-  or the <code interestfor="query-ref" class="api-method">querySelector()</code> method to find elements.
-</p>
-
-<div id="fetch-ref" popover="auto" class="quick-ref">
-  <h4>fetch(url, options)</h4>
-  <p><span class="param">url</span>: <span class="type">string</span> - The resource URL</p>
-  <p><span class="param">options</span>: <span class="type">object</span> - Request configuration</p>
-  <p><strong>Returns:</strong> <span class="type">Promise&lt;Response&gt;</span></p>
-  <p>Example: <code>fetch('/api/data').then(r => r.json())</code></p>
-</div>
-
-<div id="query-ref" popover="auto" class="quick-ref">
-  <h4>querySelector(selector)</h4>
-  <p><span class="param">selector</span>: <span class="type">string</span> - CSS selector</p>
-  <p><strong>Returns:</strong> <span class="type">Element | null</span></p>
-  <p>Example: <code>document.querySelector('.button')</code></p>
-</div>
-```
-
-### Accordion/FAQ
-
-```html
-<div class="faq">
-  <button type="button" command="--toggle" commandfor="answer-1" aria-expanded="false">
-    What is Invokers?
-  </button>
-  <div id="answer-1" hidden>
-    <p>Invokers lets you write interactive HTML without JavaScript...</p>
-  </div>
-</div>
-```
-
-### Modal Dialog
-
-```html
-<button type="button" command="show-modal" commandfor="confirm-dialog">
-  Delete Item
-</button>
-<dialog id="confirm-dialog">
-  <p>Are you sure you want to delete this item?</p>
-  <button type="button" command="close" commandfor="confirm-dialog">Cancel</button>
-  <button type="button">Delete</button>
-</dialog>
-```
-
-### Loading States with Fetch
-
-```html
-<button type="button" 
-  command="--fetch:get" 
-  data-url="/api/content"
-  commandfor="content-area"
-  data-loading-template="spinner"
-  data-and-then="--class:add:loaded">
-  Load Content
-</button>
-
-<div id="content-area">Content will appear here</div>
-
-<template id="spinner">
-  <div class="loading">Loading...</div>
-</template>
-```
-
-### Dismissible Notifications
-
-```html
-<div id="notification" class="alert alert-success">
-  <span>Changes saved successfully!</span>
-  <button type="button" command="--hide" commandfor="notification">×</button>
-</div>
-```
-
-### Dark Mode Toggle
-
-```html
-<button type="button" 
-  command="--class:toggle:dark-theme" 
-  commandfor="body"
-  data-and-then="--text:set:Theme switched!"
-  data-then-target="theme-status">
-  🌙 Toggle Theme
-</button>
-<span id="theme-status">Click to switch theme</span>
-```
-
-### Video Player with Native Controls
-
-```html
-<div class="video-container">
-  <video id="main-video" src="demo.mp4" poster="thumbnail.jpg"></video>
-  
-  <div class="video-controls">
-    <button type="button" command="play-pause" commandfor="main-video">⏯️</button>
-    <button type="button" command="toggle-muted" commandfor="main-video">🔊</button>
-    <button type="button" command="toggle-fullscreen" commandfor="main-video">⛶</button>
-  </div>
-</div>
-```
-
-### Interactive FAQ with Details
-
-```html
-<div class="faq-section">
-  <h3>
-    <button type="button" command="toggle" commandfor="faq-details">
-      What browsers support Interest Invokers?
-    </button>
-  </h3>
-  <details id="faq-details">
-    <summary>Click to expand</summary>
-    <p>Interest Invokers work in all modern browsers through our polyfill...</p>
-  </details>
-  
-  <button type="button" command="copy-text" commandfor="faq-details">
-    Copy Answer
-  </button>
-</div>
-```
-
-### File Upload with Custom Picker
-
-```html
-<div class="upload-area">
-  <button type="button" 
-          command="show-picker" 
-          commandfor="file-input"
-          class="upload-button">
-    📁 Choose Files
-  </button>
-  <input type="file" id="file-input" multiple hidden>
-  
-  <!-- Show selected files -->
-  <div id="file-list"></div>
-  
-  <script>
-    document.getElementById('file-input').addEventListener('change', (e) => {
-      const files = Array.from(e.target.files);
-      document.getElementById('file-list').innerHTML = 
-        files.map(f => `<p>📄 ${f.name}</p>`).join('');
-    });
-  </script>
-</div>
-```
-
-### Quantity Selector
-
-```html
-<div class="quantity-selector">
-  <button type="button" command="step-down" commandfor="item-quantity">-</button>
-  <input type="number" 
-         id="item-quantity" 
-         value="1" 
-         min="1" 
-         max="99"
-         readonly>
-  <button type="button" command="step-up" commandfor="item-quantity">+</button>
-</div>
-
-<style>
-.quantity-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.quantity-selector button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #ccc;
-  background: white;
-  cursor: pointer;
-}
-</style>
-```
-
-## 🎯 Power User Features
-
-For complex applications, Invokers provides sophisticated workflow orchestration capabilities.
-
-### Enhanced Attribute-Based Chaining
-
-The most powerful feature for building complex workflows is conditional command chaining based on execution results:
-
-#### Conditional Execution Attributes
-
-```html
-<!-- Different commands based on success/failure -->
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/user-data"
-  commandfor="profile"
-  data-after-success="--class:add:loaded,--text:set:Profile loaded!"
-  data-after-error="--class:add:error,--text:set:Failed to load profile"
-  data-after-complete="--attr:set:aria-busy:false">
-  Load Profile
-</button>
-<div id="profile" aria-busy="false">Profile will load here...</div>
-```
-
-#### Enhanced Chaining Attributes
-
-| Attribute | When It Executes | Purpose |
-| --------- | ---------------- | ------- |
-| `data-after-success` | Command completed successfully | Commands for success scenarios |
-| `data-after-error` | Command failed with error | Commands for error handling |
-| `data-after-complete` | Command finished (success or error) | Cleanup commands that always run |
-| `data-then-target` | For chained commands | Override target for followup commands |
-| `data-then-state` | For chained commands | Set execution state (`once`, `disabled`, etc.) |
-
-#### Universal `data-and-then` Chaining
-
-Chain any command with any other command. Works for both synchronous and asynchronous operations:
-
-```html
-<!-- Synchronous chaining -->
-<button type="button"
-  command="--class:add:highlighted"
-  commandfor="status-box"
-  data-and-then="--text:set:Status updated!">
-  Highlight and Update
-</button>
-
-<!-- Asynchronous chaining (waits for fetch to complete) -->
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/content"
-  commandfor="content-area"
-  data-and-then="--class:add:loaded">
-  Load and Animate
-</button>
-```
-
-### Template-Based Command Pipelines
-
-For the most complex workflows, define reusable command sequences using templates:
-
-```html
-<button type="button" command="--pipeline:execute:user-registration">
-  Complete Registration
-</button>
-
-<template id="user-registration" data-pipeline="true">
-  <pipeline-step command="--form:validate" target="registration-form" />
-  <pipeline-step command="--fetch:post" target="api-endpoint" 
-                  data-url="/register" condition="success" />
-  <pipeline-step command="--class:add:registered" target="user-profile" 
-                  condition="success" once="true" />
-  <pipeline-step command="--show" target="welcome-screen" 
-                  condition="success" delay="500" />
-  <pipeline-step command="--text:set:Registration failed" target="error-display" 
-                  condition="error" />
-</template>
-```
-
-#### Pipeline Step Attributes
-
-| Attribute | Purpose | Example |
-| --------- | ------- | ------- |
-| `command` | Command to execute | `--fetch:get` |
-| `target` | Target element ID | `user-profile` |
-| `condition` | When to execute | `success`, `error`, `always` (default) |
-| `delay` | Delay in milliseconds | `500` |
-| `once` | Remove step after execution | `true` |
-| `data-*` | Pass data to command | `data-url="/api/users"` |
-
-#### Declarative `<and-then>` Elements
-
-For more complex workflows, use declarative `<and-then>` elements nested inside your invoker buttons. These create visual, tree-structured command chains that are easy to read and maintain.
-
-##### Basic Chaining
-
-```html
-<button type="button" command="--text:set:Step 1 complete" commandfor="output">
-  Start Multi-Step Process
-  <and-then command="--class:add:processing" commandfor="output">
-    <and-then command="--text:append: → Step 2 complete" commandfor="output" data-delay="1000">
-      <and-then command="--class:remove:processing" commandfor="output">
-        <and-then command="--class:add:success" commandfor="output">
-        </and-then>
-      </and-then>
-    </and-then>
-  </and-then>
-</button>
-
-<div id="output" class="process-output">Ready to start...</div>
-```
-
-##### Conditional Execution
-
-`<and-then>` elements support conditional execution based on the success or failure of the parent command:
-
-```html
-<button type="button" command="--fetch:get" data-url="/api/user" commandfor="profile">
-  Load User Profile
-  
-  <!-- Only runs on successful fetch -->
-  <and-then command="--class:add:loaded" commandfor="profile" data-condition="success">
-    <and-then command="--text:set:Profile loaded successfully!" commandfor="status">
-    </and-then>
-  </and-then>
-  
-  <!-- Only runs on failed fetch -->
-  <and-then command="--class:add:error" commandfor="profile" data-condition="error">
-    <and-then command="--text:set:Failed to load profile" commandfor="status">
-    </and-then>
-  </and-then>
-  
-  <!-- Always runs regardless of success/failure -->
-  <and-then command="--attr:set:aria-busy:false" commandfor="profile" data-condition="always">
-  </and-then>
-</button>
-
-<div id="profile" aria-busy="false">Profile will load here...</div>
-<div id="status" role="status"></div>
-```
-
-##### One-Time Execution
-
-Use `data-once="true"` to automatically remove `<and-then>` elements after they execute, perfect for initialization sequences:
-
-```html
-<button type="button" command="--show" commandfor="tutorial-step-1">
-  Start Tutorial
-  <and-then command="--class:add:tutorial-active" commandfor="app" data-once="true">
-    <and-then command="--text:set:Welcome to the tutorial!" commandfor="tutorial-message" data-once="true">
-    </and-then>
-  </and-then>
-</button>
-```
-
-#### Enhanced Attribute-Based Chaining
-
-For more sophisticated workflows, use conditional chaining attributes that execute based on command success or failure:
-
-```html
-<!-- Conditional chaining based on success/error -->
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/user-data"
-  commandfor="user-profile"
-  data-after-success="--class:add:success,--text:set:Data loaded!"
-  data-after-error="--class:add:error,--text:set:Failed to load data"
-  data-after-complete="--attr:set:aria-busy:false">
-  Load User Profile
-</button>
-
-<!-- Multiple commands in success chain -->
-<button type="button"
-  command="--fetch:post"
-  data-url="/api/submit"
-  commandfor="form-container"
-  data-after-success="--class:add:submitted,--show:success-message,--hide:form-container"
-  data-after-error="--class:add:error,--text:set:Submission failed">
-  Submit Form
-</button>
-```
-
-#### Command Lifecycle States
-
-Control command execution behavior with powerful lifecycle states that persist across multiple executions:
-
-```html
-<!-- One-time command that will never execute again after first use -->
-<button type="button"
-  command="--show"
-  commandfor="welcome-modal"
-  data-state="once">
-  Show Welcome (Once Only)
-</button>
-
-<!-- Disabled command that won't execute at all -->
-<button type="button"
-  command="--toggle"
-  commandfor="help-panel"
-  data-state="disabled">
-  Help (Currently Disabled)
-</button>
-
-<!-- Command that becomes disabled after completion -->
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/setup"
-  commandfor="setup-content"
-  data-after-complete="--attr:set:data-state:completed">
-  Run Initial Setup
-</button>
-
-<!-- Override target for chained command -->
-<button type="button"
-  command="--fetch:get"
-  data-url="/api/content"
-  commandfor="content-area"
-  data-and-then="--class:add:loaded"
-  data-then-target="loading-spinner">
-  Load Content
-</button>
-```
-
-**Available States:**
-- `active` (default): Command executes normally
-- `once`: Command executes once then becomes `completed`
-- `disabled`: Command never executes
-- `completed`: Command has finished and won't execute again
-
-> **Backwards Compatibility:** The library still supports the older `data-then-command` attribute as a fallback, but the new `data-and-then` is recommended for its improved readability.
-
-#### Complete Workflow Example
-
-Here's a comprehensive example showing how all the chaining features work together in a realistic user registration flow:
-
-```html
-<!-- Multi-step registration with comprehensive error handling -->
-<button type="button" 
-  command="--fetch:post" 
-  data-url="/api/register"
-  commandfor="registration-form"
-  data-state="once"
-  data-after-success="--class:add:success,--text:set:Registration successful!"
-  data-after-error="--class:add:error"
-  data-after-complete="--attr:set:aria-busy:false">
-  
-  Complete Registration
-  
-  <!-- Success flow -->
-  <and-then command="--show" commandfor="welcome-screen" data-condition="success" data-delay="500">
-    <and-then command="--hide" commandfor="registration-form" data-once="true">
-      <and-then command="--text:set:Welcome! Check your email to verify your account." commandfor="welcome-message">
-      </and-then>
-    </and-then>
-  </and-then>
-  
-  <!-- Error flow -->
-  <and-then command="--text:set:Registration failed. Please try again." commandfor="error-message" data-condition="error">
-    <and-then command="--show" commandfor="error-details" data-delay="300">
-    </and-then>
-  </and-then>
-</button>
-
-<form id="registration-form">
-  <!-- form fields -->
-  <div id="error-message" role="alert" class="error" hidden></div>
-  <div id="error-details" hidden>Please check your information and try again.</div>
-</form>
-
-<div id="welcome-screen" hidden>
-  <h2>Welcome!</h2>
-  <p id="welcome-message"></p>
-</div>
-```
-
-This example demonstrates:
-- **One-time execution** with `data-state="once"`
-- **Conditional attribute chaining** with multiple success/error commands
-- **Nested declarative chains** with `<and-then>` elements
-- **Conditional execution** based on success/error states
-- **Delayed execution** with `data-delay`
-- **Self-removing elements** with `data-once="true"`
-
-#### Automatic View Transitions
-If the browser supports the View Transition API, Invokers will **automatically** wrap DOM changes in beautiful transitions:
-
-```css
-/* Add smooth animations with just CSS */
-::view-transition-new(root) {
-  animation: 250ms ease-out both fade-in-up;
-}
-
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(10px); }
-}
-```
-
-## 🔧 Creating Custom Commands
-
-Extend Invokers with your own project-specific commands:
-
-```javascript
-// Register a custom analytics command
-window.Invoker.register('--analytics:track', ({ params, invoker }) => {
-  const [event, ...data] = params;
-  analytics.track(event, { data: data.join(' '), element: invoker.id });
+<!-- The button is just a button. Its purpose is hidden in a script file. -->
+<button id="menu-toggle">Menu</button>
+<nav id="main-menu" hidden>...</nav>
+
+<script>
+// Somewhere else in your project...
+document.getElementById('menu-toggle').addEventListener('click', (e) => {
+  const menu = document.getElementById('main-menu');
+  menu.hidden = !menu.hidden;
+  // We have to remember to manually sync accessibility state.
+  e.target.setAttribute('aria-expanded', !menu.hidden);
 });
-
-// Register a notification command
-window.Invoker.register('--notify', ({ params }) => {
-  const message = params.join(' ');
-  new Notification('App Notification', { body: message });
-});
+</script>
 ```
 
-Use your custom commands in HTML:
+### After: The Invokers Way (The Future Standard)
+
+With Invokers, your HTML becomes the single source of truth. It's clean, readable, and requires no custom JavaScript for this common pattern.
+
 ```html
-<!-- Track user interactions -->
-<button type="button" 
-  command="--analytics:track:button_click:header_cta"
-  commandfor="signup-form"
-  data-and-then="--notify:Thanks for your interest!">
-  Sign Up Now
+<!-- The button's purpose is clear just by reading the markup. -->
+<button type="button" command="--toggle" commandfor="main-menu" aria-expanded="false">
+  Menu
 </button>
-```
+<nav id="main-menu" hidden>...</nav>
 
-💡 **Best Practice:** Encapsulate complex logic in custom commands to keep your HTML clean and reusable.
+<!-- Add Invokers to your page, and you're done. -->
+<script type="module" src="https://esm.sh/invokers"></script>
+```
 
 <br />
 
-## 🛠️ Frequently Asked Questions
+## ⚡ Advanced Events (Opt-In)
 
-### **How does Invokers compare to Alpine.js, HTMX, or React?**
+Invokers includes powerful advanced event features that transform it from a click-driven library into a fully reactive framework. These features are **opt-in** to keep the core library lightweight.
 
-| Framework | Best For | Learning Curve | Standards |
-| --------- | -------- | -------------- | --------- |
-| **Invokers** | Standard-compliant interactions | Low | Future web standards |
-| **Alpine.js** | Vue-like reactivity in HTML | Medium | Custom syntax |
-| **HTMX** | Server-driven applications | Medium | Custom attributes |
-| **React** | Complex applications | High | Component-based |
+### Enabling Advanced Events
 
-Invokers is ideal when you want simple interactions without learning framework-specific syntax.
+To use advanced event features, import and call `enableAdvancedEvents()` once in your application:
 
-### **Is this production ready?**
-Yes! Invokers is used in production applications. It's a polyfill for an upcoming web standard, so you're learning skills that will remain relevant as browsers implement native support.
+```javascript
+// In your main application script (e.g., app.js)
+import 'invokers'; // Load the core library first
+import { enableAdvancedEvents } from 'invokers/advanced';
 
-### **What browsers are supported?**
-Invokers works in all modern browsers (Chrome, Firefox, Safari, Edge). It requires ES modules support, which means IE11 is not supported.
-
-### **Will this conflict with future HTML spec changes?**
-No. Invokers implements the official W3C/WHATWG proposal. When browsers add native support, Invokers will step aside automatically. Your HTML remains the same.
-
-### **Do I need to import anything extra for extended commands?**
-No! All extended commands (fetch, media controls, DOM manipulation, etc.) are automatically included when you import Invokers. Just use them directly in your HTML.
-
-### **Can I use JSON APIs with `--fetch` commands?**
-No, `--fetch:get` expects HTML responses to inject into the page. For JSON APIs, you'll need to create a custom command or use the JSON data server-side to render HTML.
-
-### **Why `<button type="button">`?**
-The HTML spec requires invoker buttons to be `<button>` elements for accessibility. The `type="button"` prevents accidental form submissions when the button is inside a `<form>`.
-
-### **Why the `--` prefix?**
-This is part of the official spec to distinguish custom commands from native browser commands. It ensures your commands won't conflict with future HTML additions.
-
-### **How do Interest Invokers work on touch devices?**
-Interest Invokers automatically adapt to touch devices using long-press gestures (500ms hold). For buttons without existing context menus, long-press directly shows interest. For links and other elements with context menus, a "Show Details" option appears in the context menu.
-
-### **What's the difference between `popover="hint"` and `popover="auto"`?**
-- `popover="hint"` creates simple tooltips that are treated as plain text by screen readers
-- `popover="auto"` creates rich hover cards that can contain interactive elements and are fully navigable by assistive technologies
-
-### **Can I control the hover delay timing?**
-Yes! Use CSS custom properties to adjust timing:
-```css
-.my-element {
-  --interest-delay-start: 1s;    /* Time before showing */
-  --interest-delay-end: 300ms;   /* Time before hiding */
-  /* Or use the shorthand: */
-  --interest-delay: 1s 300ms;
-}
+// Call this function once to activate all new event features
+enableAdvancedEvents();
 ```
 
-### **How do I debug when nothing happens?**
-1. Check the browser console for warnings
-2. Verify `commandfor` points to an element with that exact `id`
-3. Ensure your button has `type="button"`
-4. Make sure custom commands start with `--`
-5. For Interest Invokers, verify `interestfor` points to a valid target with an `id`
+### New Attributes: `command-on` and `data-on-event`
+
+Once enabled, you gain access to two new declarative attributes for triggering commands from any DOM event.
+
+#### `command-on`: Trigger Commands from Any Event
+
+Allows any element to execute a command in response to *any* DOM event, not just button clicks.
+
+```html
+<!-- Self-submitting form (no submit button needed) -->
+<form id="contact-form"
+      command-on="submit"
+      command="--fetch:send"
+      commandfor="contact-form"
+      data-response-target="#result">
+  <input name="email" type="email">
+</form>
+
+<!-- Keyboard shortcuts -->
+<body command-on="keydown.window.ctrl.k.prevent"
+      command="show-modal"
+      commandfor="search-dialog">
+  ...
+</body>
+```
+
+#### `data-on-event`: Listen for Custom Events
+
+Allows elements to listen for custom events dispatched from anywhere on the page.
+
+```html
+<!-- Button emits a custom event -->
+<button command="--emit:notify:{\"message\":\"Profile Saved!\",\"type\":\"success\"}">
+  Save Profile
+</button>
+
+<!-- Separate toast listens for it -->
+<div id="toast-notification"
+     data-on-event="notify"
+     command="--show">
+  Notification will appear here!
+</div>
+```
+
+### Dynamic Data with `{{...}}` Syntax
+
+Inject dynamic data from events directly into command attributes using `{{...}}` placeholders. Supports full JavaScript-like expressions for complex data manipulation.
+
+```html
+<!-- Live search input -->
+<input type="search"
+       name="query"
+       placeholder="Search articles..."
+       command-on="input"
+       command="--fetch:get"
+       commandfor="#search-results"
+       data-url="/api/search?q={{ this.value }}">
+
+<div id="search-results"></div>
+```
+
+#### Expression Syntax
+
+The `{{...}}` syntax supports a safe subset of JavaScript expressions:
+
+**Arithmetic & Logic:**
+```html
+<!-- Calculate values -->
+<button command="--media:seek:{{ this.currentTime + 30 }}">Skip 30s</button>
+
+<!-- Conditional logic -->
+<div command-on="click"
+     command="{{ this.classList.contains('active') ? '--hide' : '--show' }}"
+     commandfor="panel">
+  Toggle Panel
+</div>
+```
+
+**Property Access:**
+```html
+<!-- Deep property access -->
+<span>{{ event.detail.user.profile.name }}</span>
+
+<!-- Array access -->
+<img src="{{ this.images[this.currentIndex] }}"
+     command-on="click"
+     command="--set:{{ this.currentIndex + 1 }}"
+     commandfor="currentIndex">
+```
+
+**String Operations:**
+```html
+<!-- String concatenation -->
+<data-url="/api/search?q={{ this.value + '&limit=10' }}"></data-url>
+
+<!-- String length checks -->
+<input command-on="input"
+       command="{{ this.value.length > 50 ? '--show' : '--hide' }}"
+       commandfor="warning-message">
+```
+
+**Complex Expressions:**
+```html
+<!-- Multi-step calculations -->
+<progress value="{{ (this.completed / this.total) * 100 }}"></progress>
+
+<!-- Nested conditionals -->
+<div class="{{ this.status === 'error' ? 'text-red' : this.status === 'success' ? 'text-green' : 'text-gray' }}">
+  {{ this.message }}
+</div>
+```
+
+#### Available Context Variables
+
+- `{{ this }}`: The element that triggered the event
+- `{{ event }}`: The raw DOM event object
+- `{{ detail }}`: Data from CustomEvent.detail
+
+#### Expression Security & Limitations
+
+**✅ Safe Operations:**
+- Arithmetic: `+`, `-`, `*`, `/`, `%`
+- Comparisons: `===`, `!==`, `==`, `!=`, `<`, `>`, `<=`, `>=`
+- Logic: `&&`, `||`, `!`
+- Property access: `obj.prop`, `obj['key']`, `arr[0]`
+- Ternary conditionals: `condition ? true : false`
+- Parentheses for grouping
+
+**❌ Not Supported (Security):**
+- Function calls: `obj.method()` (methods are accessible but not callable)
+- Object/array creation: `{}`, `[]`, `new`
+- Global access: `window`, `document`, `console`
+- Loops, assignments, or any imperative code
+- Template literals or other ES6+ features
+
+**Performance & Caching:**
+Expressions are automatically cached for optimal performance. Parsed expressions are stored in an LRU cache, making repeated evaluations of the same expression extremely fast.
+
+**Error Handling:**
+Invalid expressions return `undefined` and log helpful error messages to the console. Your UI gracefully degrades when expressions fail.
+
+```html
+<!-- Safe fallback: if expression fails, attribute uses empty value -->
+<button command="--set:{{ nonexistent.property }}">Click me</button>
+```
+
+### Event Modifiers
+
+Enhance event handling with modifiers:
+
+| Modifier | Description | Example |
+| :--- | :--- | :--- |
+| `.prevent` | Calls `event.preventDefault()` | `command-on="submit.prevent"` |
+| `.stop` | Calls `event.stopPropagation()` | `command-on="click.stop"` |
+| `.once` | Listener removes itself after one trigger | `command-on="mouseenter.once"` |
+| `.window` | Attaches to global window object | `command-on="keydown.window.ctrl.s"` |
+| `.debounce` | Waits for pause in events (250ms default) | `command-on="input.debounce"` |
+| `.debounce.<ms>` | Custom debounce delay | `command-on="input.debounce.300"` |
+| `.{key}` | Only triggers on specific key | `command-on="keydown.enter.prevent"` |
+
+### Command Chaining with Expressions
+
+Combine expressions with command chaining for dynamic, data-driven workflows:
+
+```html
+<!-- Dynamic command sequences based on form state -->
+<form command-on="submit.prevent"
+      command="{{ this.elements.namedItem('agree').checked ? '--fetch:send' : '--show' }}"
+      commandfor="{{ this.elements.namedItem('agree').checked ? 'submit-success' : 'agree-warning' }}"
+      data-and-then="{{ this.elements.namedItem('agree').checked ? '--reset' : '' }}"
+      data-and-then-commandfor="{{ this.elements.namedItem('agree').checked ? 'contact-form' : '' }}">
+
+  <input name="agree" type="checkbox" required>
+  <label>Agree to terms</label>
+
+  <button type="submit">Submit</button>
+</form>
+
+<!-- Multi-step wizard with conditional navigation -->
+<div id="wizard-step-1">
+  <select name="user-type">
+    <option value="individual">Individual</option>
+    <option value="business">Business</option>
+  </select>
+
+  <button command-on="click"
+          command="--hide"
+          commandfor="wizard-step-1"
+          data-and-then="--show"
+          data-and-then-commandfor="wizard-step-{{ event.target.form.elements.namedItem('user-type').value === 'business' ? '2b' : '2a' }}">
+    Next
+  </button>
+</div>
+```
+
+### Advanced Event Examples
+
+**Real-time Form Validation:**
+```html
+<form>
+  <input name="email"
+         type="email"
+         command-on="blur"
+         command="{{ this.validity.valid ? '--hide' : '--show' }}"
+         commandfor="email-error">
+
+  <div id="email-error" hidden>Invalid email address</div>
+</form>
+```
+
+**Dynamic API Calls:**
+```html
+<select name="category"
+        command-on="change"
+        command="--fetch:get"
+        commandfor="products-list"
+        data-url="/api/products?category={{ this.value }}&limit={{ this.dataset.limit || 10 }}">
+  <option value="electronics">Electronics</option>
+  <option value="books">Books</option>
+</select>
+```
+
+**Keyboard Shortcuts with Context:**
+```html
+<body command-on="keydown.window.ctrl.s.prevent"
+      command="{{ document.activeElement?.tagName === 'INPUT' ? '--emit:save-form' : '--emit:save-document' }}">
+```
+
+### ⚠️ Important Considerations & Gotchas
+
+**Expression Evaluation Context:**
+- Expressions run in a sandboxed environment with no access to global objects
+- `this` refers to the element that triggered the event, not your component's `this`
+- Property access follows JavaScript rules: `obj.undefinedProp` returns `undefined`
+- Array bounds are not checked: `arr[999]` returns `undefined`
+
+**Performance Considerations:**
+- Expressions are evaluated on every event trigger
+- Complex expressions with deep property access may impact performance
+- Consider debouncing rapid events like `input` or `mousemove`
+
+**Error Handling:**
+- Invalid expressions return `undefined` and log to console
+- Your UI should gracefully handle undefined values
+- Test expressions thoroughly in development
+
+**Security:**
+- Only safe property access and arithmetic operations are allowed
+- No function calls, object creation, or global access
+- Expressions cannot modify data, only read it
+
+**Browser Support:**
+- Advanced events require a modern browser with Proxy support
+- Falls back gracefully in unsupported browsers (expressions become literal text)
+
+**Debugging:**
+- Check browser console for expression errors
+- Use browser dev tools to inspect the context variables
+- Test expressions in isolation before using in production
+
+## 🎨 Declarative Templating
+
+Create dynamic, data-driven interfaces without JavaScript using declarative templates and data injection.
+
+### Template Data Injection
+
+Use `data-with-json` to inject JSON data into templates, and `data-tpl-*` attributes to customize template rendering.
+
+```html
+<!-- Template with data injection -->
+<template id="user-card-template">
+  <div class="user-card">
+    <h3 data-tpl-text="name"></h3>
+    <p data-tpl-text="role"></p>
+    <img data-tpl-src="avatar" data-tpl-alt="name">
+    <button data-tpl-command="followCommand" data-tpl-commandfor="followTarget">
+      Follow
+    </button>
+  </div>
+</template>
+
+<!-- Button that renders the template -->
+<button type="button"
+        command="--dom:replace"
+        commandfor="user-container"
+        data-template-id="user-card-template"
+        data-with-json='{"name":"Alice","role":"Developer","avatar":"/alice.jpg","followCommand":"--emit:follow:alice","followTarget":"follow-stats"}'>
+  Show User Card
+</button>
+
+<div id="user-container"></div>
+```
+
+### Unique ID Generation
+
+Use `{{__uid}}` placeholders for generating unique IDs across template instances:
+
+```html
+<template id="modal-template">
+  <div class="modal" id="modal-{{__uid}}">
+    <div class="modal-content">
+      <h2 data-tpl-text="title"></h2>
+      <p data-tpl-text="message"></p>
+      <button command="--hide" commandfor="#modal-{{__uid}}">Close</button>
+    </div>
+  </div>
+</template>
+```
+
+### Selector Rewriting
+
+Templates automatically rewrite `@closest` selectors to use generated unique IDs, enabling proper scoping:
+
+```html
+<template id="item-template">
+  <div class="item" id="item-{{__uid}}">
+    <span data-tpl-text="name"></span>
+    <button command="--class:toggle:active" commandfor="@closest(.item)">
+      Toggle
+    </button>
+  </div>
+</template>
+
+<!-- The @closest selector becomes #item-123 when rendered -->
+```
+
+### Complete Example: Todo List
+
+```html
+<!-- Template for todo items -->
+<template id="todo-item-template">
+  <div class="todo-item" id="todo-{{__uid}}">
+    <input type="checkbox"
+           command="--class:toggle:completed"
+           commandfor="@closest(.todo-item)">
+    <span data-tpl-text="text"></span>
+    <button command="--dom:remove" commandfor="@closest(.todo-item)">
+      Delete
+    </button>
+  </div>
+</template>
+
+<!-- Form to add new todos -->
+<form command-on="submit.prevent"
+      command="--dom:append"
+      commandfor="todo-list"
+      data-template-id="todo-item-template"
+      data-with-json='{"text": ""}'>
+  <input name="todo-text" placeholder="Add a todo..." required>
+  <button type="submit">Add</button>
+</form>
+
+<!-- Container for todo items -->
+<ul id="todo-list" class="todo-list"></ul>
+```
+
+This creates a fully functional todo list where:
+- New items are added via the form
+- Checkboxes toggle completion state
+- Delete buttons remove items
+- Each item has a unique ID for proper scoping
+
+## 🎯 Advanced `commandfor` Selectors
+
+Invokers supports powerful contextual selectors that go beyond simple IDs, enabling complex DOM targeting patterns without JavaScript.
+
+### Contextual Selectors
+
+| Selector | Description | Example |
+| -------- | ----------- | ------- |
+| `@closest(selector)` | Target the closest ancestor matching the selector | `commandfor="@closest(.card)"` |
+| `@child(selector)` | Target direct children matching the selector | `commandfor="@child(.item)"` |
+| `@children(selector)` | Target all children matching the selector | `commandfor="@children(.item)"` |
+
+### Global CSS Selectors
+
+You can also use any standard CSS selector directly:
+
+```html
+<!-- Target all elements with a class -->
+<button command="--hide" commandfor=".modal">Close All Modals</button>
+
+<!-- Target elements within a specific container -->
+<button command="--toggle" commandfor="#sidebar .menu-item">Toggle Menu Items</button>
+
+<!-- Complex selectors work too -->
+<button command="--class:add:active" commandfor="article[data-category='featured']">
+  Mark Featured Articles
+</button>
+```
+
+### Selector Examples
+
+**Accordion with Contextual Targeting:**
+```html
+<div class="accordion">
+  <div class="accordion-item">
+    <button command="--toggle" commandfor="@closest(.accordion-item .content)">
+      Toggle Section
+    </button>
+    <div class="content" hidden>Content here...</div>
+  </div>
+</div>
+```
+
+**List Management:**
+```html
+<ul class="todo-list">
+  <li class="todo-item">
+    <input type="checkbox" command="--class:toggle:completed" commandfor="@closest(.todo-item)">
+    <span>Task description</span>
+    <button command="--dom:remove" commandfor="@closest(.todo-item)">Delete</button>
+  </li>
+</ul>
+```
+
+**Tab Interface:**
+```html
+<div class="tabs">
+  <button command="--class:add:active" commandfor="@closest(.tab)" data-and-then="--class:remove:active" data-and-then-commandfor="@closest(.tabs .tab)">
+    Tab 1
+  </button>
+  <div class="tab-content">Tab 1 content</div>
+</div>
+```
+
+## 🔄 Migration Guide
+
+### From Monolithic to Modular
+
+**Before (v1.4.x):**
+```javascript
+import 'invokers';
+// 160 kB - everything included
+```
+
+**After (v1.5.x) - Recommended:**
+```javascript
+// Start minimal (25.8 kB)
+import invokers from 'invokers';
+
+// Add what you need
+import { registerBaseCommands } from 'invokers/commands/base';
+import { registerFormCommands } from 'invokers/commands/form';
+
+registerBaseCommands(invokers);
+registerFormCommands(invokers);
+// ~60 kB total - only what you use
+```
+
+**After (v1.5.x) - Compatibility Layer:**
+```javascript
+// For existing apps that need all commands (82 kB)
+import 'invokers/compatible';
+// All commands are now available - no changes needed to your HTML
+```
+
+### Compatibility Layer
+
+For existing applications that want to upgrade to v1.5.x without changing their code, use the compatibility layer:
+
+```javascript
+// Drop-in replacement for the old monolithic import
+import { InvokerManager } from 'invokers/compatible';
+
+// OR for side-effects only
+import 'invokers/compatible';
+```
+
+The compatibility layer:
+- ✅ Pre-registers all command packs automatically
+- ✅ Enables all advanced features by default
+- ✅ Maintains full backward compatibility
+- ✅ Bundle size: 82 kB (still smaller than v1.4.x's 160 kB)
+
+### Progressive Enhancement Strategy
+
+1. **Start with core**: Get standards compliance
+2. **Add base commands**: Essential UI interactions  
+3. **Add specialized packs**: As features are needed
+4. **Enable advanced features**: For dynamic applications
+
+## 📖 Documentation
+
+### Command Reference
+- **Base Commands**: Essential UI state management
+- **Form Commands**: Content and form manipulation  
+- **DOM Commands**: Dynamic content insertion
+- **Flow Commands**: Async operations and navigation
+- **Media Commands**: Rich media controls
+- **Browser Commands**: Browser API integration
+- **Data Commands**: Complex data operations
+
+### Advanced Features
+- **Event Triggers**: `command-on` attribute for any DOM event
+- **Expression Engine**: `{{expression}}` syntax for dynamic parameters
+- **Command Chaining**: `data-and-then` for complex workflows
+- **Interest Invokers**: `interestfor` for hover interactions
+
+### API Reference
+```javascript
+// Core API
+invokers.register(name, callback);
+invokers.executeCommand(command, targetId, source);
+
+// Global API (when using CDN)
+window.Invoker.register(name, callback);
+window.Invoker.executeCommand(command, targetId, source);
+```
+
+## ⚡ Performance
+
+### Bundle Size Comparison
+- **Core only**: 25.8 kB (polyfill + engine)
+- **Essential UI**: ~60 kB (core + base + form)  
+- **Full power**: ~200 kB (all packs + advanced)
+- **Original v1.4**: 160 kB (everything forced)
+
+### Best Practices
+- Start with core, add incrementally
+- Use tree-shaking with ES modules
+- Enable advanced features only when needed
+- Leverage browser caching for separate chunks
+
+## 🛠️ Development
+
+### Build Requirements
+- Node.js 16+
+- TypeScript 5.7+
+- Pridepack (build tool)
+
+### Commands
+```bash
+npm run build     # Build all modules
+npm run test      # Run tests  
+npm run dev       # Development mode
+npm run clean     # Clean build artifacts
+```
+
+### Testing with Modules
+```javascript
+import { InvokerManager } from 'invokers';
+import { registerBaseCommands } from 'invokers/commands/base';
+
+beforeEach(() => {
+  const manager = InvokerManager.getInstance();
+  manager.reset();
+  registerBaseCommands(manager); // Register needed commands
+});
+```
+
+## 🎯 Browser Support
+
+- **Modern browsers**: Full feature support
+- **Legacy browsers**: Graceful degradation
+- **Mobile browsers**: Touch and gesture support
+- **Accessibility**: Screen reader and keyboard navigation
 
 ## 🤝 Contributing
 
-Contributions are welcome! As we track the progress of the official spec, your help with bug reports, new command proposals, or documentation improvements is greatly appreciated. Please feel free to open an issue or submit a pull request on our [GitHub repository](https://github.com/doeixd/invokers).
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Setup
+```bash
+git clone https://github.com/doeixd/invokers.git
+cd invokers
+npm install
+npm run build
+npm test
+```
 
 ## 📄 License
 
-Invokers is open-source software licensed under the [MIT License](https://opensource.org/licenses/MIT).
+MIT © [Patrick Glenn](https://github.com/doeixd)
+
+## 🙏 Acknowledgments
+
+- W3C/WHATWG for the Invoker Commands proposal
+- The web standards community
+- Contributors and early adopters
+
+---
+
+**Ready to build declarative UIs?** Start with `npm install invokers` and explore the [examples](./examples/) directory for inspiration!
