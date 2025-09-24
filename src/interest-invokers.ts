@@ -114,15 +114,29 @@ class InterestInvokersPolyfill {
    * Initialize the Interest Invokers polyfill
    */
   public apply(): void {
+     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+       console.log('Interest Invokers: apply() called, readyState:', document.readyState);
+     }
+
     // Feature detection and early return
     if (window.interestForPolyfillInstalled) {
+       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+         console.log('Interest Invokers: already installed, skipping');
+       }
       return;
     }
 
     window.interestForPolyfillInstalled = true;
     const nativeSupported = isInterestInvokersSupported();
 
+     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+       console.log(`Interest Invokers: native support detected: ${nativeSupported}`);
+     }
+
     if (nativeSupported && !window.interestForUsePolyfillAlways) {
+       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+         console.log('Interest Invokers: native support available, not applying polyfill');
+       }
       return;
     }
 
@@ -133,7 +147,9 @@ class InterestInvokersPolyfill {
     this.setupPolyfill();
     this.initialized = true;
 
-    console.log(`Interest Invokers polyfill installed (native: ${nativeSupported}).`);
+     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+       console.log(`Interest Invokers polyfill installed successfully.`);
+     }
   }
 
   /**
@@ -151,14 +167,15 @@ class InterestInvokersPolyfill {
     document.body.addEventListener(this.loseInterestEventName, cancel, { capture: true });
   }
 
-  /**
-   * Setup the complete polyfill
-   */
-  private setupPolyfill(): void {
-    this.registerCustomProperties();
-    this.addEventHandlers();
-    this.setupElementMixins();
-  }
+   /**
+    * Setup the complete polyfill
+    */
+   private setupPolyfill(): void {
+     this.registerCustomProperties();
+     this.addEventHandlers();
+     this.setupElementMixins();
+     this.setupInitialAccessibility();
+   }
 
   /**
    * Register CSS custom properties for interest delays
@@ -192,12 +209,15 @@ class InterestInvokersPolyfill {
   private setupElementMixins(): void {
     // Button support
     this.applyInterestInvokerMixin(HTMLButtonElement);
-    
+
     // Anchor support
     this.applyInterestInvokerMixin(HTMLAnchorElement);
-    
-    // Area support  
+
+    // Area support
     this.applyInterestInvokerMixin(HTMLAreaElement);
+
+    // Code elements (for documentation tooltips)
+    this.applyInterestInvokerMixin(HTMLElement); // Generic HTMLElement support for any element with interestfor
 
     // SVG Anchor support (if available)
     if (typeof SVGAElement !== 'undefined') {
@@ -205,28 +225,49 @@ class InterestInvokersPolyfill {
     }
   }
 
-  /**
-   * Apply the interestForElement property to supported elements
-   */
-  private applyInterestInvokerMixin(ElementClass: any): void {
-    Object.defineProperty(ElementClass.prototype, 'interestForElement', {
-      enumerable: true,
-      configurable: true,
-      get(this: HTMLElement): Element | null {
-        const id = this.getAttribute('interestfor');
-        return id ? document.getElementById(id) : null;
-      },
-      set(this: HTMLElement, value: Element | null) {
-        if (value === null) {
-          this.removeAttribute('interestfor');
-        } else if (value && typeof value === 'object' && 'id' in value) {
-          this.setAttribute('interestfor', value.id || '');
-        } else {
-          throw new TypeError('interestForElement must be an element or null');
-        }
-      }
-    });
-  }
+   /**
+    * Apply the interestForElement property to supported elements
+    */
+   private applyInterestInvokerMixin(ElementClass: any): void {
+     Object.defineProperty(ElementClass.prototype, 'interestForElement', {
+       enumerable: true,
+       configurable: true,
+       get(this: HTMLElement): Element | null {
+         const id = this.getAttribute('interestfor');
+         return id ? document.getElementById(id) : null;
+       },
+       set(this: HTMLElement, value: Element | null) {
+         if (value === null) {
+           this.removeAttribute('interestfor');
+         } else if (value && typeof value === 'object' && 'id' in value) {
+           this.setAttribute('interestfor', value.id || '');
+         } else {
+           throw new TypeError('interestForElement must be an element or null');
+         }
+       }
+     });
+   }
+
+   /**
+    * Setup initial accessibility attributes for all interest invokers on the page
+    */
+   private setupInitialAccessibility(): void {
+     // Run synchronously to ensure accessibility is set up immediately
+     const selectors = [
+       'button[interestfor]',
+       'a[interestfor]',
+       'area[interestfor]',
+       '[interestfor]' // Generic elements
+     ];
+
+     const invokers = document.querySelectorAll(selectors.join(', '));
+     invokers.forEach(invoker => {
+       const target = this.getInterestForTarget(invoker as HTMLElement);
+       if (target) {
+         this.setupAccessibility(invoker as HTMLElement, target);
+       }
+     });
+   }
 
   /**
    * Add all event handlers for interest detection
@@ -437,11 +478,22 @@ class InterestInvokersPolyfill {
 
         // Show popover if applicable
         try {
-          if (target.hasAttribute('popover') && typeof (target as any).showPopover === 'function') {
-            (target as any).showPopover();
-            // If anchor positioning not supported, position manually
-            if (!this.supportsAnchorPositioning()) {
-              requestAnimationFrame(() => this.positionPopover(invoker, target));
+          if (target.hasAttribute('popover')) {
+            if (typeof (target as any).showPopover === 'function') {
+              // Pre-position for smooth animation if anchor positioning not supported
+              if (!this.supportsAnchorPositioning()) {
+                this.positionPopover(invoker, target);
+              }
+              (target as any).showPopover();
+            } else {
+              // Fallback for browsers without Popover API
+              this.positionPopover(invoker, target);
+              (target as HTMLElement).style.display = 'block';
+              (target as HTMLElement).classList.add('interest-fallback');
+              // Trigger animation
+              requestAnimationFrame(() => {
+                (target as HTMLElement).classList.add('show');
+              });
             }
           }
         } catch {}
@@ -513,6 +565,14 @@ class InterestInvokersPolyfill {
         try {
           if (typeof (target as any).hidePopover === 'function') {
             (target as any).hidePopover();
+          } else if (target.hasAttribute('popover')) {
+            // Fallback for browsers without Popover API
+            (target as HTMLElement).classList.remove('show');
+            // Wait for animation to complete before hiding
+            setTimeout(() => {
+              (target as HTMLElement).style.display = 'none';
+              (target as HTMLElement).classList.remove('interest-fallback');
+            }, 200);
           }
         } catch {}
 
@@ -604,11 +664,13 @@ class InterestInvokersPolyfill {
        target.classList.remove(data.className);
        data.className = null;
      }
-     // Cleanup manual positioning
-     (target as HTMLElement).style.position = "";
-     (target as HTMLElement).style.top = "";
-     (target as HTMLElement).style.left = "";
-     (target as HTMLElement).style.zIndex = "";
+      // Cleanup manual positioning
+      (target as HTMLElement).style.position = "";
+      (target as HTMLElement).style.top = "";
+      (target as HTMLElement).style.left = "";
+      (target as HTMLElement).style.zIndex = "";
+      (target as HTMLElement).style.margin = "";
+      (target as HTMLElement).style.transformOrigin = "";
    }
 
   /**
@@ -617,7 +679,33 @@ class InterestInvokersPolyfill {
    */
   private positionPopover(invoker: HTMLElement, target: HTMLElement): void {
     const invokerRect = invoker.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
+
+    // Get target dimensions more reliably - temporarily show it if hidden
+    let targetRect: DOMRect;
+    const wasHidden = target.style.display === 'none';
+    if (wasHidden) {
+      // Temporarily show to get accurate dimensions
+      const originalDisplay = target.style.display;
+      const originalVisibility = target.style.visibility;
+      const originalPosition = target.style.position;
+
+      target.style.display = 'block';
+      target.style.visibility = 'hidden';
+      target.style.position = 'absolute';
+      target.style.top = '-9999px';
+      target.style.left = '-9999px';
+
+      targetRect = target.getBoundingClientRect();
+
+      // Restore
+      target.style.display = originalDisplay;
+      target.style.visibility = originalVisibility;
+      target.style.position = originalPosition;
+      target.style.top = '';
+      target.style.left = '';
+    } else {
+      targetRect = target.getBoundingClientRect();
+    }
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -628,16 +716,16 @@ class InterestInvokersPolyfill {
     // Position centered horizontally on the invoker
     left = invokerRect.left + (invokerRect.width / 2) - (targetRect.width / 2);
 
-    // Try positioning below first
-    top = invokerRect.bottom - 4;
+    // Try positioning below first (GitHub-style)
+    top = invokerRect.bottom + 4;
 
     // Check if it fits below
-    if (top + targetRect.height > viewportHeight) {
+    if (top + targetRect.height > viewportHeight - 8) {
       // Try positioning above
-      top = invokerRect.top - targetRect.height + 4;
-      if (top < 0) {
-        // If above also doesn't fit, keep below and adjust
-        top = invokerRect.bottom + 8;
+      top = invokerRect.top - targetRect.height - 4;
+      if (top < 8) {
+        // If above also doesn't fit, position below anyway
+        top = invokerRect.bottom + 4;
       }
     }
 
@@ -645,10 +733,13 @@ class InterestInvokersPolyfill {
     const adjustedLeft = Math.max(8, Math.min(left, viewportWidth - targetRect.width - 8));
     const adjustedTop = Math.max(8, Math.min(top, viewportHeight - targetRect.height - 8));
 
+    // For fallback positioning, set position and coordinates
     (target as HTMLElement).style.position = 'fixed';
     (target as HTMLElement).style.top = `${adjustedTop}px`;
     (target as HTMLElement).style.left = `${adjustedLeft}px`;
     (target as HTMLElement).style.zIndex = '9999';
+    (target as HTMLElement).style.margin = '0';
+    (target as HTMLElement).style.transformOrigin = 'top center';
   }
 
 
@@ -835,7 +926,8 @@ class InterestInvokersPolyfill {
 
     // Check ARIA roles
     const elementsWithRoles = target.querySelectorAll("[role]");
-    for (const el of elementsWithRoles) {
+    for (let i = 0; i < elementsWithRoles.length; i++) {
+      const el = elementsWithRoles[i];
       const role = el.getAttribute("role")?.toLowerCase();
       if (role && !["presentation", "none", "generic", "image"].includes(role)) {
         return false;
@@ -870,6 +962,13 @@ class InterestInvokersPolyfill {
   public isInitialized(): boolean {
     return this.initialized;
   }
+
+  /**
+   * Setup accessibility for all current interest invokers (public method for testing)
+   */
+  public setupAccessibilityForAll(): void {
+    this.setupInitialAccessibility();
+  }
 }
 
 // --- Export Functions ---
@@ -879,10 +978,20 @@ class InterestInvokersPolyfill {
  */
 export function applyInterestInvokers(): void {
   const polyfill = InterestInvokersPolyfill.getInstance();
-  
-  if (document.readyState === "complete") {
-    polyfill.apply();
+
+  // Wait for DOM to be ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => polyfill.apply());
+  } else if (document.readyState === "interactive" || document.readyState === "complete") {
+    // DOM is ready, but ensure body exists
+    if (document.body) {
+      polyfill.apply();
+    } else {
+      // Wait a bit more
+      setTimeout(() => polyfill.apply(), 0);
+    }
   } else {
+    // Fallback
     window.addEventListener("load", () => polyfill.apply());
   }
 }

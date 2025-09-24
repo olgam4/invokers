@@ -4,10 +4,16 @@ import { InvokerManager } from '../src/compatible';
 describe('Core Commands', () => {
   let invokerManager: InvokerManager;
 
-  beforeEach(() => {
-    document.body.innerHTML = '';
-    invokerManager = InvokerManager.getInstance();
-  });
+    beforeEach(() => {
+      // Enable debug mode for testing
+      if (typeof window !== 'undefined' && window.Invoker) {
+        window.Invoker.debug = true;
+      }
+
+      document.body.innerHTML = '';
+      invokerManager = InvokerManager.getInstance();
+      // Note: Don't reset() when using compatible import - it clears pre-registered commands
+    });
 
   describe('Text Commands', () => {
     it('should set text content', async () => {

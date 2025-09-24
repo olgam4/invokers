@@ -188,10 +188,7 @@ describe('Enhanced Error Handling & Debugging', () => {
         // Expected to fail
       }
 
-      // Wait for graceful degradation timeout
-      await new Promise(resolve => setTimeout(resolve, 3100));
-      
-      // Button should be re-enabled
+      // Button should be re-enabled immediately after failure
       expect(button.hasAttribute('disabled')).toBe(false);
     });
   });

@@ -4,10 +4,15 @@ import { InvokerManager } from '../src/compatible';
 describe('Final Implementation Test', () => {
   let invokerManager: InvokerManager;
 
-  beforeEach(() => {
-    document.body.innerHTML = '';
-    invokerManager = InvokerManager.getInstance();
-  });
+   beforeEach(() => {
+     // Enable debug mode for testing
+     if (typeof window !== 'undefined' && window.Invoker) {
+       window.Invoker.debug = true;
+     }
+
+     document.body.innerHTML = '';
+     invokerManager = InvokerManager.getInstance();
+   });
 
   it('should demonstrate working command chaining', async () => {
     const button = document.createElement('button');

@@ -42,8 +42,8 @@ const dataCommands: Record<string, CommandCallback> = {
       });
     }
 
-    // Interpolate value if interpolation is enabled
-    if (isInterpolationEnabled() && value) {
+    // Interpolate value if interpolation is enabled and contains {{...}}
+    if (isInterpolationEnabled() && value && value.includes('{{')) {
       const context = {
         this: {
           ...invoker,

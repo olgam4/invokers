@@ -360,32 +360,38 @@ const flowCommands: Record<string, CommandCallback> = {
    * </button>
    * ```
    */
-  "--emit": ({ params, targetElement }: CommandContext) => {
-    const [eventType, ...detailParts] = params;
-    if (!eventType) {
-      throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
-        command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
-      });
-    }
+      "--emit": ({ params, targetElement }: CommandContext) => {
+       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+         console.log('--emit called with targetElement:', targetElement);
+       }
+       const [eventType, ...detailParts] = params;
+       if (!eventType) {
+         throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
+           command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
+         });
+       }
 
-    let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
-    // Try to parse as JSON if it looks like JSON
-    if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
-      try {
-        detail = JSON.parse(detail);
-      } catch (e) {
-        // Keep as string if not valid JSON
-      }
-    }
-    const event = new CustomEvent(eventType, {
-      bubbles: true,
-      composed: true,
-      detail
-    });
+       let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
+       // Try to parse as JSON if it looks like JSON
+       if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
+         try {
+           detail = JSON.parse(detail);
+         } catch (e) {
+           // Keep as string if not valid JSON
+         }
+       }
+        const event = new CustomEvent(eventType, {
+          bubbles: true,
+          composed: true,
+          detail
+        });
 
-    // Dispatch to targetElement if available, otherwise to document.body
-    (targetElement || document.body).dispatchEvent(event);
-  }
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.log('--emit dispatching event:', eventType, 'detail:', detail, 'to target:', targetElement);
+        }
+        // Dispatch to target element for local events, allowing bubbling for data-on-event listeners
+        targetElement.dispatchEvent(event);
+     }
 };
 
 // --- Private Helper Functions ---

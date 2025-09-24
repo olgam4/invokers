@@ -166,15 +166,34 @@
 
     /* Smooth transitions for popovers */
     [popover] {
-      transition: opacity 300ms, overlay 300ms allow-discrete;
+      transition: opacity 200ms ease-out, transform 200ms ease-out;
       opacity: 0;
+      transform: scale(0.95) translateY(-8px);
+      transform-origin: top center;
     }
 
     [popover]:popover-open {
       opacity: 1;
+      transform: scale(1) translateY(0);
       @starting-style {
         opacity: 0;
+        transform: scale(0.95) translateY(-8px);
       }
+    }
+
+    /* Fallback positioning for browsers without Popover API */
+    [popover].interest-fallback {
+      transition: opacity 200ms ease-out, transform 200ms ease-out;
+      opacity: 0;
+      transform: scale(0.95) translateY(-8px);
+      transform-origin: top center;
+      pointer-events: none;
+    }
+
+    [popover].interest-fallback.show {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
     }
   </style>
 </head>
@@ -398,27 +417,69 @@
   <!-- Load the Invokers library -->
   <script type="module" src="../dist/esm/development/compatible.js"></script>
 
-  <script>
-    // Add some debug logging
-    document.addEventListener('interest', (e) => {
-      console.log('Interest shown:', e.target, 'by:', e.source);
-    });
+  <!-- Load Interest Invokers separately -->
+  <script type="module" src="../dist/esm/development/interest.js"></script>
 
-    document.addEventListener('loseinterest', (e) => {
-      console.log('Interest lost:', e.target, 'by:', e.source);
-    });
+   <script>
+     // Check for Popover API support
+     const popoverSupported = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
 
-    // Log when custom commands are executed
-    window.addEventListener('load', () => {
-      if (window.Invoker) {
-        console.log('Invokers loaded successfully with Interest Invokers support');
-        console.log('Available debugging methods:', Object.keys(window.Invoker));
-        
-        // Enable debug mode to see execution details
-        window.Invoker.debug = true;
-      }
-    });
-  </script>
+     if (!popoverSupported) {
+       console.warn('Popover API not supported in this browser. Interest Invokers demo will not show popovers.');
+       // Add a notice to the page
+       const notice = document.createElement('div');
+       notice.style.cssText = `
+         position: fixed;
+         top: 10px;
+         right: 10px;
+         background: #ff6b6b;
+         color: white;
+         padding: 10px 15px;
+         border-radius: 5px;
+         font-size: 14px;
+         z-index: 10000;
+         max-width: 300px;
+       `;
+       notice.textContent = '⚠️ Popover API not supported. Hover effects won\'t show popovers. Try Chrome 114+, Firefox 125+, or Safari 17+.';
+       document.body.appendChild(notice);
+     }
+
+      // Add some debug logging
+      document.addEventListener('interest', (e) => {
+        console.log('Interest shown:', e.target, 'by:', e.source);
+      });
+
+      document.addEventListener('loseinterest', (e) => {
+        console.log('Interest lost:', e.target, 'by:', e.source);
+      });
+
+      // Log when elements with interestfor are found
+      window.addEventListener('load', () => {
+        const interestElements = document.querySelectorAll('[interestfor]');
+        console.log('Found elements with interestfor:', interestElements.length);
+        interestElements.forEach(el => {
+          const targetId = el.getAttribute('interestfor');
+          const target = document.getElementById(targetId);
+          console.log('Element:', el, 'targets:', target, 'target exists:', !!target);
+        });
+
+        if (window.Invoker) {
+          console.log('Invokers loaded successfully');
+          console.log('Available debugging methods:', Object.keys(window.Invoker));
+          console.log('Popover API supported:', popoverSupported);
+
+          // Enable debug mode to see execution details
+          window.Invoker.debug = true;
+        }
+
+        // Check if Interest Invokers polyfill is loaded
+        if (window.interestForPolyfillInstalled) {
+          console.log('Interest Invokers polyfill is installed');
+        } else {
+          console.warn('Interest Invokers polyfill not detected');
+        }
+      });
+   </script>
 </body>
 </html>
 

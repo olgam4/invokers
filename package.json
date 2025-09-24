@@ -140,6 +140,33 @@
       "require": "./dist/cjs/production/commands/data.js",
       "import": "./dist/esm/production/commands/data.js"
     },
+    "./commands/device": {
+      "types": "./dist/types/commands/device.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/device.js",
+        "import": "./dist/esm/development/commands/device.js"
+      },
+      "require": "./dist/cjs/production/commands/device.js",
+      "import": "./dist/esm/production/commands/device.js"
+    },
+    "./commands/accessibility": {
+      "types": "./dist/types/commands/accessibility.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/accessibility.js",
+        "import": "./dist/esm/development/commands/accessibility.js"
+      },
+      "require": "./dist/cjs/production/commands/accessibility.js",
+      "import": "./dist/esm/production/commands/accessibility.js"
+    },
+    "./commands/storage": {
+      "types": "./dist/types/commands/storage.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/storage.js",
+        "import": "./dist/esm/development/commands/storage.js"
+      },
+      "require": "./dist/cjs/production/commands/storage.js",
+      "import": "./dist/esm/production/commands/storage.js"
+    },
     "./compatible": {
       "types": "./dist/types/compatible.d.ts",
       "development": {
@@ -245,6 +272,15 @@
       ],
       "commands/data": [
         "./dist/types/commands/data.d.ts"
+      ],
+      "commands/device": [
+        "./dist/types/commands/device.d.ts"
+      ],
+      "commands/accessibility": [
+        "./dist/types/commands/accessibility.d.ts"
+      ],
+      "commands/storage": [
+        "./dist/types/commands/storage.d.ts"
       ],
       "compatible": [
         "./dist/types/compatible.d.ts"

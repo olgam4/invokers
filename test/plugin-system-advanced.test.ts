@@ -8,9 +8,14 @@ let mockTarget: HTMLElement;
 describe('Advanced Plugin System', () => {
   let invokerManager: InvokerManager;
 
-  beforeEach(() => {
-    // Clean up any existing test elements
-    ['test-button', 'test-target'].forEach(id => {
+   beforeEach(() => {
+     // Enable debug mode for testing
+     if (typeof window !== 'undefined' && window.Invoker) {
+       window.Invoker.debug = true;
+     }
+
+     // Clean up any existing test elements
+     ['test-button', 'test-target'].forEach(id => {
       const element = document.getElementById(id);
       if (element) element.remove();
     });
@@ -148,10 +153,10 @@ describe('Advanced Plugin System', () => {
 
       let capturedContext: any = null;
 
-      invokerManager.registerMiddleware(HookPoint.BEFORE_COMMAND, enrichmentMiddleware);
-      invokerManager.register('--enrich-test:param1:param2', (context) => {
-        capturedContext = context;
-      });
+       invokerManager.registerMiddleware(HookPoint.BEFORE_COMMAND, enrichmentMiddleware);
+       invokerManager.register('--enrich-test', (context) => {
+         capturedContext = context;
+       });
 
       const mockCommandEvent = {
         command: '--enrich-test:param1:param2',

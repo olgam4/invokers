@@ -202,7 +202,7 @@ describe('Attribute and Data Commands with Interpolation', () => {
       target.id = 'target';
       document.body.appendChild(target);
 
-      await invokerManager.executeCommand('--attr:set:data-special:{{ "Special: chars & <>\\"" }}', 'target');
+      await invokerManager.executeCommand('--attr:set:data-special:{{ \'Special: chars & <>"\' }}', 'target');
       expect(target.getAttribute('data-special')).toBe('Special: chars & <>"');
     });
   });

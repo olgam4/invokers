@@ -59,7 +59,9 @@ export function registerBaseCommands(manager: InvokerManager): void {
           recovery: 'Ensure commandfor points to a valid element id, or use aria-controls for multiple targets'
         }
       );
-      console.warn(error.message);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(error.message);
+      }
       return;
     }
 
@@ -67,7 +69,11 @@ export function registerBaseCommands(manager: InvokerManager): void {
       const updateDOM = () => {
         targets.forEach(target => {
           if (!target.isConnected) {
-            console.warn('Invokers: Skipping disconnected target element', target);
+            if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+              if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+              console.warn('Invokers: Skipping disconnected target element', target);
+            }
+            }
             return;
           }
           target.toggleAttribute("hidden");
@@ -103,7 +109,9 @@ export function registerBaseCommands(manager: InvokerManager): void {
           recovery: 'Ensure commandfor points to a valid element id'
         }
       );
-      console.warn(error.message);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(error.message);
+      }
       return;
     }
 
@@ -117,7 +125,9 @@ export function registerBaseCommands(manager: InvokerManager): void {
           recovery: 'Use --toggle instead, or ensure the target element has siblings to manage'
         }
       );
-      console.warn(error.message);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(error.message);
+      }
       return;
     }
 
@@ -161,14 +171,18 @@ export function registerBaseCommands(manager: InvokerManager): void {
     const [action, ...rest] = params;
     const targets = getTargets();
     if (!action || targets.length === 0) {
-      console.warn('Invokers: `--class` command requires an action (e.g., "--class:toggle:my-class").', invoker);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn('Invokers: `--class` command requires an action (e.g., "--class:toggle:my-class").', invoker);
+      }
       return;
     }
     targets.forEach(target => {
       if (action === "ternary") {
         const [classIfTrue, classIfFalse, condition] = rest;
         if (!classIfTrue || !classIfFalse || !condition) {
-          console.warn('Invokers: `--class:ternary` requires class-if-true, class-if-false, and condition.', invoker);
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.warn('Invokers: `--class:ternary` requires class-if-true, class-if-false, and condition.', invoker);
+          }
           return;
         }
         let useTrue = false;
@@ -206,7 +220,9 @@ export function registerBaseCommands(manager: InvokerManager): void {
       } else {
          const className = rest[0];
          if (!className && action !== "clear") {
-           console.warn('Invokers: `--class` command requires a class name.', invoker);
+           if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+             console.warn('Invokers: `--class` command requires a class name.', invoker);
+           }
            return;
          }
          switch (action) {
@@ -214,7 +230,9 @@ export function registerBaseCommands(manager: InvokerManager): void {
            case "remove": target.classList.remove(className); break;
            case "toggle": target.classList.toggle(className); break;
            case "clear": target.className = ""; break;
-           default: console.warn(`Invokers: Unknown action "${action}" for '--class' command.`, invoker);
+            default: if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+              console.warn(`Invokers: Unknown action "${action}" for '--class' command.`, invoker);
+            }
          }
        }
     });
@@ -222,8 +240,14 @@ export function registerBaseCommands(manager: InvokerManager): void {
 
   // --attr: Attribute manipulation
   manager.register("--attr", ({ invoker, getTargets, params }) => {
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('--attr command called with params:', params);
+    }
     const [action, attrName, attrValue] = params;
     const targets = getTargets();
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('--attr targets:', targets);
+    }
 
     if (!action) {
       throw createInvokerError(
@@ -261,7 +285,9 @@ export function registerBaseCommands(manager: InvokerManager): void {
           recovery: 'Ensure commandfor points to a valid element id'
         }
       );
-      console.warn(error.message);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(error.message);
+      }
       return;
     }
 
@@ -293,36 +319,46 @@ export function registerBaseCommands(manager: InvokerManager): void {
        );
      }
 
-      try {
-       targets.forEach(target => {
-         if (!target.isConnected) {
-           console.warn('Invokers: Skipping disconnected target element', target);
-           return;
-         }
+       try {
+        targets.forEach(target => {
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.log('--attr processing target:', target, 'isConnected:', target.isConnected);
+          }
+          if (!target.isConnected) {
+            console.warn('Invokers: Skipping disconnected target element', target);
+            return;
+          }
 
-         // Interpolate attrValue if interpolation is enabled
-         let finalAttrValue = attrValue || "";
-         if (isInterpolationEnabled() && finalAttrValue) {
-           const context = {
-             this: {
-               ...invoker,
-               dataset: { ...invoker.dataset },
-               value: (invoker as any).value || '',
-             },
-             data: document.body.dataset,
-             event: (invoker as any).triggeringEvent,
-             target: target
-           };
-           finalAttrValue = interpolateString(finalAttrValue, context);
-         }
+          // Interpolate attrValue if interpolation is enabled and contains {{...}}
+          let finalAttrValue = attrValue || "";
+          if (isInterpolationEnabled() && finalAttrValue && finalAttrValue.includes('{{')) {
+            const context = {
+              this: {
+                ...invoker,
+                dataset: { ...invoker.dataset },
+                value: (invoker as any).value || '',
+              },
+              data: document.body.dataset,
+              event: (invoker as any).triggeringEvent,
+              target: target
+            };
+            finalAttrValue = interpolateString(finalAttrValue, context);
+          }
 
           switch (action) {
             case "set":
               target.setAttribute(attrName, finalAttrValue);
               break;
-            case "remove":
-              target.removeAttribute(attrName);
-              break;
+             case "remove":
+                if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+                  console.log('attr command removing', attrName, 'from target', target);
+                }
+                if (attrName === 'hidden') {
+                  (target as HTMLElement).hidden = false;
+                } else {
+                  target.removeAttribute(attrName);
+                }
+                break;
             case "toggle":
               if (target.hasAttribute(attrName)) {
                 target.removeAttribute(attrName);

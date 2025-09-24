@@ -18,8 +18,7 @@
 
 import type { InvokerManager } from '../core';
 import type { CommandCallback, CommandContext } from '../index';
-import { createInvokerError, ErrorSeverity, isInterpolationEnabled } from '../index';
-import { interpolateString } from '../advanced/interpolation';
+import { createInvokerError, ErrorSeverity } from '../index';
 
 /**
  * Browser API commands for web platform integration.
@@ -140,7 +139,7 @@ const browserCommands: Record<string, CommandCallback> = {
    * `--url:hash-set`: Sets the URL hash.
    * @example `<button command="--url:hash-set:section2">Go to Section 2</button>`
    */
-  "--url:hash-set": ({ invoker, params, getTargets }: CommandContext) => {
+  "--url:hash-set": ({ params, getTargets }: CommandContext) => {
     let hash = params[0];
     
     // Interpolation is already handled in the core executeCustomCommand method
@@ -184,7 +183,7 @@ const browserCommands: Record<string, CommandCallback> = {
    * `--url:pathname-set`: Sets the URL pathname.
    * @example `<button command="--url:pathname-set:/new-page">Go to New Page</button>`
    */
-  "--url:pathname-set": ({ invoker, params, getTargets }: CommandContext) => {
+  "--url:pathname-set": ({ params, getTargets }: CommandContext) => {
     let pathname = params[0];
     
     // Interpolation is already handled in the core executeCustomCommand method

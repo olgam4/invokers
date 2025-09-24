@@ -20,6 +20,7 @@ import type { InvokerManager } from '../core';
 import type { CommandCallback, CommandContext } from '../index';
 import { createInvokerError, ErrorSeverity, isInterpolationEnabled } from '../index';
 import { interpolateString, setDataContext, getDataContext, updateDataContext } from '../advanced/interpolation';
+import { generateUid } from '../utils';
 
 /**
  * DOM manipulation commands for dynamic UI updates.
@@ -92,7 +93,7 @@ const domCommands: Record<string, CommandCallback> = {
       const tempDiv = document.createElement('div');
       tempDiv.appendChild(fragment.cloneNode(true));
       const html = tempDiv.innerHTML;
-      const interpolatedHtml = interpolateString(html, context);
+      const interpolatedHtml = html.includes('{{') ? interpolateString(html, context) : html;
       tempDiv.innerHTML = interpolatedHtml;
       const interpolatedFragment = document.createDocumentFragment();
       while (tempDiv.firstChild) {
@@ -579,24 +580,32 @@ function processTemplateFragment(fragment: DocumentFragment, invoker: HTMLElemen
     try {
       let jsonString = invoker.dataset.withJson;
       
-      // Replace {{__uid}} placeholders in JSON with generated UIDs
-      const uidMatches = jsonString.match(/\{\{__uid\}\}/g);
-      if (uidMatches) {
-        for (const match of uidMatches) {
-          const uid = generateId();
-          jsonString = jsonString.replace(match, uid);
-        }
-      }
+       // Replace {{__uid}} placeholders in JSON with generated UIDs
+       const uidMatches = jsonString.match(/\{\{__uid\}\}/g);
+       if (uidMatches) {
+         for (const match of uidMatches) {
+           const uid = generateUid();
+           jsonString = jsonString.replace(match, uid);
+         }
+       }
       
       const jsonData = JSON.parse(jsonString);
       context = { ...context, ...jsonData };
     } catch (error) {
-      console.error('Invokers: Invalid JSON in data-with-json:', error);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.error('Invokers: Invalid JSON in data-with-json:', error);
+      }
     }
   }
 
+  // Process UID generation
+  processUidAndSelectors(fragment);
+
   // Process advanced templating features
   processAdvancedTemplating(fragment, context);
+
+  // Rewrite @closest selectors to use generated IDs
+  processClosestSelectors(fragment);
 
   // Process interpolation
   processInterpolation(fragment, context);
@@ -658,8 +667,11 @@ function processAdvancedTemplating(fragment: DocumentFragment, context: Record<s
     }
   }
 
-  // Process {{__uid}} placeholders and rewrite @closest selectors
-  processUidAndSelectors(fragment);
+   // Process {{__uid}} placeholders
+   processUidAndSelectors(fragment);
+
+   // Rewrite @closest selectors
+   processClosestSelectors(fragment);
 }
 
 /**
@@ -667,25 +679,14 @@ function processAdvancedTemplating(fragment: DocumentFragment, context: Record<s
  */
 function processUidAndSelectors(fragment: DocumentFragment): void {
   const elementsWithUid = fragment.querySelectorAll('*');
-  const uidMap = new Map<string, string>();
 
   for (const element of elementsWithUid) {
-    // Check if element has data-tpl-attr with id mapping or __uid placeholder
-    const tplAttr = element.getAttribute('data-tpl-attr');
+    // Check if element has __uid placeholder in content or attributes
     const hasUidInContent = element.textContent?.includes('{{__uid}}');
     const hasUidInAttrs = Array.from(element.attributes).some(attr => attr.value.includes('{{__uid}}'));
     
-    if (tplAttr?.includes('id:') || hasUidInContent || hasUidInAttrs) {
+    if (hasUidInContent || hasUidInAttrs) {
       const uid = `item-invoker-${generateId()}`;
-      
-      // Set ID from data-tpl-attr if it maps to id
-      if (tplAttr?.includes('id:')) {
-        const idMapping = tplAttr.split(',').find(mapping => mapping.trim().startsWith('id:'));
-        if (idMapping) {
-          element.setAttribute('id', uid);
-          uidMap.set(uid, uid);
-        }
-      }
       
       // Replace {{__uid}} in text content
       if (hasUidInContent) {
@@ -698,20 +699,25 @@ function processUidAndSelectors(fragment: DocumentFragment): void {
           element.setAttribute(attr.name, attr.value.replace(/\{\{__uid\}\}/g, uid));
         }
       }
-      
-      uidMap.set('{{__uid}}', uid);
     }
   }
 
-  // Rewrite @closest selectors to use generated IDs
+
+}
+
+function processClosestSelectors(fragment: DocumentFragment): void {
+  // Rewrite @closest selectors to use the ID of the closest matching element
   const elementsWithCommandfor = fragment.querySelectorAll('[commandfor]');
   for (const element of elementsWithCommandfor) {
     const commandfor = element.getAttribute('commandfor');
     if (commandfor?.startsWith('@closest(')) {
-      // For now, use the first generated UID as a fallback
-      const firstUid = Array.from(uidMap.values())[0];
-      if (firstUid) {
-        element.setAttribute('commandfor', `#${firstUid}`);
+      const match = commandfor.match(/^@closest\(([^)]+)\)$/);
+      if (match) {
+        const selector = match[1];
+        const closest = element.closest(selector);
+        if (closest && closest.id) {
+          element.setAttribute('commandfor', `#${closest.id}`);
+        }
       }
     }
   }

@@ -8,9 +8,14 @@ describe('Advanced Templating', () => {
   let template: HTMLTemplateElement;
   let invokerManager: InvokerManager;
 
-  beforeEach(() => {
-    // Set up DOM structure for testing
-    container = document.createElement('div');
+   beforeEach(() => {
+     // Enable debug mode for testing
+     if (typeof window !== 'undefined' && window.Invoker) {
+       window.Invoker.debug = true;
+     }
+
+     // Set up DOM structure for testing
+     container = document.createElement('div');
     container.id = 'container';
 
     invoker = document.createElement('button');
@@ -20,13 +25,14 @@ describe('Advanced Templating', () => {
     target = document.createElement('ul');
     target.id = 'target';
 
-    template = document.createElement('template');
-    template.id = 'test-template';
-    template.innerHTML = `
-      <li data-tpl-attr="id:id" data-tpl-text="text">
-        <button command="--dom:remove" commandfor="@closest(li)">Delete</button>
-      </li>
-    `;
+     template = document.createElement('template');
+     template.id = 'test-template';
+     template.innerHTML = `
+       <li data-tpl-attr="id:id">
+         <span data-tpl-text="text"></span>
+         <button command="--dom:remove" commandfor="@closest(li)">Delete</button>
+       </li>
+     `;
 
     container.appendChild(invoker);
     container.appendChild(target);
@@ -54,7 +60,7 @@ describe('Advanced Templating', () => {
       invoker.setAttribute('data-with-json', '{"id": "item-123", "text": "Test Item"}');
 
       // Trigger the command
-      await invokerManager.executeCommand('--dom:append', 'target', invoker);
+      invoker.click();
 
       // Wait for DOM updates
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -63,7 +69,7 @@ describe('Advanced Templating', () => {
       const newItem = target.querySelector('li');
       expect(newItem).toBeTruthy();
       expect(newItem!.id).toBe('item-123');
-      expect(newItem!.textContent!.trim()).toContain('Test Item');
+      expect(newItem!.querySelector('span')!.textContent!.trim()).toBe('Test Item');
     });
 
     it('should handle {{__uid}} placeholder for unique IDs', async () => {
@@ -87,20 +93,17 @@ describe('Advanced Templating', () => {
     });
 
     it('should interpolate values from invoker context', async () => {
-      // Create a form input for context
-      const input = document.createElement('input');
-      input.id = 'text-input';
-      input.value = 'User Input';
-      container.appendChild(input);
-
-      // Set up invoker with interpolation
-      invoker.setAttribute('command', '--dom:append');
-      invoker.setAttribute('commandfor', 'target');
-      invoker.setAttribute('data-template-id', 'test-template');
-      invoker.setAttribute('data-with-json', '{"id": "item-{{__uid}}", "text": "{{this.value}} from input"}');
+      // Set up invoker as input with value
+      const inputInvoker = document.createElement('input');
+      inputInvoker.value = 'User Input';
+      inputInvoker.setAttribute('command', '--dom:append');
+      inputInvoker.setAttribute('commandfor', 'target');
+      inputInvoker.setAttribute('data-template-id', 'test-template');
+      inputInvoker.setAttribute('data-with-json', '{"id": "item-{{__uid}}", "text": "{{this.value}} from input"}');
+      container.appendChild(inputInvoker);
 
       // Trigger the command
-      invoker.click();
+      inputInvoker.click();
 
       // Wait for DOM updates
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -116,7 +119,7 @@ describe('Advanced Templating', () => {
       invoker.setAttribute('command', '--dom:append');
       invoker.setAttribute('commandfor', 'target');
       invoker.setAttribute('data-template-id', 'test-template');
-      invoker.setAttribute('data-with-json', '{"id": "item-{{__uid}}", "text": "Test Item"}');
+       invoker.setAttribute('data-with-json', '{"id": "item-{{__uid}}", "text": "Test Item"}');
 
       // Trigger the command
       invoker.click();
@@ -127,7 +130,7 @@ describe('Advanced Templating', () => {
       // Check that @closest selector was rewritten
       const deleteButton = target.querySelector('button[command="--dom:remove"]');
       expect(deleteButton).toBeTruthy();
-      expect(deleteButton!.getAttribute('commandfor')).toMatch(/^item-invoker-\w+$/);
+      expect(deleteButton!.getAttribute('commandfor')).toMatch(/^#item-invoker-\w+$/);
       expect(deleteButton!.getAttribute('commandfor')).not.toBe('@closest(li)');
     });
 
@@ -136,7 +139,8 @@ describe('Advanced Templating', () => {
       const multiTemplate = document.createElement('template');
       multiTemplate.id = 'multi-template';
       multiTemplate.innerHTML = `
-        <div data-tpl-attr="id:id,class:cssClass" data-tpl-text="content">
+        <div data-tpl-attr="id:id,class:cssClass">
+          <span data-tpl-text="content"></span>
           <input data-tpl-value="inputValue" />
         </div>
       `;
@@ -146,7 +150,7 @@ describe('Advanced Templating', () => {
       invoker.setAttribute('command', '--dom:append');
       invoker.setAttribute('commandfor', 'target');
       invoker.setAttribute('data-template-id', 'multi-template');
-      invoker.setAttribute('data-with-json', '{"id": "test-div", "cssClass": "active", "content": "Test Content", "inputValue": "Test Value"}');
+       invoker.setAttribute('data-with-json', '{"id": "test-div", "cssClass": "active", "content": "Test Content", "inputValue": "Test Value"}');
 
       // Trigger the command
       invoker.click();
@@ -159,7 +163,7 @@ describe('Advanced Templating', () => {
       expect(newDiv).toBeTruthy();
       expect(newDiv!.id).toBe('test-div');
       expect(newDiv!.className).toBe('active');
-      expect(newDiv!.textContent!.trim()).toBe('Test Content');
+      expect(newDiv!.querySelector('span')!.textContent!.trim()).toBe('Test Content');
 
       const input = newDiv!.querySelector('input');
       expect(input).toBeTruthy();
@@ -220,8 +224,8 @@ describe('Advanced Templating', () => {
       expect(target.children.length).toBe(1); // Should replace all content
     });
 
-    it('should not process templates when advanced events are not enabled', async () => {
-      // Reset and don't enable advanced events
+    it('should process data-with-json even when interpolation is disabled', async () => {
+      // Reset to disable interpolation
       if (window.Invoker?.reset) {
         window.Invoker.reset();
       }
@@ -232,7 +236,7 @@ describe('Advanced Templating', () => {
       invoker.setAttribute('command', '--dom:append');
       invoker.setAttribute('commandfor', 'target');
       invoker.setAttribute('data-template-id', 'test-template');
-      invoker.setAttribute('data-with-json', '{"id": "should-not-process", "text": "Raw Template"}');
+      invoker.setAttribute('data-with-json', '{"id": "should-process", "text": "Processed Template"}');
 
       // Trigger the command
       invoker.click();
@@ -240,11 +244,11 @@ describe('Advanced Templating', () => {
       // Wait for DOM updates
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      // Check that template was cloned but not processed
+      // Check that data-with-json was still processed even without interpolation enabled
       const newItem = target.querySelector('li');
       expect(newItem).toBeTruthy();
-      expect(newItem!.id).toBe('should-not-process'); // Template was processed
-      expect(newItem!.textContent!.trim()).toBe('Raw Template\n        Delete'); // Template was processed
+      expect(newItem!.id).toBe('should-process');
+      expect(newItem!.textContent!.trim()).toContain('Processed Template');
     });
   });
 });

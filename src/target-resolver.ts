@@ -21,7 +21,9 @@ export function resolveTargets(selector: string, invoker: HTMLElement): Element[
         case 'children':
           return Array.from(invoker.querySelectorAll(innerSelector));
         default:
-          console.warn(`Invokers: Unknown contextual selector type "@${type}".`);
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.warn(`Invokers: Unknown contextual selector type "@${type}".`);
+          }
           return [];
       }
     }
@@ -45,7 +47,9 @@ export function resolveTargets(selector: string, invoker: HTMLElement): Element[
    try {
      return Array.from(document.querySelectorAll(trimmedSelector));
    } catch (e) {
-     console.error(`Invokers: Invalid CSS selector in commandfor: "${trimmedSelector}"`, e);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.error(`Invokers: Invalid CSS selector in commandfor: "${trimmedSelector}"`, e);
+      }
      return [];
    }
 }

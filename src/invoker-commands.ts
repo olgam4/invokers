@@ -2045,7 +2045,9 @@ export const commands: CommandRegistry = {
  */
 export function registerAll(specificCommands?: string[]): void {
   if (!window.Invoker?.register) {
-    console.error("Invokers: Core library not found. Ensure it is loaded before the commands module.");
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.error("Invokers: Core library not found. Ensure it is loaded before the commands module.");
+    }
     return;
   }
   const commandsToRegister = specificCommands || Object.keys(commands);
@@ -2059,7 +2061,9 @@ export function registerAll(specificCommands?: string[]): void {
       // The core `register` method will handle everything else.
       window.Invoker.register!(normalizedName, commands[normalizedName]);
     } else {
-      console.warn(`Invokers: Command "${name}" was requested but not found in the commands module. Skipping registration.`);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(`Invokers: Command "${name}" was requested but not found in the commands module. Skipping registration.`);
+      }
     }
   }
 }
@@ -2097,7 +2101,9 @@ function showFeedbackState(invoker: HTMLButtonElement, target: HTMLElement, temp
   if (!(template instanceof HTMLTemplateElement)) {
     // This is a non-critical warning, so we log instead of throwing.
     const error = createInvokerError(`Feedback template "#${templateId}" not found or is not a <template>`, ErrorSeverity.WARNING, { element: invoker });
-    console.error(error);
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.error(error);
+    }
     return;
   }
 
@@ -2147,7 +2153,9 @@ function processTemplateFragment(fragment: DocumentFragment, invoker: HTMLButton
   try {
     interpolatedJson = interpolateString(jsonData, context);
   } catch (error) {
-    console.error("Invokers: Failed to interpolate data-with-json:", error);
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.error("Invokers: Failed to interpolate data-with-json:", error);
+    }
     return fragment; // Return raw fragment on interpolation error
   }
 
@@ -2155,7 +2163,9 @@ function processTemplateFragment(fragment: DocumentFragment, invoker: HTMLButton
   try {
     dataContext = JSON.parse(interpolatedJson);
   } catch (error) {
-    console.error("Invokers: Invalid JSON in data-with-json attribute:", error);
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.error("Invokers: Invalid JSON in data-with-json attribute:", error);
+    }
     return fragment; // Return raw fragment on JSON parse error
   }
 
@@ -2265,7 +2275,9 @@ function processInterpolation(fragment: DocumentFragment, context: Record<string
             const interpolated = interpolateString(textContent, context);
             node.textContent = interpolated;
           } catch (error) {
-            console.warn('Invokers: Interpolation error in template:', error);
+            if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+              console.warn('Invokers: Interpolation error in template:', error);
+            }
           }
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -2285,7 +2297,9 @@ function processInterpolation(fragment: DocumentFragment, context: Record<string
           const interpolated = interpolateString(attr.value, context);
           element.setAttribute(attr.name, interpolated);
         } catch (error) {
-          console.warn('Invokers: Attribute interpolation error:', error);
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.warn('Invokers: Attribute interpolation error:', error);
+          }
         }
       }
     }
@@ -2320,7 +2334,9 @@ function processDataBindings(root: Element | DocumentFragment): void {
         }
       }
     } catch (error) {
-      console.warn('Invokers: Data binding error:', error);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn('Invokers: Data binding error:', error);
+      }
     }
   }
 }

@@ -77,9 +77,6 @@ function logInvokerError(error: InvokerError | Error, prefix = 'Invokers'): void
 }
 
 // Utility functions needed by core
-function sanitizeParams(params: string[]): readonly string[] {
-  return params.map(param => param.trim());
-}
 
 function parseCommandString(commandString: string): string[] {
   const parts: string[] = [];
@@ -108,14 +105,16 @@ function parseCommandString(commandString: string): string[] {
       i++;
     }
   }
-  parts.push(currentPart);
+  if (currentPart) {
+    parts.push(currentPart);
+  }
   return parts;
 }
 
 /**
  * Sanitizes command parameters to prevent injection attacks
  */
-function sanitizeParams(params: readonly string[]): string[] {
+function sanitizeParams(params: string[]): string[] {
   return params.map(param => {
     if (typeof param !== 'string') {
       return String(param);
@@ -135,12 +134,16 @@ function sanitizeParams(params: readonly string[]): string[] {
       try {
         const url = new URL(param, window.location.href);
         if (!['http:', 'https:', 'ftp:', 'mailto:'].includes(url.protocol)) {
-          console.warn(`Invokers: Potentially unsafe URL protocol "${url.protocol}" detected and removed`);
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.warn(`Invokers: Potentially unsafe URL protocol "${url.protocol}" detected and removed`);
+          }
           return '';
         }
       } catch (e) {
         // If URL parsing fails, it might be malformed - safer to remove
-        console.warn('Invokers: Malformed URL detected and removed:', param);
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.warn('Invokers: Malformed URL detected and removed:', param);
+        }
         return '';
       }
     }
@@ -213,12 +216,18 @@ class PerformanceMonitor {
     this.executions = this.executions.filter(time => now - time < this.windowMs);
     
     if (this.executions.length >= this.maxExecutions) {
-      console.warn('Invokers: Rate limit exceeded. Too many command executions.');
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn('Invokers: Rate limit exceeded. Too many command executions.');
+      }
       return false;
     }
     
     this.executions.push(now);
     return true;
+  }
+
+  reset(): void {
+    this.executions = [];
   }
 
   getStats() {
@@ -299,7 +308,9 @@ class AndThenManager {
    ): Promise<void> {
      // 1. Safety Check: Prevent infinite recursion.
      if (depth > 25) {
-       console.error('Maximum <and-then> depth reached, stopping execution to prevent infinite loop.');
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.error('Maximum <and-then> depth reached, stopping execution to prevent infinite loop.');
+        }
        return;
      }
 
@@ -321,7 +332,9 @@ class AndThenManager {
     const delay = parseInt(andThenElement.dataset.delay || '0', 10);
 
     if (!command || !targetId) {
-      console.error('<and-then> element is missing required "command" or "commandfor" attribute.');
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.error('<and-then> element is missing required "command" or "commandfor" attribute.');
+      }
       return;
     }
 
@@ -394,7 +407,9 @@ class AndThenManager {
       case 'always':
         return true;
       default:
-        console.error(`Unknown condition for <and-then> element: "${condition}"`);
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.error(`Unknown condition for <and-then> element: "${condition}"`);
+        }
         return false; // Fail safe
     }
   }
@@ -473,10 +488,20 @@ export class InvokerManager {
   }
 
   /**
-   * Resets the InvokerManager to its initial state, clearing advanced features.
+   * Resets the InvokerManager to its initial state, clearing all commands and state.
    */
   public reset(): void {
-    InvokerManager._interpolationEnabled = false;
+    // Clear all registered commands
+    this.commands.clear();
+    this.sortedCommandKeys = [];
+    this.commandStates.clear();
+    this.plugins.clear();
+    this.middleware.clear();
+
+    // Reset performance monitor
+    this.performanceMonitor.reset();
+
+    // Note: Interpolation is not reset as it's a global feature enabled by enableAdvancedEvents()
     if (isDebugMode) {
       console.log("Invokers: Reset complete.");
     }
@@ -532,22 +557,27 @@ export class InvokerManager {
       return;
     }
 
-    if (!targetId || typeof targetId !== 'string') {
+    if (targetId !== null && targetId !== undefined && typeof targetId !== 'string') {
       const error = createInvokerError(
-        'Target ID must be a non-empty string',
+        'Target ID must be a string, null, or undefined',
         ErrorSeverity.ERROR,
         {
           command,
           context: { targetId },
-          recovery: 'Provide a valid element ID that exists in the DOM'
+          recovery: 'Provide a valid element ID that exists in the DOM, or null/empty string for commands that don\'t need targets'
         }
       );
       logInvokerError(error);
       return;
     }
 
+    let targetElement: HTMLElement | null = null;
+    let targets: HTMLElement[] = [];
+
+    // Only resolve targets if targetId is provided and not empty
+    if (targetId && targetId.trim()) {
       // Find target element using resolveTargets (supports complex selectors)
-      const targets = resolveTargets(targetId, source || document.body);
+      targets = resolveTargets(targetId, source || document.body) as HTMLElement[];
       if (targets.length === 0) {
        const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id).filter(Boolean);
        const suggestions = allIds.filter(id => id.includes(targetId.toLowerCase()) || targetId.includes(id.toLowerCase()));
@@ -562,17 +592,19 @@ export class InvokerManager {
              targetId,
             availableIds: allIds.slice(0, 10), // Show first 10 IDs
             suggestions: suggestions.slice(0, 3) // Show up to 3 suggestions
-          },
-          recovery: suggestions.length > 0
-            ? `Did you mean: ${suggestions.slice(0, 3).join(', ')}?`
-            : 'Check that the target element exists and has the correct selector'
-        }
-      );
-      logInvokerError(error);
-      return;
-    }
+           },
+           recovery: suggestions.length > 0
+             ? `Did you mean: ${suggestions.slice(0, 3).join(', ')}?`
+             : 'Check that the target element exists and has the correct selector'
+         }
+       );
+       logInvokerError(error);
+       return;
+     }
 
-    const targetElement = targets[0];
+     targetElement = targets[0];
+    }
+    // If targetId is empty, targetElement remains null and targets remains empty
 
     try {
       const mockEvent = {
@@ -584,19 +616,24 @@ export class InvokerManager {
       } as any;
 
       await this.executeCustomCommand(command, mockEvent);
-    } catch (error) {
-      const invokerError = createInvokerError(
-        `Failed to execute command "${command}" on element "${targetId}"`,
-        ErrorSeverity.ERROR,
-        {
-          command,
-           element: source || (targetElement as HTMLElement),
-          cause: error as Error,
-          recovery: 'Check the command syntax and ensure the target element supports this operation'
-        }
-      );
-      logInvokerError(invokerError);
-    }
+     } catch (error) {
+       // Re-enable disabled buttons after command failure for graceful degradation
+       if (source && source.hasAttribute('disabled')) {
+         source.removeAttribute('disabled');
+       }
+
+       const invokerError = createInvokerError(
+         `Failed to execute command "${command}" on element "${targetId}"`,
+         ErrorSeverity.ERROR,
+         {
+           command,
+            element: source || (targetElement as HTMLElement),
+           cause: error as Error,
+           recovery: 'Check the command syntax and ensure the target element supports this operation'
+         }
+       );
+       logInvokerError(invokerError);
+     }
   }
 
   /**
@@ -604,7 +641,9 @@ export class InvokerManager {
    */
   public registerPlugin(plugin: InvokerPlugin): void {
     if (this.plugins.has(plugin.name)) {
-      console.warn(`Invokers: Plugin "${plugin.name}" is already registered`);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(`Invokers: Plugin "${plugin.name}" is already registered`);
+      }
       return;
     }
 
@@ -627,7 +666,9 @@ export class InvokerManager {
           set: (target, property, value) => {
             // Allow setting internal properties (starting with _) but prevent others
             if (typeof property === 'string' && !property.startsWith('_') && !['plugins', 'middleware', 'commands'].includes(property)) {
-              console.warn(`Invokers: Plugin "${plugin.name}" attempted to modify manager property "${property}". This is not allowed for security.`);
+              if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+                console.warn(`Invokers: Plugin "${plugin.name}" attempted to modify manager property "${property}". This is not allowed for security.`);
+              }
               return false;
             }
             return Reflect.set(target, property, value);
@@ -635,7 +676,9 @@ export class InvokerManager {
         });
         plugin.onRegister(managerProxy);
       } catch (error) {
-        console.error(`Invokers: Error in plugin "${plugin.name}" onRegister:`, error);
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.error(`Invokers: Error in plugin "${plugin.name}" onRegister:`, error);
+        }
       }
     }
 
@@ -650,7 +693,9 @@ export class InvokerManager {
   public unregisterPlugin(pluginName: string): void {
     const plugin = this.plugins.get(pluginName);
     if (!plugin) {
-      console.warn(`Invokers: Plugin "${pluginName}" is not registered`);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(`Invokers: Plugin "${pluginName}" is not registered`);
+      }
       return;
     }
 
@@ -659,7 +704,9 @@ export class InvokerManager {
       try {
         plugin.onUnregister(this);
       } catch (error) {
-        console.error(`Invokers: Error in plugin "${pluginName}" onUnregister:`, error);
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.error(`Invokers: Error in plugin "${pluginName}" onUnregister:`, error);
+        }
       }
     }
 
@@ -731,7 +778,9 @@ export class InvokerManager {
           // For validation/pre-command middleware, errors should propagate
           throw error;
         } else {
-          console.error(`Invokers: Middleware error at ${hookPoint}:`, error);
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.error(`Invokers: Middleware error at ${hookPoint}:`, error);
+          }
           // Continue with other middleware even if one fails
         }
       }
@@ -813,15 +862,9 @@ export class InvokerManager {
 
     // Check for overwrites
     if (this.commands.has(normalizedName)) {
-      const error = createInvokerError(
-        `Command "${normalizedName}" is already registered and will be overwritten`,
-        ErrorSeverity.WARNING,
-        {
-          command: normalizedName,
-          recovery: 'Use a different command name or ensure this overwrite is intentional'
-        }
-      );
-      logInvokerError(error);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(`Invokers: Command "${normalizedName}" is already registered and will be overwritten`);
+      }
     }
 
     try {
@@ -861,7 +904,9 @@ export class InvokerManager {
       }
     } else if (commandStr !== "") {
       // Backwards Compatibility: Handle old, non-prefixed library commands.
-      console.warn(`Invokers (Compatibility): Non-spec-compliant command "${commandStr}" detected. Please update your HTML to use '--${commandStr}' for future compatibility. Attempting to handle...`);
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(`Invokers (Compatibility): Non-spec-compliant command "${commandStr}" detected. Please update your HTML to use '--${commandStr}' for future compatibility. Attempting to handle...`);
+      }
       await this.executeCustomCommand(`--${commandStr}`, event);
     }
   }
@@ -871,6 +916,9 @@ export class InvokerManager {
    * This is the new heart of the chaining mechanism with enhanced lifecycle support.
    */
   private async executeCustomCommand(commandStr: string, event: any): Promise<void> {
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('Invokers: executeCustomCommand called with:', commandStr);
+    }
     // Validate command string
     if (!commandStr || typeof commandStr !== 'string') {
       const error = createInvokerError(
@@ -911,51 +959,111 @@ export class InvokerManager {
           return;
         }
 
-        try {
-          event.preventDefault(); // Stop default polyfill/browser action
+        event.preventDefault(); // Stop default polyfill/browser action
 
-          // Create base interpolation context for the current command
-          const interpolationContext = {
-            ...(event.source || {}), // Spread button properties (paramName, paramValue, etc.)
-            event: (event as any).triggeringEvent, // The original DOM event
-            this: event.source, // The invoker element itself
-            target: event.target, // The command target element
-            detail: ((event as any).triggeringEvent as CustomEvent)?.detail, // Detail from CustomEvent
-          };
+        // Create base interpolation context for the current command
+        let interpolationContext: any = {
+          ...(event.source || {}), // Spread button properties (paramName, paramValue, etc.)
+          event: (event as any).triggeringEvent, // The original DOM event
+          this: event.source, // The invoker element itself
+          target: event.target, // The command target element
+          detail: ((event as any).triggeringEvent as CustomEvent)?.detail, // Detail from CustomEvent
+        };
 
-          // The command string from the attribute might contain {{...}} from external triggers
-          // We interpolate the current command before finding its callback
-          const interpolatedCommandStr = this._tryInterpolate(commandStr, interpolationContext);
-
-           const params = parseCommandString(interpolatedCommandStr.substring(registeredCommand.length + 1));
-           const sanitizedParams = sanitizeParams(params);
-           const context = this.createContext(event, interpolatedCommandStr, sanitizedParams);
-           const invoker = event.source as HTMLButtonElement;
-
-           // For multi-target commands, execute on each target
-           const targets = context.getTargets();
-           if (targets.length === 0) {
-             const error = createInvokerError(
-               'No target elements found for command execution',
-               ErrorSeverity.WARNING,
-               {
-                 command: commandStr,
-                 element: invoker,
-                 recovery: 'Ensure commandfor, aria-controls, or data-target points to valid elements'
-               }
-             );
-             logInvokerError(error);
-             return;
-           }
-
-            // Execute BEFORE_COMMAND middleware for all targets before execution
-            for (const target of targets) {
-              const targetContext = {
-                ...context,
-                targetElement: target
-              };
-              await this.executeMiddleware(HookPoint.BEFORE_COMMAND, targetContext, true);
+        // Parse and merge data-context if present
+        if (event.source?.dataset?.context) {
+          try {
+            const contextData = JSON.parse(event.source.dataset.context);
+            interpolationContext = { ...interpolationContext, ...contextData };
+          } catch (error) {
+            if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+              console.warn('Invokers: Failed to parse data-context:', error);
             }
+          }
+        }
+
+         // Parse parameters with brace awareness to handle {{...}} correctly
+         const paramsStr = commandStr.substring(registeredCommand.length + 1);
+         const rawParams = parseCommandString(paramsStr);
+
+         // Interpolate each parameter that contains {{...}}
+         const interpolatedParams = rawParams.map(param =>
+           param.includes('{{') ? this._tryInterpolate(param, interpolationContext) : param
+         );
+         const sanitizedParams = sanitizeParams(interpolatedParams);
+
+         // Reconstruct interpolated command string for context/logging
+         const interpolatedCommandStr = interpolatedParams.length > 0 && interpolatedParams[0] !== ''
+           ? registeredCommand + ':' + interpolatedParams.join(':')
+           : registeredCommand;
+
+         const context = this.createContext(event, interpolatedCommandStr, sanitizedParams);
+         const invoker = event.source as HTMLButtonElement;
+
+          // For multi-target commands, execute on each target
+          const targets = context.getTargets();
+
+           // Allow commands to execute even with no targets if they don't require DOM elements
+           // (e.g., URL commands that operate on window.location)
+           if (targets.length === 0) {
+             // For commands that don't need targets, execute with a dummy target element
+             try {
+               const dummyTarget = document.createElement('div');
+               dummyTarget.style.display = 'none';
+               dummyTarget.id = 'invokers-dummy-target';
+               document.body.appendChild(dummyTarget);
+
+               const targetContext = {
+                 ...context,
+                 targetElement: dummyTarget
+               };
+
+              // Execute BEFORE_COMMAND middleware
+              await this.executeMiddleware(HookPoint.BEFORE_COMMAND, targetContext, true);
+
+              // Execute the command callback directly
+              await Promise.resolve(callback(targetContext));
+
+              // Execute AFTER_COMMAND middleware
+              await this.executeMiddleware(HookPoint.AFTER_COMMAND, { ...targetContext, result: { success: true } });
+
+              // Process chaining if invoker exists
+              if (context.invoker) {
+                await this._andThenManager.processAndThen(context.invoker, { success: true }, dummyTarget);
+                await this.processAttributeChaining(context.invoker, { success: true }, dummyTarget);
+              }
+
+              if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+                console.log(`Invokers: Command "${registeredCommand}" executed successfully (no targets required)`);
+              }
+            } catch (error) {
+              const invokerError = createInvokerError(
+                `Command "${registeredCommand}" execution failed`,
+                ErrorSeverity.ERROR,
+                {
+                  command: commandStr,
+                  element: invoker,
+                  cause: error as Error,
+                  recovery: 'Check command syntax and parameters'
+                }
+              );
+              logInvokerError(invokerError);
+            }
+            return;
+          }
+
+          // Execute BEFORE_COMMAND middleware for all targets before execution
+          for (const target of targets) {
+            const targetContext = {
+              ...context,
+              targetElement: target
+            };
+            await this.executeMiddleware(HookPoint.BEFORE_COMMAND, targetContext, true);
+            // Merge any modifications back to the original context
+            Object.assign(context, targetContext);
+          }
+
+        try {
 
             // Execute command on each target
             for (const target of targets) {
@@ -967,6 +1075,8 @@ export class InvokerManager {
 
              // Execute BEFORE_VALIDATION middleware
              await this.executeMiddleware(HookPoint.BEFORE_VALIDATION, targetContext, true);
+             // Merge modifications back
+             Object.assign(context, targetContext);
 
              // Check command state before execution
              const commandKey = `${commandStr}:${target.id}`;
@@ -1035,22 +1145,27 @@ export class InvokerManager {
                // Execute ON_ERROR middleware
                await this.executeMiddleware(HookPoint.ON_ERROR, { ...targetContext, result: executionResult });
 
-               const invokerError = createInvokerError(
-                 `Command "${registeredCommand}" execution failed`,
-                 ErrorSeverity.ERROR,
-                 {
-                   command: commandStr,
-                   element: targetContext.invoker || targetContext.targetElement,
-                   cause: error as Error,
-                   context: {
-                     params: targetContext.params,
-                     targetId: targetContext.targetElement?.id,
-                     invokerState: currentState
-                   },
-                   recovery: 'Check command syntax and ensure all required attributes are present'
-                 }
-               );
-               logInvokerError(invokerError);
+                const invokerError = createInvokerError(
+                  `Command "${registeredCommand}" execution failed`,
+                  ErrorSeverity.ERROR,
+                  {
+                    command: commandStr,
+                    element: targetContext.invoker || targetContext.targetElement,
+                    cause: error as Error,
+                    context: {
+                      params: targetContext.params,
+                      targetId: targetContext.targetElement?.id,
+                      invokerState: currentState
+                    },
+                    recovery: 'Check command syntax and ensure all required attributes are present'
+                  }
+                );
+                logInvokerError(invokerError);
+
+                // Re-enable disabled buttons after command failure for graceful degradation
+                if (invoker && invoker.hasAttribute('disabled')) {
+                  invoker.removeAttribute('disabled');
+                }
              }
 
              // Execute ON_COMPLETE middleware (always runs)
@@ -1110,9 +1225,8 @@ export class InvokerManager {
   private validateContext(context: CommandContext): string[] {
     const errors: string[] = [];
 
-    if (!context.targetElement) {
-      errors.push('Target element is null or undefined');
-    } else if (!context.targetElement.isConnected) {
+    // Allow null targetElement for commands that don't require DOM targets
+    if (context.targetElement && !context.targetElement.isConnected) {
       errors.push('Target element is not connected to the DOM');
     }
 
@@ -1130,7 +1244,10 @@ export class InvokerManager {
    */
   private listen(): void {
     // The listener now calls the async handleCommand method.
-    document.addEventListener("command", (e) => this.handleCommand(e), true);
+    document.addEventListener("command", async (e) => {
+      await this.handleCommand(e);
+      e.stopImmediatePropagation();
+    }, false); // Use bubble phase instead of capture
   }
 
   /**
@@ -1261,13 +1378,19 @@ export class InvokerManager {
     executionResult: CommandExecutionResult, 
     primaryTarget: HTMLElement
   ): Promise<void> {
-    const andThenCommand = invokerElement.dataset.andThen;
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('processAttributeChaining called with success:', executionResult.success, 'invoker:', invokerElement);
+    }
     const afterSuccessCommands = invokerElement.dataset.afterSuccess?.split(',');
     const afterErrorCommands = invokerElement.dataset.afterError?.split(',');
     const afterCompleteCommands = invokerElement.dataset.afterComplete?.split(',');
 
     // Process universal data-and-then
+    const andThenCommand = invokerElement.dataset.andThen;
     if (andThenCommand) {
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.log('Invokers: Processing data-and-then:', andThenCommand, 'on invoker:', invokerElement);
+      }
       const targetId = invokerElement.dataset.thenTarget || invokerElement.getAttribute('commandfor') || primaryTarget.id;
       await this.scheduleCommand(andThenCommand, targetId, 'active', primaryTarget);
     }
@@ -1311,6 +1434,9 @@ export class InvokerManager {
    * Schedules a command for execution with optional state management.
    */
   private async scheduleCommand(command: string, targetId: string, state: CommandState, primaryTarget?: HTMLElement): Promise<void> {
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('Invokers: scheduleCommand called with command:', command, 'targetId:', targetId);
+    }
     const commandKey = `${command}:${targetId}`;
 
     // Check command state
@@ -1325,6 +1451,9 @@ export class InvokerManager {
     // For chained commands, directly execute the command instead of using synthetic buttons
     // This avoids issues with event propagation in test environments
     const targetElement = document.getElementById(targetId) || (primaryTarget && targetId === primaryTarget.id ? primaryTarget : null);
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('scheduleCommand targetElement:', targetElement, 'for targetId:', targetId);
+    }
     if (targetElement) {
       const mockEvent = {
         command,

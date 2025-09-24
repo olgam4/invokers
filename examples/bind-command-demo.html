@@ -5,15 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
     <title>Invokers --bind Command Demo</title>
-    <script type="module" src="../dist/esm/development/compatible.js"></script>
     <script type="module">
         import invokerInstance from '../dist/esm/development/compatible.js';
         // Advanced events auto-enabled by compatible.js
-        // Advanced events automatically enabled
 
         // Enable debug logging
         window.Invoker = invokerInstance;
         window.Invoker.debug = true;
+
+        // Add manual listener for debugging
+        document.addEventListener('command', (e) => console.log('Manual command listener caught:', e.command));
+
+        // Ensure polyfill is applied
+        if (typeof window !== 'undefined' && document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('Applying polyfill manually');
+                // The polyfill should already be applied by compatible.js, but let's check
+                testButtonClick();
+            });
+        } else {
+            console.log('Document already loaded, polyfill should be applied');
+            testButtonClick();
+        }
+
+        function testButtonClick() {
+            setTimeout(() => {
+                const button = document.querySelector('button[command="--text:set:Edit Mode!"]');
+                if (button) {
+                    console.log('Found button, clicking programmatically');
+                    button.click();
+                } else {
+                    console.log('Button not found');
+                }
+            }, 100);
+        }
     </script>
     <style>
         body {
@@ -431,25 +456,15 @@
         <p>A complete edit-in-place pattern using --bind with templates and chaining.</p>
 
          <div id="profile-view" data-name="John Doe" data-role="Developer">
-             <h3>Profile View</h3>
-             <p><strong>Name:</strong> <span class="name">John Doe</span></p>
-             <p><strong>Role:</strong> <span class="role">Developer</span></p>
-             <script>document.body.dataset.name = "John Doe"; document.body.dataset.role = "Developer";</script>
-             <button command="--bind:data:name"
-                     commandfor="profile-view"
-                     data-bind-to="#edit-name-input"
-                     data-bind-as="value">
-                 Edit Profile
-                 <and-then command="--bind:data:role"
-                           commandfor="profile-view"
-                           data-bind-to="#edit-role-input"
-                           data-bind-as="value">
-                     <and-then command="--dom:swap:outer"
-                               commandfor="profile-view"
-                               data-template-id="edit-profile-template">
-                     </and-then>
-                 </and-then>
-             </button>
+              <h3>Profile View</h3>
+              <p><strong>Name:</strong> <span class="name">John Doe</span></p>
+              <p><strong>Role:</strong> <span class="role">Developer</span></p>
+               <button type="button"
+                       command="--text:set:Edit Mode!"
+                       commandfor="profile-view"
+                       onclick="console.log('Button clicked')">
+                   Edit Profile
+               </button>
         </div>
 
         <template id="edit-profile-template">
@@ -463,26 +478,28 @@
                     <label>Role:</label>
                     <input id="edit-role-input" type="text">
                 </div>
-                  <button command="--bind:value"
-                          commandfor="edit-name-input"
-                          data-bind-to="body"
-                          data-bind-as="data:name">
-                     Save
-                     <and-then command="--bind:value"
-                               commandfor="edit-role-input"
-                               data-bind-to="body"
-                               data-bind-as="data:role">
-                         <and-then command="--dom:swap:outer"
-                                   commandfor="profile-edit"
-                                   data-template-id="profile-view-template">
-                         </and-then>
-                     </and-then>
+                  <button type="button"
+                           command="--bind:value"
+                           commandfor="edit-name-input"
+                           data-bind-to="body"
+                           data-bind-as="data:name">
+                      Save
+                      <and-then command="--bind:value"
+                                commandfor="edit-role-input"
+                                data-bind-to="body"
+                                data-bind-as="data:role">
+                          <and-then command="--dom:swap:outer"
+                                    commandfor="profile-edit"
+                                    data-template-id="profile-view-template">
+                          </and-then>
+                      </and-then>
+                  </button>
+                 <button type="button"
+                         command="--dom:swap:outer"
+                         commandfor="profile-edit"
+                         data-template-id="profile-view-template">
+                     Cancel
                  </button>
-                <button command="--dom:swap:outer"
-                        commandfor="profile-edit"
-                        data-template-id="profile-view-template">
-                    Cancel
-                </button>
             </div>
         </template>
 
@@ -491,21 +508,21 @@
                  <h3>Profile View</h3>
                  <p><strong>Name:</strong> <span class="name">{{data.name}}</span></p>
                  <p><strong>Role:</strong> <span class="role">{{data.role}}</span></p>
-                 <button command="--bind:data:name"
-                         commandfor="profile-view"
-                         data-bind-to="#edit-name-input"
-                         data-bind-as="value">
-                     Edit Profile
-                     <and-then command="--bind:data:role"
-                               commandfor="profile-view"
-                               data-bind-to="#edit-role-input"
-                               data-bind-as="value">
-                         <and-then command="--dom:swap:outer"
-                                   commandfor="profile-view"
-                                   data-template-id="edit-profile-template">
-                         </and-then>
-                     </and-then>
-                 </button>
+                  <button command="--dom:swap:outer"
+                          commandfor="profile-view"
+                          data-template-id="edit-profile-template">
+                      Edit Profile
+                      <and-then command="--bind:data:name"
+                                commandfor="profile-view"
+                                data-bind-to="#edit-name-input"
+                                data-bind-as="value">
+                          <and-then command="--bind:data:role"
+                                    commandfor="profile-view"
+                                    data-bind-to="#edit-role-input"
+                                    data-bind-as="value">
+                          </and-then>
+                      </and-then>
+                  </button>
              </div>
          </template>
 
@@ -565,6 +582,10 @@ command="--bind:text" data-bind-to="@closest(form)" data-bind-as="data:content"
     </div>
 
     <script>
+        // Initialize global data context
+        document.body.dataset.name = "John Doe";
+        document.body.dataset.role = "Developer";
+
         // Update form data display
         function updateFormDisplay() {
             const form = document.getElementById('form-container');

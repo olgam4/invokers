@@ -500,14 +500,14 @@
       <h2>Event Emitting Commands (--emit)</h2>
       <p>Dispatch custom events for advanced interactions.</p>
 
-      <div class="demo-box">
-        <h3>Custom Events</h3>
-        <button type="button" command="--emit:user-action:save-form">
-          Emit Save Event
-        </button>
-        <button type="button" command="--emit:navigation:next-page">
-          Emit Navigation Event
-        </button>
+       <div class="demo-box">
+         <h3>Custom Events</h3>
+         <button type="button" command="--emit:user-action:save-form" commandfor="body">
+           Emit Save Event
+         </button>
+         <button type="button" command="--emit:navigation:next-page" commandfor="body">
+           Emit Navigation Event
+         </button>
 
         <div class="event-log" id="event-log">
           Event log will appear here...
@@ -697,7 +697,29 @@
 
   <!-- Load the Invokers library -->
   <script type="module" src="../dist/esm/development/compatible.js"></script>
-  <script type="module" src="../dist/esm/development/advanced.js"></script>
+  <script>
+    // Debug logging
+    document.addEventListener('command', (e) => {
+      console.log('Command event caught:', e.command, e.source, e.target);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('button[command]')) {
+        console.log('Button with command clicked:', e.target.getAttribute('command'));
+      }
+    });
+
+    // Check if Invoker is loaded
+    setTimeout(() => {
+      console.log('window.Invoker:', window.Invoker);
+      if (window.Invoker && window.Invoker.debug !== undefined) {
+        window.Invoker.debug = true;
+        console.log('Debug mode enabled');
+      }
+    }, 100);
+
+    console.log('Advanced features demo loaded');
+  </script>
 
    <script type="module">
     // Enable advanced events for interpolation and advanced features
@@ -705,57 +727,56 @@
     // Advanced events automatically enabled
    </script>
 
-   <script>
-    // Wait for modules to load, then set up event listeners
-    setTimeout(() => {
+    <script>
         // Event listener for custom events
-        document.addEventListener('user-action', (e) => {
+        window.addEventListener('user-action', (e) => {
           logEvent('user-action', e.detail);
         });
 
-        document.addEventListener('navigation', (e) => {
+        window.addEventListener('navigation', (e) => {
           logEvent('navigation', e.detail);
         });
 
         // Device event listeners
-        document.addEventListener('device:share:success', (e) => {
+        window.addEventListener('device:share:success', (e) => {
           logEvent('device:share:success', 'Content shared successfully');
         });
 
-        document.addEventListener('device:share:cancelled', (e) => {
+        window.addEventListener('device:share:cancelled', (e) => {
           logEvent('device:share:cancelled', e.detail);
         });
 
-        document.addEventListener('device:geolocation:success', (e) => {
+        window.addEventListener('device:geolocation:success', (e) => {
           logEvent('device:geolocation:success', e.detail);
         });
 
-        document.addEventListener('device:geolocation:error', (e) => {
+        window.addEventListener('device:geolocation:error', (e) => {
           logEvent('device:geolocation:error', e.detail);
         });
 
-        document.addEventListener('device:battery:status', (e) => {
+        window.addEventListener('device:battery:status', (e) => {
           logEvent('device:battery:status', e.detail);
         });
 
-        document.addEventListener('device:clipboard:read', (e) => {
+        window.addEventListener('device:clipboard:read', (e) => {
           logEvent('device:clipboard:read', e.detail);
         });
 
-        document.addEventListener('device:clipboard:written', (e) => {
+        window.addEventListener('device:clipboard:written', (e) => {
           logEvent('device:clipboard:written', 'Text written to clipboard');
         });
 
-        document.addEventListener('device:wake-lock:acquired', (e) => {
+        window.addEventListener('device:wake-lock:acquired', (e) => {
           logEvent('device:wake-lock:acquired', 'Wake lock acquired');
         });
 
-        document.addEventListener('device:wake-lock:released', (e) => {
+        window.addEventListener('device:wake-lock:released', (e) => {
           logEvent('device:wake-lock:released', 'Wake lock released');
         });
 
         function logEvent(type, detail) {
           const log = document.getElementById('event-log');
+          if (!log) return; // Guard against missing element
           const timestamp = new Date().toLocaleTimeString();
           const entry = document.createElement('div');
           entry.textContent = `[${timestamp}] ${type}: ${JSON.stringify(detail)}`;
@@ -769,7 +790,6 @@
         });
 
         console.log('Event listeners set up');
-    }, 100);
-  </script>
+   </script>
 </body>
 </html>

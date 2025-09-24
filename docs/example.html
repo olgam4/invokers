@@ -119,6 +119,18 @@
       </div>
     </div>
 
+    <h3><code>interestfor</code>: Hover Tooltips & Popovers</h3>
+    <div class="demo-box">
+      <p>Hover over these buttons to see interest invokers in action. They use the <code>interestfor</code> attribute to link to popover targets.</p>
+      <button type="button" interestfor="tooltip-1">Hover for hint</button>
+      <div id="tooltip-1" popover="hint">This is a simple hint tooltip!</div>
+      <button type="button" interestfor="tooltip-2" style="margin-left: 1rem;">Hover for rich content</button>
+      <div id="tooltip-2" popover="auto">
+        <h4>Rich Tooltip</h4>
+        <p>This tooltip can contain rich HTML content, including headings, paragraphs, and even images.</p>
+      </div>
+    </div>
+
     <!-- =================================================================== -->
     <h2 id="advanced">Part 2: Advanced Techniques</h2>
     <!-- =================================================================== -->
@@ -224,12 +236,12 @@
     <div class="demo-box">
         <div id="primary-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">Primary Target</div>
         <div id="secondary-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px; margin-top: 1rem;">Secondary Target</div>
-        <p style="margin-top: 1rem;">This button affects the primary target, but the chained command affects the secondary target.</p>
+        <p style="margin-top: 1rem;">This button affects the primary target, but the chained command affects the secondary target using <code>data-then-target</code>.</p>
         <button type="button"
             command="--text:set:Primary updated!"
             commandfor="primary-target"
             data-and-then="--text:set:Secondary updated via chain!"
-            data-target="secondary-target">
+            data-then-target="secondary-target">
             Chain to Different Target
         </button>
     </div>
@@ -370,9 +382,10 @@
     // Using a CDN for simplicity, but you can install via npm: npm install invokers
     // import 'https://esm.sh/invokers';
 
-    import '../dist/esm/development/index.js';
+    import '../dist/esm/development/compatible.js';
+    import '../dist/esm/development/interest.js';
 
-    console.log("✅ Invokers Core & Extended Commands loaded and ready!");
+    console.log("✅ Invokers Core, All Commands, and Interest Invokers loaded and ready!");
 
     // (Advanced) Register a project-specific command.
     if (window.Invoker) {

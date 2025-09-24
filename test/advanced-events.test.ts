@@ -28,9 +28,14 @@ function createTestElements() {
 }
 
 describe('Advanced Events', () => {
-  beforeEach(() => {
-    // Reset DOM
-    createTestElements();
+   beforeEach(() => {
+     // Enable debug mode for testing
+     if (typeof window !== 'undefined' && window.Invoker) {
+       window.Invoker.debug = true;
+     }
+
+     // Reset DOM
+     createTestElements();
 
     // Advanced events are auto-enabled via compatible layer
   });

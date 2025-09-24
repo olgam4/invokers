@@ -253,6 +253,34 @@ registerDataCommands(invokers);
         commandfor="app">Add Todo</button>
 ```
 
+#### Device APIs (`invokers/commands/device`) - 28.1 kB
+```javascript
+import { registerDeviceCommands } from 'invokers/commands/device';
+registerDeviceCommands(invokers);
+```
+
+**Commands:** `--device:vibrate`, `--device:share`, `--device:geolocation:get`, `--device:battery:get`, `--device:clipboard:*`, `--device:wake-lock*`
+
+```html
+<button command="--device:vibrate:200:100:200">Vibrate</button>
+<button command="--device:share:title:Check this out:text:Amazing content:url:https://example.com">Share</button>
+<button command="--device:geolocation:get" commandfor="location-display">Get Location</button>
+```
+
+#### Accessibility Helpers (`invokers/commands/accessibility`) - 26.8 kB
+```javascript
+import { registerAccessibilityCommands } from 'invokers/commands/accessibility';
+registerAccessibilityCommands(invokers);
+```
+
+**Commands:** `--a11y:announce`, `--a11y:focus`, `--a11y:skip-to`, `--a11y:focus-trap`, `--a11y:aria:*`, `--a11y:heading-level`
+
+```html
+<button command="--a11y:announce:Item saved successfully">Save</button>
+<button command="--a11y:focus" commandfor="search-input">Focus Search</button>
+<button command="--a11y:focus-trap:enable" commandfor="modal">Open Modal</button>
+```
+
 ## 📋 Command Cheatsheet
 
 ### Core Commands (Available Now)

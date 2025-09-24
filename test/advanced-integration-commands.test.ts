@@ -1,4 +1,9 @@
 import { InvokerManager } from '../src/compatible';
+import { InvokerManager } from '../src';
+import { enableAdvancedEvents } from '../src/advanced';
+import { registerBaseCommands } from '../src/commands/base';
+import { registerFormCommands } from '../src/commands/form';
+import { registerDomCommands } from '../src/commands/dom';
 import { registerBrowserCommands } from '../src/commands/browser';
 import { vi, beforeEach, afterEach } from 'vitest';
 
@@ -9,6 +14,10 @@ describe('Advanced Integration Commands (--text, --attr, --dom)', () => {
     document.body.innerHTML = '';
     invokerManager = InvokerManager.getInstance();
     invokerManager.reset();
+    enableAdvancedEvents();
+    registerBaseCommands(invokerManager);
+    registerFormCommands(invokerManager);
+    registerDomCommands(invokerManager);
     registerBrowserCommands(invokerManager);
   });
 

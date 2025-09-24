@@ -152,6 +152,14 @@ describe('Accessibility Commands', () => {
       const firstBtn = document.querySelector('#first')!;
       const lastBtn = document.querySelector('#last')!;
 
+      // Mock document.activeElement for jsdom compatibility
+      let mockActiveElement = document.body;
+      Object.defineProperty(document, 'activeElement', {
+        get: () => mockActiveElement,
+        set: (value) => { mockActiveElement = value; },
+        configurable: true
+      });
+
       button.click();
       await new Promise(resolve => setTimeout(resolve, 0));
 

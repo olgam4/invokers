@@ -217,19 +217,159 @@ const mediaCommands: Record<string, CommandCallback> = {
 
     try {
       await navigator.clipboard.writeText(textToCopy);
-      
+
       // Show feedback
       invoker.textContent = feedbackText;
-      
+
       // Reset text after a delay
       setTimeout(() => {
         invoker.textContent = originalText;
       }, 2000);
-      
+
     } catch (error) {
       throw createInvokerError('Failed to copy to clipboard', ErrorSeverity.ERROR, {
         command: '--clipboard:copy', element: invoker, cause: error as Error
       });
+    }
+  },
+
+  // --- Animation Commands ---
+
+  /**
+   * `--animate`: Triggers CSS animations on target elements with enhanced options.
+   * Supports various animation types like fade, slide, bounce, etc., with customizable
+   * duration, delay, easing, and iterations.
+   *
+   * @example
+   * ```html
+   * <!-- Basic usage -->
+   * <button type="button" command="--animate:fade-in" commandfor="my-element">Fade In</button>
+   *
+   * <!-- With options -->
+   * <button type="button" command="--animate:bounce:duration:1s:delay:0.5s" commandfor="my-element">Bounce</button>
+   *
+   * <!-- Using data attributes -->
+   * <button type="button" command="--animate:slide-up" commandfor="my-element"
+   *         data-animate-duration="2s" data-animate-easing="ease-out">Slide Up</button>
+   *
+   * <div id="my-element" class="animated-element">Content</div>
+   * ```
+   */
+  "--animate": ({ invoker, getTargets, params }: CommandContext) => {
+    const [animation, ...options] = params;
+    const targets = getTargets();
+
+    if (targets.length === 0) {
+      throw createInvokerError(
+        'No target elements found for --animate command',
+        ErrorSeverity.WARNING,
+        {
+          command: '--animate',
+          element: invoker,
+          recovery: 'Ensure commandfor points to a valid element'
+        }
+      );
+    }
+
+    const validAnimations = [
+      'fade-in', 'fade-out', 'slide-up', 'slide-down', 'slide-left', 'slide-right',
+      'bounce', 'shake', 'pulse', 'flip', 'rotate-in', 'zoom-in', 'zoom-out',
+      'spin', 'wobble', 'jello', 'heartbeat', 'rubber-band'
+    ];
+
+    if (!validAnimations.includes(animation)) {
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn(`Invokers: Unknown animation "${animation}". Valid animations: ${validAnimations.join(', ')}`);
+      }
+      return; // Skip invalid animations instead of throwing
+    }
+
+    // Parse options: duration, delay, easing, iterations
+    let duration = '0.5s';
+    let delay = '0s';
+    let easing = 'ease-in-out';
+    let iterations = '1';
+
+    // Options come in pairs: ['duration', '1s', 'delay', '0.5s', ...]
+    for (let i = 0; i < options.length; i += 2) {
+      const key = options[i];
+      const value = options[i + 1];
+      if (key === 'duration') {
+        duration = value || '0.5s';
+      } else if (key === 'delay') {
+        delay = value || '0s';
+      } else if (key === 'easing') {
+        easing = value || 'ease-in-out';
+      } else if (key === 'iterations') {
+        iterations = value || '1';
+      }
+    }
+
+    // Also check data attributes for options
+    if (invoker?.dataset?.animateDuration) duration = invoker.dataset.animateDuration;
+    if (invoker?.dataset?.animateDelay) delay = invoker.dataset.animateDelay;
+    if (invoker?.dataset?.animateEasing) easing = invoker.dataset.animateEasing;
+    if (invoker?.dataset?.animateIterations) iterations = invoker.dataset.animateIterations;
+
+    try {
+      targets.forEach(target => {
+        if (!target.isConnected) {
+          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+            console.warn('Invokers: Skipping disconnected target element', target);
+          }
+          return;
+        }
+
+        // Remove any existing animation classes and styles
+        target.classList.forEach(className => {
+          if (className.startsWith('invokers-animate-')) {
+            target.classList.remove(className);
+          }
+        });
+
+        // Clear any existing animation styles
+        target.style.animation = '';
+
+        // Force reflow to restart animation
+        void target.offsetHeight;
+
+        // Create custom animation style using the keyframe name
+        const animationName = `invokers-${animation}`;
+        const animationValue = `${animationName} ${duration} ${easing} ${delay} ${iterations}`;
+
+        // Apply the animation
+        target.style.animation = animationValue;
+
+        // Handle animation end
+        const handleAnimationEnd = (e: AnimationEvent) => {
+          // Only remove if it's our animation
+          if (e.animationName === animationName) {
+            target.style.animation = '';
+            target.removeEventListener('animationend', handleAnimationEnd);
+          }
+        };
+
+        target.addEventListener('animationend', handleAnimationEnd);
+
+        // Fallback timeout in case animationend doesn't fire
+        setTimeout(() => {
+          if (target.style.animation.includes(animationName)) {
+            target.style.animation = '';
+            target.removeEventListener('animationend', handleAnimationEnd);
+          }
+        }, parseFloat(duration) * 1000 + parseFloat(delay) * 1000 + 100); // Add 100ms buffer
+      });
+    } catch (error) {
+      throw createInvokerError(
+        'Failed to animate target elements',
+        ErrorSeverity.ERROR,
+        {
+          command: '--animate',
+          element: invoker,
+          cause: error as Error,
+          recovery: 'Ensure target elements support CSS animations and check animation parameters'
+        }
+      );
     }
   }
 };
