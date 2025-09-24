@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 describe('Simple And-Then Elements', () => {
   let invokerManager: InvokerManager;
@@ -85,3 +85,4 @@ describe('Simple And-Then Elements', () => {
     expect(button.querySelector('and-then')).toBeNull(); // Should be removed
   });
 });
+

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 describe('Final Implementation Test', () => {
   let invokerManager: InvokerManager;
@@ -93,3 +93,4 @@ describe('Final Implementation Test', () => {
     expect(target.textContent).toBe('executed'); // Should still be original
   });
 });
+

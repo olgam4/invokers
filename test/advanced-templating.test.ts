@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { enableAdvancedEvents } from '../src/advanced-events';
-import { registerAll } from '../src/invoker-commands';
+import { InvokerManager } from '../src/compatible';
 
 describe('Advanced Templating', () => {
   let container: HTMLElement;
   let invoker: HTMLButtonElement;
   let target: HTMLElement;
   let template: HTMLTemplateElement;
+  let invokerManager: InvokerManager;
 
   beforeEach(() => {
     // Set up DOM structure for testing
@@ -33,9 +33,8 @@ describe('Advanced Templating', () => {
     container.appendChild(template);
     document.body.appendChild(container);
 
-    // Enable advanced events and register commands
-    enableAdvancedEvents();
-    registerAll();
+    // All commands are auto-registered via compatible layer
+    invokerManager = InvokerManager.getInstance();
   });
 
   afterEach(() => {
@@ -55,7 +54,7 @@ describe('Advanced Templating', () => {
       invoker.setAttribute('data-with-json', '{"id": "item-123", "text": "Test Item"}');
 
       // Trigger the command
-      window.Invoker.executeCommand('--dom:append', 'target', invoker);
+      await invokerManager.executeCommand('--dom:append', 'target', invoker);
 
       // Wait for DOM updates
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -227,8 +226,7 @@ describe('Advanced Templating', () => {
         window.Invoker.reset();
       }
 
-      // Register commands without advanced events
-      registerAll();
+      // Commands already registered via compatible layer
 
       // Set up invoker
       invoker.setAttribute('command', '--dom:append');

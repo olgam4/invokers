@@ -29,9 +29,9 @@ export function resolveTargets(selector: string, invoker: HTMLElement): Element[
   }
 
    // 2. ID Selector (for backward compatibility)
-   // If selector starts with #, treat as ID
-   if (trimmedSelector.startsWith('#')) {
-     const element = document.querySelector(trimmedSelector) as HTMLElement;
+   // If selector is a simple ID (starts with # and contains only valid ID chars), treat as single element
+   if (/^#[a-zA-Z][a-zA-Z0-9_-]*$/.test(trimmedSelector)) {
+     const element = document.getElementById(trimmedSelector.slice(1));
      return element ? [element] : [];
    }
 

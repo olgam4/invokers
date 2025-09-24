@@ -1,5 +1,5 @@
-import { InvokerManager } from '../src/index';
-import { enableAdvancedEvents } from '../src/advanced-events';
+import { InvokerManager } from '../src/compatible';
+import { enableAdvancedEvents } from '../src/advanced';
 
 describe('Attribute and Data Commands with Interpolation', () => {
   let invokerManager: InvokerManager;

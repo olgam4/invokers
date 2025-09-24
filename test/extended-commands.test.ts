@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 describe('Extended Commands', () => {
   let invokerManager: InvokerManager;

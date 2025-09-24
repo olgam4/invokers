@@ -18,7 +18,7 @@
 
 import type { CommandContext, CommandCallback } from "./index";
 import { createInvokerError, ErrorSeverity, validateElement, sanitizeHTML, isInterpolationEnabled } from "./index";
-import { interpolateString } from "./interpolation";
+import { interpolateString, setDataContext, getDataContext, updateDataContext } from "./advanced/interpolation";
 import { resolveTargets } from "./target-resolver";
 
 type CommandRegistry = Record<string, CommandCallback>;
@@ -217,6 +217,110 @@ export const commands: CommandRegistry = {
         invoker.removeAttribute("disabled");
       }, 2000);
     }
+  },
+
+  // --- Text Commands ---
+
+  /**
+   * `--text:set`: Sets the text content of the target element.
+   * Supports interpolation if advanced events are enabled.
+   *
+   * @example
+   * ```html
+   * <button command="--text:set:Hello World" commandfor="message">Set Message</button>
+   * <div id="message"></div>
+   * ```
+   */
+  "--text:set": ({ invoker, targetElement, params }: CommandContext) => {
+    const [text] = params;
+    if (text === undefined) {
+      throw createInvokerError('Text set command requires text parameter', ErrorSeverity.ERROR, {
+        command: '--text:set', element: invoker,
+        recovery: 'Use format: --text:set:text-content'
+      });
+    }
+
+    try {
+      // Interpolate if advanced events are enabled
+      const finalText = isInterpolationEnabled() ? interpolateString(text, {}) : text;
+      targetElement.textContent = finalText;
+    } catch (error) {
+      throw createInvokerError('Failed to set text content', ErrorSeverity.ERROR, {
+        command: '--text:set', element: invoker, cause: error as Error,
+        recovery: 'Check text content and interpolation syntax'
+      });
+    }
+  },
+
+  /**
+   * `--text:append`: Appends text to the target element's content.
+   *
+   * @example
+   * ```html
+   * <button command="--text:append: more text" commandfor="message">Append</button>
+   * <div id="message">Initial text</div>
+   * ```
+   */
+  "--text:append": ({ invoker, targetElement, params }: CommandContext) => {
+    const [text] = params;
+    if (text === undefined) {
+      throw createInvokerError('Text append command requires text parameter', ErrorSeverity.ERROR, {
+        command: '--text:append', element: invoker,
+        recovery: 'Use format: --text:append:text-content'
+      });
+    }
+
+    try {
+      const finalText = isInterpolationEnabled() ? interpolateString(text, {}) : text;
+      targetElement.textContent = (targetElement.textContent || '') + finalText;
+    } catch (error) {
+      throw createInvokerError('Failed to append text content', ErrorSeverity.ERROR, {
+        command: '--text:append', element: invoker, cause: error as Error,
+        recovery: 'Check text content and interpolation syntax'
+      });
+    }
+  },
+
+  /**
+   * `--text:prepend`: Prepends text to the target element's content.
+   *
+   * @example
+   * ```html
+   * <button command="--text:prepend:Prefix: " commandfor="message">Prepend</button>
+   * <div id="message">content</div>
+   * ```
+   */
+  "--text:prepend": ({ invoker, targetElement, params }: CommandContext) => {
+    const [text] = params;
+    if (text === undefined) {
+      throw createInvokerError('Text prepend command requires text parameter', ErrorSeverity.ERROR, {
+        command: '--text:prepend', element: invoker,
+        recovery: 'Use format: --text:prepend:text-content'
+      });
+    }
+
+    try {
+      const finalText = isInterpolationEnabled() ? interpolateString(text, {}) : text;
+      targetElement.textContent = finalText + (targetElement.textContent || '');
+    } catch (error) {
+      throw createInvokerError('Failed to prepend text content', ErrorSeverity.ERROR, {
+        command: '--text:prepend', element: invoker, cause: error as Error,
+        recovery: 'Check text content and interpolation syntax'
+      });
+    }
+  },
+
+  /**
+   * `--text:clear`: Clears the text content of the target element.
+   *
+   * @example
+   * ```html
+   * <button command="--text:clear" commandfor="message">Clear</button>
+   * <div id="message">Text to clear</div>
+   * ```
+   */
+  "--text:clear": ({ targetElement }: CommandContext) => {
+    targetElement.textContent = '';
   },
 
   /**
@@ -1278,7 +1382,7 @@ export const commands: CommandRegistry = {
       // Set up new interval
       const intervalId = setInterval(() => {
         // Execute the interval command programmatically
-        if (window.Invoker) {
+        if (window.Invoker?.executeCommand) {
           const targetId = targetElement.id || `__invoker-target-${Date.now()}`;
           if (!targetElement.id) targetElement.id = targetId;
           window.Invoker.executeCommand(intervalCommand, targetId, invoker);
@@ -1396,13 +1500,7 @@ export const commands: CommandRegistry = {
        targetElement.textContent = textToCopy;
    },
 
-    /**
-     * `--text:set`: Sets the text content of the target element.
-     * @example `<button command="--text:set:Hello World" commandfor="message">Set Text</button>`
-     */
-    "--text:set": ({ targetElement, params }: CommandContext) => {
-        targetElement.textContent = params.join(':');
-    },
+
 
    /**
     * `--attr:set`: Sets an attribute on the target element.
@@ -1601,32 +1699,339 @@ export const commands: CommandRegistry = {
    * </button>
    * ```
    */
-   "--emit": ({ params, targetElement }: CommandContext) => {
-     const [eventType, ...detailParts] = params;
-     if (!eventType) {
-       throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
-         command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
+  "--emit": ({ params, targetElement }: CommandContext) => {
+    const [eventType, ...detailParts] = params;
+    if (!eventType) {
+      throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
+        command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
+      });
+    }
+
+    let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
+    // Try to parse as JSON if it looks like JSON
+    if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
+      try {
+        detail = JSON.parse(detail);
+      } catch (e) {
+        // Keep as string if not valid JSON
+      }
+    }
+    const event = new CustomEvent(eventType, {
+      bubbles: true,
+      composed: true,
+      detail
+    });
+
+    // Dispatch to targetElement if available, otherwise to document.body
+    (targetElement || document.body).dispatchEvent(event);
+  },
+
+  // --- Template Commands ---
+
+
+
+  /**
+   * `--template:render`: Renders a template with data interpolation and inserts it into the DOM.
+   * Processes {{expressions}} using data contexts and element context.
+   *
+   * @example
+   * ```html
+   * <template id="user-card">
+   *   <div class="card">
+   *     <h3>{{user.name}}</h3>
+   *     <p>{{user.email}}</p>
+   *   </div>
+   * </template>
+   *
+   * <button command="--template:render:user-card"
+   *         commandfor="#output"
+   *         data-context="user"
+   *         data-name="John Doe"
+   *         data-email="john@example.com">
+   *   Render User Card
+   * </button>
+   * ```
+   */
+   "--template:render": ({ invoker, targetElement, params }: CommandContext) => {
+     const [templateId] = params;
+     if (!templateId) {
+       throw createInvokerError('Template render command requires a template ID parameter', ErrorSeverity.ERROR, {
+         command: '--template:render', element: invoker, recovery: 'Use format: --template:render:template-id'
        });
      }
 
-     let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
-     // Try to parse as JSON if it looks like JSON
-     if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
-       try {
-         detail = JSON.parse(detail);
-       } catch (e) {
-         // Keep as string if not valid JSON
-       }
+     const template = document.getElementById(templateId);
+     if (!(template instanceof HTMLTemplateElement)) {
+       throw createInvokerError(`Template element with ID "${templateId}" not found or is not a <template>`, ErrorSeverity.ERROR, {
+         command: '--template:render', element: invoker, recovery: `Ensure a <template id="${templateId}"> exists in the document`
+       });
      }
-     const event = new CustomEvent(eventType, {
-       bubbles: true,
-       composed: true,
-       detail
-     });
 
-     // Dispatch to targetElement if available, otherwise to document.body
-     (targetElement || document.body).dispatchEvent(event);
+     if (!targetElement) {
+       throw createInvokerError('Template render command requires a target element', ErrorSeverity.ERROR, {
+         command: '--template:render', element: invoker, recovery: 'Use commandfor attribute to specify target element'
+       });
+     }
+
+     try {
+       // Clone the template content
+       const fragment = template.content.cloneNode(true) as DocumentFragment;
+
+        // Create context for interpolation
+        const context = {
+          this: invoker,
+          event: (invoker as any).triggeringEvent,
+          target: targetElement
+        };
+
+        // Add dataset attributes to context
+        for (const [key, value] of Object.entries(invoker.dataset)) {
+          if (key !== 'context' && !key.startsWith('on') && !key.startsWith('command')) {
+            (context as any)[key] = value;
+          }
+        }
+
+        // If a specific context is requested via dataset.context, use that context
+        const contextKey = invoker.dataset.context;
+        if (contextKey) {
+          // Get the named context data, or create it if it doesn't exist
+          let namedContext = getDataContext(contextKey);
+          if (!namedContext) {
+            namedContext = {};
+            setDataContext(contextKey, namedContext);
+          }
+          (context as any)[contextKey] = namedContext;
+
+          // Also add any additional dataset attributes to the named context
+          for (const [key, value] of Object.entries(invoker.dataset)) {
+            if (key !== 'context' && !key.startsWith('on') && !key.startsWith('command')) {
+              (namedContext as any)[key] = value;
+            }
+          }
+        }
+
+       // Process interpolation in the fragment
+       processTemplateWithData(fragment, context);
+
+       // Generate unique IDs for elements that need them
+       assignUniqueIds(fragment);
+
+        const updateDOM = () => {
+          // Insert method based on invoker's data-insert attribute
+          const insertMethod = invoker.dataset.insert || 'replace';
+          switch (insertMethod) {
+            case 'append':
+              targetElement.appendChild(fragment);
+              break;
+            case 'prepend':
+              targetElement.insertBefore(fragment, targetElement.firstChild);
+              break;
+            case 'before':
+              targetElement.parentNode?.insertBefore(fragment, targetElement);
+              break;
+            case 'after':
+              targetElement.parentNode?.insertBefore(fragment, targetElement.nextSibling);
+              break;
+            case 'replace':
+            default:
+              targetElement.replaceChildren(fragment);
+              break;
+          }
+        };
+
+       // Use view transitions if available
+       if (document.startViewTransition) {
+         document.startViewTransition(updateDOM);
+       } else {
+         updateDOM();
+       }
+     } catch (error) {
+       throw createInvokerError('Failed to render template', ErrorSeverity.ERROR, {
+         command: '--template:render', element: invoker, cause: error as Error,
+         recovery: 'Check template structure, data context, and target element'
+       });
+     }
    },
+
+  /**
+   * `--template:clone`: Clones a template element and inserts it into the DOM at the target location.
+   * Unlike render, this doesn't process data - just clones the template structure.
+   *
+   * @example
+   * ```html
+   * <template id="modal-template">
+   *   <div class="modal">...</div>
+   * </template>
+   *
+   * <button command="--template:clone:modal-template"
+   *         commandfor="body">
+   *   Show Modal
+   * </button>
+   * ```
+   */
+  "--template:clone": ({ invoker, targetElement, params }: CommandContext) => {
+    const [templateId] = params;
+    if (!templateId) {
+      throw createInvokerError('Template clone command requires a template ID parameter', ErrorSeverity.ERROR, {
+        command: '--template:clone', element: invoker, recovery: 'Use format: --template:clone:template-id'
+      });
+    }
+
+    const template = document.getElementById(templateId);
+    if (!(template instanceof HTMLTemplateElement)) {
+      throw createInvokerError(`Template element with ID "${templateId}" not found or is not a <template>`, ErrorSeverity.ERROR, {
+        command: '--template:clone', element: invoker, recovery: `Ensure a <template id="${templateId}"> exists in the document`
+      });
+    }
+
+    if (!targetElement) {
+      throw createInvokerError('Template clone command requires a target element', ErrorSeverity.ERROR, {
+        command: '--template:clone', element: invoker, recovery: 'Use commandfor attribute to specify target element'
+      });
+    }
+
+    try {
+      const fragment = template.content.cloneNode(true) as DocumentFragment;
+
+      // Generate unique IDs for elements that need them
+      assignUniqueIds(fragment);
+
+      const updateDOM = () => {
+        // Insert method based on invoker's data-insert attribute
+        const insertMethod = invoker.dataset.insert || 'replace';
+        switch (insertMethod) {
+          case 'append':
+            targetElement.appendChild(fragment);
+            break;
+          case 'prepend':
+            targetElement.insertBefore(fragment, targetElement.firstChild);
+            break;
+          case 'before':
+            targetElement.parentNode?.insertBefore(fragment, targetElement);
+            break;
+          case 'after':
+            targetElement.parentNode?.insertBefore(fragment, targetElement.nextSibling);
+            break;
+          case 'replace':
+          default:
+            targetElement.replaceChildren(fragment);
+            break;
+        }
+      };
+
+      // Use view transitions if available
+      if (document.startViewTransition) {
+        document.startViewTransition(updateDOM);
+      } else {
+        updateDOM();
+      }
+    } catch (error) {
+      throw createInvokerError('Failed to clone template', ErrorSeverity.ERROR, {
+        command: '--template:clone', element: invoker, cause: error as Error,
+        recovery: 'Check template structure and target element'
+      });
+    }
+  },
+
+  // --- Data Context Commands ---
+
+  /**
+   * `--data:set:context`: Sets data in a named context for use in templates and expressions.
+   *
+   * @example
+   * ```html
+   * <button command="--data:set:context:userProfile"
+   *         data-name="John Doe"
+   *         data-email="john@example.com">
+   *   Set User Profile
+   * </button>
+   * ```
+   */
+  "--data:set:context": ({ invoker, params }: CommandContext) => {
+    const [contextKey] = params;
+    if (!contextKey) {
+      throw createInvokerError('Data set context command requires a context key parameter', ErrorSeverity.ERROR, {
+        command: '--data:set:context', element: invoker, recovery: 'Use format: --data:set:context:context-key'
+      });
+    }
+
+    try {
+      const data: Record<string, any> = {};
+
+      // Extract data from invoker's dataset attributes
+      for (const [key, value] of Object.entries(invoker.dataset)) {
+        if (key !== 'context' && !key.startsWith('on') && !key.startsWith('command')) {
+          // Try to parse as JSON, fallback to string
+          if (value && (value.startsWith('{') || value.startsWith('['))) {
+            try {
+              data[key] = JSON.parse(value);
+            } catch {
+              data[key] = value;
+            }
+          } else {
+            data[key] = value;
+          }
+        }
+      }
+
+      setDataContext(contextKey, data);
+    } catch (error) {
+      throw createInvokerError('Failed to set data context', ErrorSeverity.ERROR, {
+        command: '--data:set:context', element: invoker, cause: error as Error,
+        recovery: 'Check data attribute formats and context key'
+      });
+    }
+  },
+
+  /**
+   * `--data:update:context`: Updates specific properties in a named data context.
+   *
+   * @example
+   * ```html
+   * <input command-on="input:--data:update:userProfile:name" value="{{userProfile.name}}">
+   * ```
+   */
+  "--data:update:context": ({ invoker, params, targetElement }: CommandContext) => {
+    const [contextKey, propertyPath] = params;
+    if (!contextKey || !propertyPath) {
+      throw createInvokerError('Data update context command requires context key and property path', ErrorSeverity.ERROR, {
+        command: '--data:update:context', element: invoker,
+        recovery: 'Use format: --data:update:context:context-key:property-path'
+      });
+    }
+
+    try {
+      let value: any;
+
+      // Get value from target element if it's a form input
+      if (targetElement && 'value' in targetElement) {
+        value = (targetElement as HTMLInputElement).value;
+      } else {
+        // Get value from invoker's data attributes
+        value = invoker.dataset.value;
+        if (value && (value.startsWith('{') || value.startsWith('['))) {
+          try {
+            value = JSON.parse(value);
+          } catch {
+            // Keep as string
+          }
+        }
+      }
+
+      updateDataContext(contextKey, propertyPath, value);
+    } catch (error) {
+      throw createInvokerError('Failed to update data context', ErrorSeverity.ERROR, {
+        command: '--data:update:context', element: invoker, cause: error as Error,
+        recovery: 'Check property path and value format'
+      });
+    }
+   },
+
+  // --- Template Commands ---
+
+
+
+
 };
 
 /**
@@ -1639,7 +2044,7 @@ export const commands: CommandRegistry = {
  * registerAll(['--media:toggle', '--scroll:to']); // Registers specific commands
  */
 export function registerAll(specificCommands?: string[]): void {
-  if (!window.Invoker) {
+  if (!window.Invoker?.register) {
     console.error("Invokers: Core library not found. Ensure it is loaded before the commands module.");
     return;
   }
@@ -1652,7 +2057,7 @@ export function registerAll(specificCommands?: string[]): void {
     if (commands[normalizedName]) {
       // Always pass the key from our `commands` object and its callback.
       // The core `register` method will handle everything else.
-      window.Invoker.register(normalizedName, commands[normalizedName]);
+      window.Invoker.register!(normalizedName, commands[normalizedName]);
     } else {
       console.warn(`Invokers: Command "${name}" was requested but not found in the commands module. Skipping registration.`);
     }
@@ -1825,4 +2230,116 @@ function getHeadersFromAttributes(invoker: HTMLButtonElement): HeadersInit {
     }
   }
   return headers;
+}
+
+
+
+// --- Template Processing with Data ---
+
+/**
+ * Processes a template fragment with data interpolation and binding
+ */
+function processTemplateWithData(fragment: DocumentFragment, context: Record<string, any>): DocumentFragment {
+  // Process interpolation in text content and attributes
+  processInterpolation(fragment, context);
+
+  // Process data-bind attributes
+  processDataBindings(fragment);
+
+  return fragment;
+}
+
+/**
+ * Processes {{expression}} interpolation in a document fragment
+ */
+function processInterpolation(fragment: DocumentFragment, context: Record<string, any>): void {
+  if (!isInterpolationEnabled()) return;
+
+  // Process text content recursively
+  function processTextNodes(element: Element): void {
+    for (const node of Array.from(element.childNodes)) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const textContent = node.textContent || '';
+        if (textContent.includes('{{')) {
+          try {
+            const interpolated = interpolateString(textContent, context);
+            node.textContent = interpolated;
+          } catch (error) {
+            console.warn('Invokers: Interpolation error in template:', error);
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        processTextNodes(node as Element);
+      }
+    }
+  }
+
+  processTextNodes(fragment as any);
+
+  // Process attributes
+  const allElements = fragment.querySelectorAll('*');
+  for (const element of allElements) {
+    for (const attr of Array.from(element.attributes)) {
+      if (attr.value.includes('{{')) {
+        try {
+          const interpolated = interpolateString(attr.value, context);
+          element.setAttribute(attr.name, interpolated);
+        } catch (error) {
+          console.warn('Invokers: Attribute interpolation error:', error);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Processes data-bind attributes for reactive data binding
+ */
+function processDataBindings(root: Element | DocumentFragment): void {
+  const elements = root.querySelectorAll('[data-bind]');
+  for (const element of elements) {
+    const bindAttr = element.getAttribute('data-bind');
+    if (!bindAttr) continue;
+
+    try {
+      // Parse binding expression (e.g., "user.name" or "user")
+      const contextKey = bindAttr.split('.')[0];
+      const propertyPath = bindAttr.split('.').slice(1).join('.');
+
+      const dataContext = getDataContext(contextKey);
+      if (dataContext && Object.keys(dataContext).length > 0) {
+        const value = propertyPath
+          ? getNestedProperty(dataContext, propertyPath)
+          : dataContext;
+
+        // Bind to appropriate element property
+        if ('value' in element) {
+          (element as HTMLInputElement).value = String(value || '');
+        } else if ('textContent' in element) {
+          element.textContent = String(value || '');
+        }
+      }
+    } catch (error) {
+      console.warn('Invokers: Data binding error:', error);
+    }
+  }
+}
+
+/**
+ * Gets a nested property from an object using dot notation
+ */
+function getNestedProperty(obj: Record<string, any>, path: string): any {
+  return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
+/**
+ * Assigns unique IDs to elements that need them for command targeting
+ */
+function assignUniqueIds(fragment: DocumentFragment): void {
+  const elementsNeedingIds = fragment.querySelectorAll('[commandfor]');
+  for (const element of elementsNeedingIds) {
+    if (!element.id) {
+      element.id = `invoker-${generateId()}`;
+    }
+  }
 }

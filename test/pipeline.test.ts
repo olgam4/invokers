@@ -32,7 +32,7 @@ global.CustomEvent = dom.window.CustomEvent;
 
 // Import after setting up globals
 import '../src/index';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 describe('Pipeline Functionality', () => {
   let invokerManager: InvokerManager;
@@ -732,3 +732,4 @@ describe('Pipeline Functionality', () => {
     });
   });
 });
+

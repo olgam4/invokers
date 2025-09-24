@@ -1,8 +1,8 @@
 // src/event-trigger-manager.ts
 
-import { _dispatchCommandEvent } from './index';
+import { _dispatchCommandEvent } from '../index';
 import { interpolateString } from './interpolation';
-import { resolveTargets } from './target-resolver';
+import { resolveTargets } from '../target-resolver';
 
 // Event modifiers that have special handling
 const MODIFIERS: Record<string, (e: Event) => void> = {
@@ -134,12 +134,16 @@ function attachListeners(element: HTMLElement) {
 function disconnectListeners(element: HTMLElement) {
    if (element.dataset.commandOnAttached) {
      const triggerAttr = (element as any).originalTriggerAttr;
-     const parts = triggerAttr.split('.');
-     const eventName = parts[0];
-     const modifiers = parts.slice(1);
-     const target = modifiers.includes('window') ? window : element;
-     const listener = (element as any).commandOnListener;
-     target.removeEventListener(eventName, listener);
+     if (triggerAttr) {
+       const parts = triggerAttr.split('.');
+       const eventName = parts[0];
+       const modifiers = parts.slice(1);
+       const target = modifiers.includes('window') ? window : element;
+       const listener = (element as any).commandOnListener;
+       if (listener) {
+         target.removeEventListener(eventName, listener);
+       }
+     }
      delete element.dataset.commandOnAttached;
      delete (element as any).originalTriggerAttr;
      delete (element as any).commandOnListener;

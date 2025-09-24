@@ -12,6 +12,7 @@ export enum TokenType {
   RPAREN,     // )
   LBRACKET,   // [
   RBRACKET,   // ]
+  COMMA,      // ,
   COLON,      // : (for ternary operator)
   EOF,        // End of input
 }
@@ -35,8 +36,9 @@ const TOKEN_REGEX: [TokenType, RegExp][] = [
    [TokenType.RPAREN, /^\)/],
    [TokenType.LBRACKET, /^\[/],
    [TokenType.RBRACKET, /^\]/],
+   [TokenType.COMMA, /^,/],
    [TokenType.COLON, /^:/],
-];
+ ];
 
 export class Lexer {
   private static readonly MAX_EXPRESSION_LENGTH = 10000;

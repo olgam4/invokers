@@ -77,6 +77,78 @@
       "require": "./dist/cjs/production/commands.js",
       "import": "./dist/esm/production/commands.js"
     },
+    "./commands/base": {
+      "types": "./dist/types/commands/base.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/base.js",
+        "import": "./dist/esm/development/commands/base.js"
+      },
+      "require": "./dist/cjs/production/commands/base.js",
+      "import": "./dist/esm/production/commands/base.js"
+    },
+    "./commands/form": {
+      "types": "./dist/types/commands/form.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/form.js",
+        "import": "./dist/esm/development/commands/form.js"
+      },
+      "require": "./dist/cjs/production/commands/form.js",
+      "import": "./dist/esm/production/commands/form.js"
+    },
+    "./commands/dom": {
+      "types": "./dist/types/commands/dom.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/dom.js",
+        "import": "./dist/esm/development/commands/dom.js"
+      },
+      "require": "./dist/cjs/production/commands/dom.js",
+      "import": "./dist/esm/production/commands/dom.js"
+    },
+    "./commands/flow": {
+      "types": "./dist/types/commands/flow.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/flow.js",
+        "import": "./dist/esm/development/commands/flow.js"
+      },
+      "require": "./dist/cjs/production/commands/flow.js",
+      "import": "./dist/esm/production/commands/flow.js"
+    },
+    "./commands/media": {
+      "types": "./dist/types/commands/media.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/media.js",
+        "import": "./dist/esm/development/commands/media.js"
+      },
+      "require": "./dist/cjs/production/commands/media.js",
+      "import": "./dist/esm/production/commands/media.js"
+    },
+    "./commands/browser": {
+      "types": "./dist/types/commands/browser.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/browser.js",
+        "import": "./dist/esm/development/commands/browser.js"
+      },
+      "require": "./dist/cjs/production/commands/browser.js",
+      "import": "./dist/esm/production/commands/browser.js"
+    },
+    "./commands/data": {
+      "types": "./dist/types/commands/data.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/commands/data.js",
+        "import": "./dist/esm/development/commands/data.js"
+      },
+      "require": "./dist/cjs/production/commands/data.js",
+      "import": "./dist/esm/production/commands/data.js"
+    },
+    "./compatible": {
+      "types": "./dist/types/compatible.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/compatible.js",
+        "import": "./dist/esm/development/compatible.js"
+      },
+      "require": "./dist/cjs/production/compatible.js",
+      "import": "./dist/esm/production/compatible.js"
+    },
     "./demo-commands": {
       "types": "./dist/types/demo-commands.d.ts",
       "development": {
@@ -96,13 +168,31 @@
       "import": "./dist/esm/production/interest.js"
     },
     "./advanced": {
-      "types": "./dist/types/advanced-events.d.ts",
+      "types": "./dist/types/advanced/index.d.ts",
       "development": {
         "require": "./dist/cjs/development/advanced.js",
         "import": "./dist/esm/development/advanced.js"
       },
       "require": "./dist/cjs/production/advanced.js",
       "import": "./dist/esm/production/advanced.js"
+    },
+    "./advanced/events": {
+      "types": "./dist/types/advanced/events.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/advanced/events.js",
+        "import": "./dist/esm/development/advanced/events.js"
+      },
+      "require": "./dist/cjs/production/advanced/events.js",
+      "import": "./dist/esm/production/advanced/events.js"
+    },
+    "./advanced/expressions": {
+      "types": "./dist/types/advanced/expressions.d.ts",
+      "development": {
+        "require": "./dist/cjs/development/advanced/expressions.js",
+        "import": "./dist/esm/development/advanced/expressions.js"
+      },
+      "require": "./dist/cjs/production/advanced/expressions.js",
+      "import": "./dist/esm/production/advanced/expressions.js"
     }
   },
   "scripts": {
@@ -135,6 +225,30 @@
       "commands": [
         "./dist/types/invoker-commands.d.ts"
       ],
+      "commands/base": [
+        "./dist/types/commands/base.d.ts"
+      ],
+      "commands/form": [
+        "./dist/types/commands/form.d.ts"
+      ],
+      "commands/dom": [
+        "./dist/types/commands/dom.d.ts"
+      ],
+      "commands/flow": [
+        "./dist/types/commands/flow.d.ts"
+      ],
+      "commands/media": [
+        "./dist/types/commands/media.d.ts"
+      ],
+      "commands/browser": [
+        "./dist/types/commands/browser.d.ts"
+      ],
+      "commands/data": [
+        "./dist/types/commands/data.d.ts"
+      ],
+      "compatible": [
+        "./dist/types/compatible.d.ts"
+      ],
       "demo-commands": [
         "./dist/types/demo-commands.d.ts"
       ],
@@ -142,7 +256,13 @@
         "./dist/types/interest-invokers.d.ts"
       ],
       "advanced": [
-        "./dist/types/advanced-events.d.ts"
+        "./dist/types/advanced/index.d.ts"
+      ],
+      "advanced/events": [
+        "./dist/types/advanced/events.d.ts"
+      ],
+      "advanced/expressions": [
+        "./dist/types/advanced/expressions.d.ts"
       ]
     }
   }

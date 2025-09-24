@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
     <title>Invokers Advanced Lists & Arrays Demo</title>
- <script type="module" src="../dist/esm/development/index.js"></script>
+ <script type="module" src="../dist/esm/development/compatible.js"></script>
       <script type="module">
           import { enableAdvancedEvents, rescanCommandOnElements } from '../dist/esm/development/advanced.js';
-          enableAdvancedEvents();
+          // Advanced events automatically enabled
           window.rescanCommandOnElements = rescanCommandOnElements;
       </script>
      <style>

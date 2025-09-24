@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { InvokerManager } from '../src/index';
-import { enableAdvancedEvents } from '../src/advanced-events';
-import { EventTriggerManager } from '../src/event-trigger-manager';
+import { InvokerManager } from '../src/compatible';
+import { enableAdvancedEvents } from '../src/advanced/index';
+import { EventTriggerManager } from '../src/advanced/event-trigger-manager';
 
 describe('Class Ternary, Interpolation, and Built-in Commands', () => {
   let invokerManager: InvokerManager;

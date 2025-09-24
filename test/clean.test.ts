@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 describe('Clean Enhanced Attribute-Based Chaining', () => {
   let invokerManager: InvokerManager;
@@ -109,3 +109,4 @@ describe('Clean Enhanced Attribute-Based Chaining', () => {
     });
   });
 });
+

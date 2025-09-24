@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
     <title>Invokers Comprehensive Demo - Advanced Features Showcase</title>
-    <script type="module" src="../dist/esm/development/index.js"></script>
+    <script type="module" src="../dist/esm/development/compatible.js"></script>
     <script type="module">
-        import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
 
         // Register demo commands as soon as Invokers is available
         function registerDemoCommands() {
@@ -43,8 +42,7 @@
             checkInvoker();
         }
 
-        // Enable advanced events
-        enableAdvancedEvents();
+        // Advanced events are automatically enabled by the compatibility layer
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

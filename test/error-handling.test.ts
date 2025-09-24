@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InvokerManager, createInvokerError, ErrorSeverity, validateElement } from '../src/index';
+import { InvokerManager, createInvokerError, ErrorSeverity, validateElement } from '../src/compatible';
 
 describe('Enhanced Error Handling & Debugging', () => {
   let invokerManager: InvokerManager;
@@ -263,3 +263,4 @@ describe('Enhanced Error Handling & Debugging', () => {
     });
   });
 });
+

@@ -1,8 +1,8 @@
 // test/expression.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { evaluateExpression } from '../src/expression';
-import { interpolateString } from '../src/interpolation';
+import { evaluateExpression } from '../src/advanced/expression';
+import { interpolateString } from '../src/advanced/interpolation';
 
 describe('Expression Evaluation', () => {
   const context = {

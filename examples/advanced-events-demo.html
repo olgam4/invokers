@@ -159,11 +159,9 @@
 
    <!-- Load Invokers and enable advanced events -->
    <script type="module">
-     import '../dist/esm/development/index.js';
-     import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
+   import '../dist/esm/development/compatible.js';
 
-    // Enable advanced event features
-    enableAdvancedEvents();
+      // Advanced event features are automatically enabled
 
      // Mock API endpoint for search demo
      // In a real app, this would be a server endpoint

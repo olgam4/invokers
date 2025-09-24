@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InvokerManager, parseCommandString, createCommandString } from '../src/index';
+import { InvokerManager, parseCommandString, createCommandString } from '../src/compatible';
 
 // Mock DOM elements for testing
 let mockButton: HTMLButtonElement;

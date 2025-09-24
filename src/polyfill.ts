@@ -62,7 +62,11 @@ class CommandEventPolyfill extends Event {
   constructor(type: string, invokeEventInit: CommandEventInit = {}) {
     super(type, invokeEventInit);
     const { source, command } = invokeEventInit;
-    if (source != null && !(source instanceof Element)) {
+    if (source != null && typeof source !== 'object') {
+      throw new TypeError(`source must be an element`);
+    }
+    // Additional validation: check if it has element-like properties
+    if (source != null && (!source.nodeType || !source.tagName)) {
       throw new TypeError(`source must be an element`);
     }
     commandEventSourceElements.set(this, source || null);
@@ -221,14 +225,22 @@ function applyInvokerMixin(ElementClass: typeof HTMLElement) {
           }
         }
         // Fallback to IDREF lookup if not imperatively set
-        const root = getRootNode(this);
         const idref = this.getAttribute("commandfor");
-        if (
-          (root instanceof Document || root instanceof ShadowRoot) &&
-          idref
-        ) {
+        if (!idref) return null;
+
+        const root = getRootNode(this) as any;
+        const doc = this.ownerDocument || (root && root.ownerDocument) || (typeof document !== "undefined" ? document : null);
+
+        // Prefer searching the root if it has getElementById (ShadowRoot may not in JSDOM)
+        if (root && typeof root.getElementById === "function") {
           return root.getElementById(idref) || null;
         }
+
+        // Fallback to ownerDocument
+        if (doc && typeof doc.getElementById === "function") {
+          return doc.getElementById(idref) || null;
+        }
+
         return null;
       },
     },
@@ -576,17 +588,18 @@ function handleInvokerActivation(event: MouseEvent | KeyboardEvent) {
     }
   }
   
-  // Handle details commands
-  if (invokee.localName === "details") {
-    const isOpen = (invokee as HTMLDetailsElement).open;
-    if (command === "toggle") {
-      (invokee as HTMLDetailsElement).open = !isOpen;
-    } else if (command === "open" && !isOpen) {
-      (invokee as HTMLDetailsElement).open = true;
-    } else if (command === "close" && isOpen) {
-      (invokee as HTMLDetailsElement).open = false;
-    }
-  }
+   // Handle details commands
+   if (invokee.localName === "details") {
+     const details = invokee as HTMLDetailsElement;
+     const isOpen = details.open;
+     if (command === "toggle") {
+       details.open = !isOpen;
+     } else if (command === "open" && !isOpen) {
+       details.open = true;
+     } else if (command === "close" && isOpen) {
+       details.open = false;
+     }
+   }
   
   // Handle openable elements (elements with toggleOpenable method)
   if (command.includes("openable") && typeof (invokee as any).toggleOpenable === "function") {
@@ -753,13 +766,7 @@ function observeShadowRoots(ElementClass: typeof HTMLElement, callback: (shadowR
   };
 }
 
-/**
- * Applies the Invoker Buttons polyfill to the current environment.
- * This should be called once to enable the `command`/`commandfor` attributes and `CommandEvent`.
- */
-export function apply() {
-  const target = typeof window !== "undefined" ? window : globalThis;
-
+function applyToTarget(target: any) {
   // If native support exists, do not apply the polyfill to prevent double-firing
   if (isSupported()) {
     return;
@@ -773,9 +780,9 @@ export function apply() {
   // Hijack native 'invoke' and 'command' events if they exist,
   // to prevent conflicts and ensure our polyfilled event is the one processed.
   // This is a crucial step if browsers partially implement or change behavior.
-  document.addEventListener(
+  target.document.addEventListener(
     "invoke",
-    (e) => {
+    (e: Event) => {
       if (e.type === "invoke" && e.isTrusted) {
         e.stopImmediatePropagation();
         e.preventDefault();
@@ -783,23 +790,23 @@ export function apply() {
     },
     true,
   );
-  document.addEventListener(
+  target.document.addEventListener(
     "command",
-    (e) => {
+    (e: Event) => {
       // Only prevent if it's a native/trusted command event
       if (e.type === "command" && e.isTrusted && !e.defaultPrevented && e.eventPhase === Event.AT_TARGET) {
-         // Check if a CommandEvent, not just a generic custom event type "command"
-         // This is a tricky part: we want to block native CommandEvents if they exist,
-         // but allow our own polyfilled CommandEvents to proceed.
-         // A heuristic could be `e instanceof CommandEventPolyfill` but that might not work
-         // if `globalThis.CommandEvent` is already the native one.
-         // For now, if native is supported, our polyfill will largely step aside anyway.
-         // This listener is primarily for older `invoke` event issues and preventing double-firing
-         // in environments where CommandEvent is partially or inconsistently implemented.
-         // For a full polyfill, we'd ensure `isSupported()` is false before applying.
-         // Given `invokers` wants a consistent environment, we always apply.
-         // For now, let's assume if it's a trusted 'command' event from another source, we block.
-         // The `invokers` library will then dispatch its own `CommandEventPolyfill` which won't be blocked here.
+          // Check if a CommandEvent, not just a generic custom event type "command"
+          // This is a tricky part: we want to block native CommandEvents if they exist,
+          // but allow our own polyfilled CommandEvents to proceed.
+          // A heuristic could be `e instanceof CommandEventPolyfill` but that might not work
+          // if `globalThis.CommandEvent` is already the native one.
+          // For now, if native is supported, our polyfill will largely step aside anyway.
+          // This listener is primarily for older `invoke` event issues and preventing double-firing
+          // in environments where CommandEvent is partially or inconsistently implemented.
+          // For a full polyfill, we'd ensure `isSupported()` is false before applying.
+          // Given `invokers` wants a consistent environment, we always apply.
+          // For now, let's assume if it's a trusted 'command' event from another source, we block.
+          // The `invokers` library will then dispatch its own `CommandEventPolyfill` which won't be blocked here.
         e.stopImmediatePropagation();
         e.preventDefault();
       }
@@ -807,29 +814,29 @@ export function apply() {
     true,
   );
 
-   // Apply the `command` and `commandfor` properties to HTMLButtonElement
-   applyInvokerMixin(HTMLButtonElement);
-   // Also apply to input and textarea elements for command-on support
-   applyInvokerMixin(HTMLInputElement);
-   applyInvokerMixin(HTMLTextAreaElement);
+    // Apply the `command` and `commandfor` properties to HTMLButtonElement
+    applyInvokerMixin(target.HTMLButtonElement);
+    // Also apply to input and textarea elements for command-on support
+    applyInvokerMixin(target.HTMLInputElement);
+    applyInvokerMixin(target.HTMLTextAreaElement);
 
   // Observe newly attached Shadow DOM roots
-  observeShadowRoots(HTMLElement, (shadow) => {
+  observeShadowRoots(target.HTMLElement, (shadow) => {
     setupInvokeListeners(shadow);
     oncommandObserver.observe(shadow, { subtree: true, childList: true, attributeFilter: ["oncommand"] });
     applyOnCommandHandler(Array.from(shadow.querySelectorAll("[oncommand]")));
   });
 
   // Set up listeners for the main document
-  setupInvokeListeners(document);
+  setupInvokeListeners(target.document);
 
   // Initial scan for `oncommand` attributes
-  oncommandObserver.observe(document, {
+  oncommandObserver.observe(target.document, {
     subtree: true,
     childList: true,
     attributeFilter: ["oncommand"],
   });
-  applyOnCommandHandler(Array.from(document.querySelectorAll("[oncommand]")));
+  applyOnCommandHandler(Array.from(target.document.querySelectorAll("[oncommand]")));
 
 
   // Expose the polyfilled CommandEvent globally if not already defined
@@ -841,7 +848,7 @@ export function apply() {
         enumerable: false,
     });
   } else {
-      console.warn("Invokers Polyfill: `CommandEvent` already exists. The polyfill's CommandEvent will not overwrite it.");
+    console.warn("Invokers Polyfill: `CommandEvent` already exists. The polyfill's CommandEvent will not overwrite it.");
   }
   // Expose InvokeEvent globally (for deprecation warnings)
   if (typeof (target as any)['InvokeEvent'] === 'undefined') {
@@ -852,6 +859,31 @@ export function apply() {
           enumerable: false,
       });
   }
+
+}
+
+/**
+ * Applies the Invoker Buttons polyfill to the current environment.
+ * This should be called once to enable the `command`/`commandfor` attributes and `CommandEvent`.
+ */
+export function apply() {
+  const target = (typeof global !== "undefined" && (global as any).window) || (typeof window !== "undefined" ? window : globalThis);
+
+  applyToTarget(target);
+
+  // Also apply to global.window immediately if it exists and is different (for test environments)
+  const globalWindow = (typeof global !== "undefined" && (global as any).window);
+  if (globalWindow && globalWindow !== target) {
+    applyToTarget(globalWindow);
+  }
+
+  // Use setTimeout as additional safety for test environments that set global.window after import
+  setTimeout(() => {
+    const delayedGlobalWindow = (typeof global !== "undefined" && (global as any).window);
+    if (delayedGlobalWindow && delayedGlobalWindow !== target && delayedGlobalWindow !== globalWindow) {
+      applyToTarget(delayedGlobalWindow);
+    }
+  }, 0);
 }
 
 // Automatically apply the polyfill when this module is imported.

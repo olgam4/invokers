@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { enableAdvancedEvents } from '../src/advanced-events';
-import { InvokerManager } from '../src/index';
-import { interpolateString } from '../src/interpolation';
-import { EventTriggerManager } from '../src/event-trigger-manager';
+import { InvokerManager } from '../src/compatible';
+import { interpolateString } from '../src/advanced/interpolation';
+import { EventTriggerManager } from '../src/advanced/event-trigger-manager';
 
 // Mock DOM elements for testing
 function createTestElements() {
@@ -33,8 +32,7 @@ describe('Advanced Events', () => {
     // Reset DOM
     createTestElements();
 
-    // Enable advanced events before each test
-    enableAdvancedEvents();
+    // Advanced events are auto-enabled via compatible layer
   });
 
   describe('enableAdvancedEvents()', () => {

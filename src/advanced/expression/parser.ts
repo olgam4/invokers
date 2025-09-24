@@ -1,6 +1,6 @@
 // src/expression-parser.ts
 
-import { Token, TokenType } from './expression-lexer';
+import { Token, TokenType } from './lexer';
 
 export enum ASTNodeType {
   LITERAL = 'LITERAL',
@@ -9,7 +9,8 @@ export enum ASTNodeType {
   UNARY_OP = 'UNARY_OP',
   MEMBER_ACCESS = 'MEMBER_ACCESS',
   ARRAY_ACCESS = 'ARRAY_ACCESS',
-  CONDITIONAL = 'CONDITIONAL'
+  CONDITIONAL = 'CONDITIONAL',
+  CALL_EXPRESSION = 'CALL_EXPRESSION'
 }
 
 export interface ASTNode {
@@ -24,6 +25,8 @@ export interface ASTNode {
   test?: ASTNode;
   consequent?: ASTNode;
   alternate?: ASTNode;
+  callee?: ASTNode;
+  args?: ASTNode[];
 }
 
 export class ExpressionParser {
@@ -241,10 +244,27 @@ export class ExpressionParser {
     }
 
     if (this.match(TokenType.IDENTIFIER)) {
-      return {
-        type: ASTNodeType.IDENTIFIER,
-        value: this.previous().value
-      };
+      const identifier = this.previous();
+      if (this.match(TokenType.LPAREN)) {
+        // Function call
+        const args: ASTNode[] = [];
+        if (!this.check(TokenType.RPAREN)) {
+          do {
+            args.push(this.expression());
+          } while (this.match(TokenType.COMMA));
+        }
+        this.consume(TokenType.RPAREN, "Expected ')' after function arguments");
+        return {
+          type: ASTNodeType.CALL_EXPRESSION,
+          callee: { type: ASTNodeType.IDENTIFIER, value: identifier.value },
+          args
+        };
+      } else {
+        return {
+          type: ASTNodeType.IDENTIFIER,
+          value: identifier.value
+        };
+      }
     }
 
     if (this.match(TokenType.LPAREN)) {

@@ -1,6 +1,6 @@
 // src/expression-evaluator.ts
 
-import { ASTNode, ASTNodeType } from './expression-parser';
+import { ASTNode, ASTNodeType } from './parser';
 
 export class ExpressionEvaluator {
   private context: Record<string, any>;
@@ -30,7 +30,7 @@ export class ExpressionEvaluator {
     }
 
     if (typeof value === 'function') {
-      // Don't allow functions in context
+      // Block functions for security - they could be dangerous
       return undefined;
     }
 
@@ -129,6 +129,9 @@ export class ExpressionEvaluator {
         case ASTNodeType.CONDITIONAL:
           return this.evaluateConditional(node);
 
+        case ASTNodeType.CALL_EXPRESSION:
+          return this.evaluateCallExpression(node);
+
         default:
           throw new Error(`Invokers Expression Error: Unknown AST node type: ${(node as any).type}`);
       }
@@ -137,17 +140,33 @@ export class ExpressionEvaluator {
     }
   }
 
+  /**
+   * Evaluates an expression with access to data contexts
+   */
+  public evaluateWithContexts(node: ASTNode, dataContexts: Record<string, Record<string, any>>): any {
+    // Temporarily extend context with data contexts
+    const originalContext = this.context;
+    this.context = { ...this.context, ...dataContexts };
+
+    try {
+      return this.evaluate(node);
+    } finally {
+      this.context = originalContext;
+    }
+  }
+
+
 
 
   private evaluateBinaryOp(node: ASTNode): any {
     const left = this.evaluate(node.left!);
     const right = this.evaluate(node.right!);
-    const op = node.operator!;
+    const _op = node.operator!;
 
     // Handle NaN and undefined comparisons specially
     if ((left === undefined || left === null || Number.isNaN(left)) ||
         (right === undefined || right === null || Number.isNaN(right))) {
-      switch (op) {
+      switch (_op) {
         case '===':
           return left === right;
         case '!==':
@@ -162,7 +181,7 @@ export class ExpressionEvaluator {
           return left || right;
         default:
           // For arithmetic operations with undefined/NaN, return NaN
-          if (['+', '-', '*', '/', '%'].includes(op)) {
+          if (['+', '-', '*', '/', '%'].includes(_op)) {
             return Number.NaN;
           }
           // For comparisons with undefined/NaN, return false
@@ -170,7 +189,7 @@ export class ExpressionEvaluator {
       }
     }
 
-    switch (op) {
+    switch (_op) {
       case '+':
         return left + right;
       case '-':
@@ -203,7 +222,7 @@ export class ExpressionEvaluator {
       case '||':
         return left || right;
       default:
-        throw new Error(`Invokers Expression Error: Unknown binary operator: ${op}`);
+        throw new Error(`Invokers Expression Error: Unknown binary operator: ${_op}`);
     }
   }
 
@@ -268,5 +287,29 @@ export class ExpressionEvaluator {
   private evaluateConditional(node: ASTNode): any {
     const test = this.evaluate(node.test!);
     return test ? this.evaluate(node.consequent!) : this.evaluate(node.alternate!);
+  }
+
+  private evaluateCallExpression(node: ASTNode): any {
+    const callee = this.evaluate(node.callee!);
+    if (typeof callee !== 'function') {
+      throw new Error(`Invokers Expression Error: '${(node.callee as any).value}' is not a function`);
+    }
+    const args = node.args!.map(arg => this.evaluate(arg));
+    return callee(...args);
+  }
+
+  /**
+   * Gets a data context by key (for use in expressions)
+   */
+  public getDataContext(_key: string): Record<string, any> {
+    // This will be overridden by the expression evaluation system
+    return {};
+  }
+
+  /**
+   * Sets a data context (for use in expressions)
+   */
+  public setDataContext(_key: string, _data: Record<string, any>): void {
+    // This will be overridden by the expression evaluation system
   }
 }

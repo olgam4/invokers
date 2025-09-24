@@ -1,0 +1,456 @@
+/**
+ * @file flow.ts
+ * @summary Flow Control Command Pack for the Invokers library.
+ * @description
+ * This module provides commands for controlling application flow including
+ * asynchronous operations, event dispatching, navigation, and data binding.
+ * These commands enable complex interactions and dynamic workflows.
+ * 
+ * @example
+ * ```javascript
+ * import { registerFlowCommands } from 'invokers/commands/flow';
+ * import { InvokerManager } from 'invokers';
+ * 
+ * const invokerManager = InvokerManager.getInstance();
+ * registerFlowCommands(invokerManager);
+ * ```
+ */
+
+import type { InvokerManager } from '../core';
+import type { CommandCallback, CommandContext } from '../index';
+import { createInvokerError, ErrorSeverity, validateElement, sanitizeHTML } from '../index';
+import { interpolateString } from '../advanced/interpolation';
+import { resolveTargets } from '../target-resolver';
+
+/**
+ * Flow control commands for managing application state and async operations.
+ * Includes fetch operations, event dispatching, navigation, and data binding.
+ */
+const flowCommands: Record<string, CommandCallback> = {
+
+  // --- Fetch Commands ---
+
+  /**
+   * `--fetch:get`: Performs a GET request and swaps the response HTML into the target.
+   * Supports loading/error states via templates.
+   *
+   * @example
+   * ```html
+   * <button type="button"
+   *   command="--fetch:get"
+   *   data-url="/api/content"
+   *   commandfor="content-area"
+   *   data-loading-template="spinner-template"
+   *   data-after-error="--class:add:load-error"
+   * >
+   *   Load Content
+   * </button>
+   * ```
+   */
+  "--fetch:get": async ({ invoker, targetElement }: CommandContext) => {
+    let url = invoker.dataset.url;
+    if (!url) {
+      throw createInvokerError('Fetch GET command requires a data-url attribute', ErrorSeverity.ERROR, {
+        command: '--fetch:get', element: invoker, recovery: 'Add data-url="/your/endpoint" to the button.'
+      });
+    }
+
+    // Interpolate the URL
+    const context = {
+      this: {
+        ...invoker,
+        value: (invoker as any).value || '',
+      },
+      event: (invoker as any).triggeringEvent,
+    };
+    url = interpolateString(url, context);
+
+    // Dispatch fetch:before event for interceptors
+    const fetchEvent = new CustomEvent('fetch:before', { detail: { url, invoker }, cancelable: true });
+    window.dispatchEvent(fetchEvent);
+    if (fetchEvent.defaultPrevented) {
+      // Fetch was intercepted, skip actual fetch
+      setBusyState(invoker, false);
+      return;
+    }
+
+    setBusyState(invoker, true);
+    showFeedbackState(invoker, targetElement, "data-loading-template");
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      const response = await fetch(url, {
+        method: "GET", 
+        headers: { Accept: "text/html", ...getHeadersFromAttributes(invoker) }, 
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw createInvokerError(`HTTP Error: ${response.status} ${response.statusText}`, ErrorSeverity.ERROR, {
+          command: '--fetch:get', element: invoker, context: { url, status: response.status }
+        });
+      }
+
+      const html = await response.text();
+      const newContent = parseHTML(html);
+      const updateDOM = () => targetElement.replaceChildren(newContent);
+      await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
+    } catch (error) {
+      showFeedbackState(invoker, targetElement, "data-error-template");
+      // Re-throw the error (either the one we created or a new wrapped one)
+      // to allow the core manager to handle it for conditional chaining.
+      if (error instanceof Error && 'severity' in error) throw error;
+      throw createInvokerError('Fetch GET failed', ErrorSeverity.ERROR, {
+        command: '--fetch:get', element: invoker, cause: error as Error, context: { url },
+        recovery: 'Check the URL, network connection, and server response.'
+      });
+    } finally {
+      setBusyState(invoker, false);
+    }
+  },
+
+  /**
+   * `--fetch:send`: Submits the target `<form>` via a POST/PUT/DELETE request.
+   * The response is swapped into the element from `data-response-target`, or the form itself.
+   *
+   * @example
+   * ```html
+   * <form id="my-form" action="/api/submit" method="post"></form>
+   * <button type="button"
+   *   command="--fetch:send"
+   *   commandfor="my-form"
+   *   data-response-target="#response-area"
+   * >
+   *   Submit via Fetch
+   * </button>
+   * ```
+   */
+  "--fetch:send": async ({ invoker, targetElement }: CommandContext) => {
+    const validationErrors = validateElement(targetElement, { tagName: ['form'] });
+    if (validationErrors.length > 0) {
+      throw createInvokerError(`Fetch send failed: ${validationErrors.join(', ')}`, ErrorSeverity.ERROR, {
+        command: '--fetch:send', element: invoker, recovery: 'Ensure commandfor points to a <form> element.'
+      });
+    }
+    const form = targetElement as HTMLFormElement;
+
+    const responseSelector = invoker.dataset.responseTarget;
+    const responseTarget = responseSelector ? document.querySelector<HTMLElement>(responseSelector) : form;
+    if (!responseTarget) {
+      throw createInvokerError(`Response target "${responseSelector}" not found`, ErrorSeverity.ERROR, {
+        command: '--fetch:send', element: invoker
+      });
+    }
+
+    setBusyState(invoker, true);
+    showFeedbackState(invoker, responseTarget, "data-loading-template");
+
+    try {
+      const response = await fetch(form.action, {
+        method: form.method || "POST", 
+        body: new FormData(form), 
+        headers: getHeadersFromAttributes(invoker),
+      });
+
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+
+      const html = await response.text();
+      const newContent = parseHTML(html);
+      const updateDOM = () => responseTarget.replaceChildren(newContent);
+      await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
+    } catch (error) {
+      showFeedbackState(invoker, responseTarget, "data-error-template");
+      throw createInvokerError('Fetch send failed', ErrorSeverity.ERROR, {
+        command: '--fetch:send', element: invoker, cause: error as Error,
+        recovery: 'Check the form action, network connection, and server response.'
+      });
+    } finally {
+      setBusyState(invoker, false);
+    }
+  },
+
+  // --- Command Control ---
+
+  /**
+   * `--command:trigger`: Triggers an event on another element.
+   * @example `<button command="--command:trigger:click" commandfor="#save-btn" data-and-then="--command:trigger:click" data-then-target="#close-btn">Save and Close</button>`
+   */
+  "--command:trigger": ({ targetElement, params }: CommandContext) => {
+    const eventType = params[0] || 'click';
+    const event = new Event(eventType, { bubbles: true, cancelable: true });
+    targetElement.dispatchEvent(event);
+  },
+
+  /**
+   * `--command:delay`: Waits for a specified number of milliseconds.
+   * @example `<button command="--text:set:Saved!" commandfor="#status" data-and-then="--command:delay:2000" data-then-target="#status">Save</button>`
+   */
+  "--command:delay": ({ params }: CommandContext) => {
+    const delay = parseInt(params[0], 10);
+    if (isNaN(delay) || delay < 0) {
+      throw createInvokerError('Delay command requires a valid positive number of milliseconds', ErrorSeverity.ERROR, {
+        command: '--command:delay'
+      });
+    }
+    return new Promise(resolve => setTimeout(resolve, delay));
+  },
+
+  /**
+   * `--on:interval`: Executes a command repeatedly at a given interval.
+   * The interval is cleared when the element is removed from the DOM.
+   * @example `<div command-on="load" command="--on:interval:10000" commandfor="#live-data" data-interval-command="--fetch:get" data-url="/api/latest-stats">Loading...</div>`
+   */
+  "--on:interval": ({ invoker, targetElement, params }: CommandContext) => {
+    const intervalMs = parseInt(params[0], 10);
+    if (isNaN(intervalMs) || intervalMs <= 0) {
+      throw createInvokerError('Interval command requires a valid positive interval in milliseconds', ErrorSeverity.ERROR, {
+        command: '--on:interval', element: invoker
+      });
+    }
+
+    const intervalCommand = invoker.dataset.intervalCommand;
+    if (!intervalCommand) {
+      throw createInvokerError('Interval command requires data-interval-command attribute', ErrorSeverity.ERROR, {
+        command: '--on:interval', element: invoker
+      });
+    }
+
+    // Clear any existing interval
+    const existingIntervalId = (invoker as any)._invokerIntervalId;
+    if (existingIntervalId) {
+      clearInterval(existingIntervalId);
+    }
+
+    // Set up new interval
+    const intervalId = setInterval(() => {
+      // Execute the interval command programmatically
+      if (typeof window !== 'undefined' && (window as any).Invoker) {
+        const targetId = targetElement.id || `__invoker-target-${Date.now()}`;
+        if (!targetElement.id) targetElement.id = targetId;
+        (window as any).Invoker.executeCommand(intervalCommand, targetId, invoker);
+      }
+    }, intervalMs);
+
+    // Store the interval ID
+    (invoker as any)._invokerIntervalId = intervalId;
+
+    // Clear interval when element is removed
+    const observer = new MutationObserver(() => {
+      if (!document.contains(invoker)) {
+        clearInterval(intervalId);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  },
+
+  // --- Data Binding ---
+
+  /**
+   * `--bind`: Creates a one-way data binding from the target element to another element.
+   * @example `<input command-on="input" command="--bind:value" commandfor="#input" data-bind-to="#output" data-bind-as="text">`
+   */
+  "--bind": ({ invoker, targetElement, params }: CommandContext) => {
+    const sourceProperty = params.join(':');
+    if (!sourceProperty) {
+      throw createInvokerError('Bind command requires a source property (e.g., value, text, data:name)', ErrorSeverity.ERROR, {
+        command: '--bind', element: invoker
+      });
+    }
+
+    // Get the source value (prefer invoker if it has the property, otherwise targetElement)
+    let sourceValue: any;
+    const sourceElement = (sourceProperty === 'value' && (invoker instanceof HTMLInputElement || invoker instanceof HTMLTextAreaElement || invoker instanceof HTMLSelectElement)) ? invoker : targetElement;
+
+    if (sourceProperty === 'value' && (sourceElement instanceof HTMLInputElement || sourceElement instanceof HTMLTextAreaElement || sourceElement instanceof HTMLSelectElement)) {
+      sourceValue = sourceElement.value;
+    } else if (sourceProperty === 'text') {
+      sourceValue = sourceElement.textContent;
+    } else if (sourceProperty === 'html') {
+      sourceValue = sourceElement.innerHTML;
+    } else if (sourceProperty.startsWith('attr:')) {
+      const attrName = sourceProperty.substring(5);
+      sourceValue = sourceElement.getAttribute(attrName);
+    } else if (sourceProperty.startsWith('data:')) {
+      const dataName = sourceProperty.substring(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      sourceValue = sourceElement.dataset[dataName];
+    } else {
+      throw createInvokerError(`Invalid source property for --bind: "${sourceProperty}"`, ErrorSeverity.ERROR, {
+        command: '--bind', element: invoker
+      });
+    }
+
+    // Find the destination (either data-bind-to or the targetElement)
+    const destinationSelector = invoker.dataset.bindTo;
+    const destinations = destinationSelector
+      ? resolveTargets(destinationSelector, invoker) as HTMLElement[]
+      : [targetElement];
+
+    // Apply to destinations
+    const destinationProperty = invoker.dataset.bindAs || 'text';
+
+    destinations.forEach(dest => {
+      if (destinationProperty === 'value' && (dest instanceof HTMLInputElement || dest instanceof HTMLTextAreaElement || dest instanceof HTMLSelectElement)) {
+        (dest as HTMLInputElement).value = sourceValue || '';
+      } else if (destinationProperty === 'text') {
+        dest.textContent = sourceValue || '';
+      } else if (destinationProperty === 'html') {
+        dest.innerHTML = sanitizeHTML(sourceValue || '');
+      } else if (destinationProperty.startsWith('attr:')) {
+        const attrName = destinationProperty.substring(5);
+        if (sourceValue === null || sourceValue === undefined) {
+          dest.removeAttribute(attrName);
+        } else {
+          dest.setAttribute(attrName, sourceValue);
+        }
+      } else if (destinationProperty.startsWith('data:')) {
+        const dataName = destinationProperty.substring(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+        if (sourceValue === null || sourceValue === undefined) {
+          delete dest.dataset[dataName];
+        } else {
+          dest.dataset[dataName] = sourceValue;
+        }
+      } else if (destinationProperty === 'class:add') {
+        if (sourceValue) dest.classList.add(sourceValue);
+      } else if (destinationProperty === 'class:remove') {
+        if (sourceValue) dest.classList.remove(sourceValue);
+      }
+    });
+  },
+
+  // --- Navigation ---
+
+  /**
+   * `--navigate:to`: Navigates to a new URL using the History API.
+   *
+   * @example
+   * ```html
+   * <button type="button" command="--navigate:to:/about">Go to About Page</button>
+   * ```
+   */
+  "--navigate:to": (context: CommandContext) => {
+    const url = context.params.join(':'); // Rejoin params in case URL contains colons
+    if (!url) {
+      throw createInvokerError('Navigate command requires a URL parameter', ErrorSeverity.ERROR, {
+        command: '--navigate:to', element: context.invoker, recovery: 'Use format: --navigate:to:/your/path'
+      });
+    }
+
+    if (typeof window !== 'undefined' && window.history?.pushState) {
+      window.history.pushState({}, "", url);
+      window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+    } else if (typeof window !== 'undefined') {
+      window.location.href = url;
+    }
+  },
+
+  // --- Event Emission ---
+
+  /**
+   * `--emit`: Dispatches custom events for advanced interactions.
+   * The first parameter is the event type, remaining parameters form the event detail.
+   *
+   * @example
+   * ```html
+   * <button type="button" command="--emit:user-action:save-form">
+   *   Emit Save Event
+   * </button>
+   * ```
+   */
+  "--emit": ({ params, targetElement }: CommandContext) => {
+    const [eventType, ...detailParts] = params;
+    if (!eventType) {
+      throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
+        command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
+      });
+    }
+
+    let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
+    // Try to parse as JSON if it looks like JSON
+    if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
+      try {
+        detail = JSON.parse(detail);
+      } catch (e) {
+        // Keep as string if not valid JSON
+      }
+    }
+    const event = new CustomEvent(eventType, {
+      bubbles: true,
+      composed: true,
+      detail
+    });
+
+    // Dispatch to targetElement if available, otherwise to document.body
+    (targetElement || document.body).dispatchEvent(event);
+  }
+};
+
+// --- Private Helper Functions ---
+
+function setBusyState(element: HTMLElement, busy: boolean): void {
+  element.toggleAttribute('aria-busy', busy);
+  element.classList.toggle('invoker-busy', busy);
+  if ('disabled' in element) {
+    (element as HTMLButtonElement).disabled = busy;
+  }
+}
+
+function showFeedbackState(invoker: HTMLElement, target: HTMLElement, templateAttr: string): void {
+  const templateId = invoker.dataset[templateAttr.replace('data-', '').replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())];
+  if (!templateId) return;
+
+  const template = document.getElementById(templateId);
+  if (!(template instanceof HTMLTemplateElement)) return;
+
+  const content = template.content.cloneNode(true) as DocumentFragment;
+  const updateDOM = () => target.replaceChildren(content);
+  if (document.startViewTransition) {
+    document.startViewTransition(updateDOM);
+  } else {
+    updateDOM();
+  }
+}
+
+function getHeadersFromAttributes(element: HTMLElement): HeadersInit {
+  const headers: HeadersInit = {};
+  
+  // Look for data-header-* attributes
+  for (const [key, value] of Object.entries(element.dataset)) {
+    if (key.startsWith('header') && key !== 'header' && value) {
+      const headerName = key.substring(6).replace(/([A-Z])/g, '-$1').toLowerCase();
+      headers[headerName] = value;
+    }
+  }
+  
+  return headers;
+}
+
+function parseHTML(html: string): DocumentFragment {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content;
+}
+
+/**
+ * Registers all flow control and asynchronous operation commands with the InvokerManager.
+ * This includes fetch operations, event dispatching, navigation, and data binding.
+ * 
+ * @param manager - The InvokerManager instance to register commands with
+ * @example
+ * ```javascript
+ * import { registerFlowCommands } from 'invokers/commands/flow';
+ * import invokerManager from 'invokers';
+ * 
+ * registerFlowCommands(invokerManager);
+ * ```
+ */
+export function registerFlowCommands(manager: InvokerManager): void {
+  for (const name in flowCommands) {
+    if (flowCommands.hasOwnProperty(name)) {
+      manager.register(name, flowCommands[name]);
+    }
+  }
+}

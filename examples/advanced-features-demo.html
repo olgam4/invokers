@@ -696,13 +696,13 @@
   </div>
 
   <!-- Load the Invokers library -->
-  <script type="module" src="../dist/esm/development/index.js"></script>
+  <script type="module" src="../dist/esm/development/compatible.js"></script>
   <script type="module" src="../dist/esm/development/advanced.js"></script>
 
    <script type="module">
     // Enable advanced events for interpolation and advanced features
-    import { enableAdvancedEvents } from '../dist/esm/development/advanced.js';
-    enableAdvancedEvents();
+    // Advanced events auto-enabled by compatible.js
+    // Advanced events automatically enabled
    </script>
 
    <script>

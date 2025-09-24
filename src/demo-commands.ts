@@ -380,7 +380,7 @@ export const demoCommands: CommandRegistry = {
  * registerDemoCommands(['--demo:echo', '--demo:counter:increment']); // Registers specific demo commands
  */
 export function registerDemoCommands(specificCommands?: string[]): void {
-  if (!window.Invoker) {
+  if (!window.Invoker?.register) {
     console.error("Invokers: Core library not found. Ensure it is loaded before the demo commands module.");
     return;
   }
@@ -392,7 +392,7 @@ export function registerDemoCommands(specificCommands?: string[]): void {
     const normalizedName = name.startsWith('--') ? name : `--${name}`;
 
     if (demoCommands[normalizedName]) {
-      window.Invoker.register(normalizedName, demoCommands[normalizedName]);
+      window.Invoker?.register?.(normalizedName, demoCommands[normalizedName]);
     } else {
       console.warn(`Invokers: Demo command "${name}" was requested but not found. Skipping registration.`);
     }

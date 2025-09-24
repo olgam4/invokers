@@ -3,9 +3,19 @@
   "entrypoints": {
     ".": "./src/index.ts",
     "./commands": "./src/invoker-commands.ts",
+    "./commands/base": "./src/commands/base.ts",
+    "./commands/form": "./src/commands/form.ts",
+    "./commands/dom": "./src/commands/dom.ts",
+    "./commands/flow": "./src/commands/flow.ts",
+    "./commands/media": "./src/commands/media.ts",
+    "./commands/browser": "./src/commands/browser.ts",
+    "./commands/data": "./src/commands/data.ts",
+    "./compatible": "./src/compatible.ts",
     "./demo-commands": "./src/demo-commands.ts",
     "./interest": "./src/interest-invokers.ts",
-    "./advanced": "./src/advanced-events.ts"
+    "./advanced": "./src/advanced/index.ts",
+    "./advanced/events": "./src/advanced/events.ts",
+    "./advanced/expressions": "./src/advanced/expressions.ts"
   },
   "external": [],
   "minify": false,

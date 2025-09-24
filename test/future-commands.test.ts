@@ -43,13 +43,16 @@ global.navigator = {
   share: vi.fn().mockResolvedValue(undefined)
 } as any;
 
-// Import after setting up globals
-import '../src/index';
+// Import after setting up globals - use compatibility layer for full functionality
+import '../src/compatible';
 
 describe('Future Commands', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
+    
+    // Wait for polyfill to be applied to the JSDOM window
+    await new Promise(resolve => setTimeout(resolve, 10));
   });
 
   describe('Details Commands', () => {
@@ -69,43 +72,43 @@ describe('Future Commands', () => {
       const toggleBtn = document.getElementById('toggle-btn') as HTMLButtonElement;
       const details = document.getElementById('details-element') as HTMLDetailsElement;
 
-      expect(details.open).toBe(false);
-      
-      toggleBtn.click();
-      expect(details.open).toBe(true);
-      
-      toggleBtn.click();
-      expect(details.open).toBe(false);
+       expect(details.open).toBe(false);
+
+       toggleBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(details.open).toBe(true);
+
+       toggleBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(details.open).toBe(false);
     });
 
     it('should open closed details element', () => {
       const openBtn = document.getElementById('open-btn') as HTMLButtonElement;
       const details = document.getElementById('details-element') as HTMLDetailsElement;
 
-      expect(details.open).toBe(false);
-      
-      openBtn.click();
-      expect(details.open).toBe(true);
-      
-      // Should not change if already open
-      openBtn.click();
-      expect(details.open).toBe(true);
+       expect(details.open).toBe(false);
+
+       openBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(details.open).toBe(true);
+
+       // Should not change if already open
+       openBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(details.open).toBe(true);
     });
 
     it('should close open details element', () => {
       const closeBtn = document.getElementById('close-btn') as HTMLButtonElement;
       const details = document.getElementById('details-element') as HTMLDetailsElement;
 
-      // Open first
-      details.open = true;
-      expect(details.open).toBe(true);
-      
-      closeBtn.click();
-      expect(details.open).toBe(false);
-      
-      // Should not change if already closed
-      closeBtn.click();
-      expect(details.open).toBe(false);
+       // Open first
+       details.open = true;
+       expect(details.open).toBe(true);
+
+       closeBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(details.open).toBe(false);
+
+       // Should not change if already closed
+       closeBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(details.open).toBe(false);
     });
   });
 
@@ -129,13 +132,13 @@ describe('Future Commands', () => {
       video.pause = vi.fn();
       Object.defineProperty(video, 'paused', { value: true, writable: true });
 
-      playPauseBtn.click();
-      expect(video.play).toHaveBeenCalled();
+       playPauseBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(video.play).toHaveBeenCalled();
 
-      // Simulate playing state
-      Object.defineProperty(video, 'paused', { value: false });
-      playPauseBtn.click();
-      expect(video.pause).toHaveBeenCalled();
+       // Simulate playing state
+       Object.defineProperty(video, 'paused', { value: false });
+       playPauseBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(video.pause).toHaveBeenCalled();
     });
 
     it('should play paused video', () => {
@@ -145,8 +148,8 @@ describe('Future Commands', () => {
       video.play = vi.fn().mockResolvedValue(undefined);
       Object.defineProperty(video, 'paused', { value: true });
 
-      playBtn.click();
-      expect(video.play).toHaveBeenCalled();
+       playBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(video.play).toHaveBeenCalled();
     });
 
     it('should pause playing video', () => {
@@ -156,21 +159,21 @@ describe('Future Commands', () => {
       video.pause = vi.fn();
       Object.defineProperty(video, 'paused', { value: false });
 
-      pauseBtn.click();
-      expect(video.pause).toHaveBeenCalled();
+       pauseBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(video.pause).toHaveBeenCalled();
     });
 
     it('should toggle mute state', () => {
       const muteBtn = document.getElementById('mute-btn') as HTMLButtonElement;
       const video = document.getElementById('test-video') as HTMLVideoElement;
 
-      expect(video.muted).toBe(false);
-      
-      muteBtn.click();
-      expect(video.muted).toBe(true);
-      
-      muteBtn.click();
-      expect(video.muted).toBe(false);
+       expect(video.muted).toBe(false);
+
+       muteBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(video.muted).toBe(true);
+
+       muteBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(video.muted).toBe(false);
     });
   });
 
@@ -202,8 +205,8 @@ describe('Future Commands', () => {
         value: vi.fn().mockReturnValue(true) 
       });
 
-      filePickerBtn.click();
-      expect(fileInput.showPicker).toHaveBeenCalled();
+       filePickerBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(fileInput.showPicker).toHaveBeenCalled();
     });
 
     it('should call showPicker on select elements', () => {
@@ -213,8 +216,8 @@ describe('Future Commands', () => {
       selectInput.showPicker = vi.fn();
       document.hasFocus = vi.fn().mockReturnValue(true);
 
-      selectPickerBtn.click();
-      expect(selectInput.showPicker).toHaveBeenCalled();
+       selectPickerBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(selectInput.showPicker).toHaveBeenCalled();
     });
 
     it('should handle showPicker errors gracefully', () => {
@@ -226,10 +229,10 @@ describe('Future Commands', () => {
       });
       document.hasFocus = vi.fn().mockReturnValue(true);
 
-      // Should not throw
-      expect(() => {
-        filePickerBtn.click();
-      }).not.toThrow();
+       // Should not throw
+       expect(() => {
+         filePickerBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       }).not.toThrow();
     });
   });
 
@@ -248,8 +251,8 @@ describe('Future Commands', () => {
 
       numberInput.stepUp = vi.fn();
       
-      stepUpBtn.click();
-      expect(numberInput.stepUp).toHaveBeenCalled();
+       stepUpBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(numberInput.stepUp).toHaveBeenCalled();
     });
 
     it('should step down number input', () => {
@@ -258,8 +261,8 @@ describe('Future Commands', () => {
 
       numberInput.stepDown = vi.fn();
       
-      stepDownBtn.click();
-      expect(numberInput.stepDown).toHaveBeenCalled();
+       stepDownBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(numberInput.stepDown).toHaveBeenCalled();
     });
 
     it('should handle step errors gracefully', () => {
@@ -270,10 +273,10 @@ describe('Future Commands', () => {
         throw new Error('Invalid state error');
       });
 
-      // Should not throw
-      expect(() => {
-        stepUpBtn.click();
-      }).not.toThrow();
+       // Should not throw
+       expect(() => {
+         stepUpBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       }).not.toThrow();
     });
   });
 
@@ -291,17 +294,17 @@ describe('Future Commands', () => {
       const copyBtn = document.getElementById('copy-btn') as HTMLButtonElement;
       const textContent = document.getElementById('text-content') as HTMLElement;
 
-      copyBtn.click();
-      
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Hello, World!');
+       copyBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Hello, World!');
     });
 
     it('should copy button value when self-referencing', () => {
       const selfCopyBtn = document.getElementById('self-copy-btn') as HTMLButtonElement;
 
-      selfCopyBtn.click();
-      
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Button value');
+       selfCopyBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Button value');
     });
 
     it('should handle clipboard API errors gracefully', () => {
@@ -309,10 +312,10 @@ describe('Future Commands', () => {
 
       (navigator.clipboard.writeText as any).mockRejectedValue(new Error('Clipboard error'));
 
-      // Should not throw
-      expect(() => {
-        copyBtn.click();
-      }).not.toThrow();
+       // Should not throw
+       expect(() => {
+         copyBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       }).not.toThrow();
     });
   });
 
@@ -330,21 +333,21 @@ describe('Future Commands', () => {
     it('should share text content', () => {
       const shareBtn = document.getElementById('share-text-btn') as HTMLButtonElement;
 
-      shareBtn.click();
-      
-      expect(navigator.share).toHaveBeenCalledWith({ 
-        text: 'Check out this awesome library!' 
-      });
+       shareBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+       expect(navigator.share).toHaveBeenCalledWith({
+         text: 'Check out this awesome library!'
+       });
     });
 
     it('should share URL content', () => {
       const shareBtn = document.getElementById('share-url-btn') as HTMLButtonElement;
 
-      shareBtn.click();
-      
-      expect(navigator.share).toHaveBeenCalledWith({ 
-        url: 'https://github.com/doeixd/invokers' 
-      });
+       shareBtn.dispatchEvent(new Event('click', { bubbles: true }));
+
+       expect(navigator.share).toHaveBeenCalledWith({
+         url: 'https://github.com/doeixd/invokers'
+       });
     });
 
     it('should handle share API errors gracefully', () => {
@@ -352,10 +355,10 @@ describe('Future Commands', () => {
 
       (navigator.share as any).mockRejectedValue(new Error('Share error'));
 
-      // Should not throw
-      expect(() => {
-        shareBtn.click();
-      }).not.toThrow();
+       // Should not throw
+       expect(() => {
+         shareBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       }).not.toThrow();
     });
   });
 
@@ -382,8 +385,8 @@ describe('Future Commands', () => {
 
       target.requestFullscreen = vi.fn().mockResolvedValue(undefined);
       
-      toggleBtn.click();
-      expect(target.requestFullscreen).toHaveBeenCalled();
+       toggleBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(target.requestFullscreen).toHaveBeenCalled();
     });
 
     it('should exit fullscreen when in fullscreen', () => {
@@ -393,8 +396,8 @@ describe('Future Commands', () => {
       // Simulate being in fullscreen
       Object.defineProperty(document, 'fullscreenElement', { value: target });
       
-      toggleBtn.click();
-      expect(document.exitFullscreen).toHaveBeenCalled();
+       toggleBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(document.exitFullscreen).toHaveBeenCalled();
     });
 
     it('should handle fullscreen API errors gracefully', () => {
@@ -403,10 +406,10 @@ describe('Future Commands', () => {
 
       target.requestFullscreen = vi.fn().mockRejectedValue(new Error('Fullscreen error'));
       
-      // Should not throw
-      expect(() => {
-        requestBtn.click();
-      }).not.toThrow();
+       // Should not throw
+       expect(() => {
+         requestBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       }).not.toThrow();
     });
   });
 
@@ -423,8 +426,8 @@ describe('Future Commands', () => {
       // Mock openable methods
       (openable as any).toggleOpenable = vi.fn();
       
-      toggleBtn.click();
-      expect((openable as any).toggleOpenable).toHaveBeenCalled();
+       toggleBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       expect((openable as any).toggleOpenable).toHaveBeenCalled();
     });
 
     it('should handle elements without openable methods gracefully', () => {
@@ -435,10 +438,10 @@ describe('Future Commands', () => {
 
       const toggleBtn = document.getElementById('toggle-openable-btn') as HTMLButtonElement;
 
-      // Should not throw even if element doesn't have openable methods
-      expect(() => {
-        toggleBtn.click();
-      }).not.toThrow();
+       // Should not throw even if element doesn't have openable methods
+       expect(() => {
+         toggleBtn.dispatchEvent(new Event('click', { bubbles: true }));
+       }).not.toThrow();
     });
   });
 
@@ -463,8 +466,8 @@ describe('Future Commands', () => {
         eventFired = true;
       });
 
-      button.click();
-      expect(eventFired).toBe(true);
+       button.dispatchEvent(new Event('click', { bubbles: true }));
+       expect(eventFired).toBe(true);
     });
 
     it('should respect preventDefault on command events', () => {
@@ -483,11 +486,11 @@ describe('Future Commands', () => {
         e.preventDefault();
       });
 
-      const initialState = details.open;
-      button.click();
-      
-      // Should not change state if preventDefault was called
-      expect(details.open).toBe(initialState);
+       const initialState = details.open;
+       button.dispatchEvent(new Event('click', { bubbles: true }));
+
+       // Should not change state if preventDefault was called
+       expect(details.open).toBe(initialState);
     });
   });
 

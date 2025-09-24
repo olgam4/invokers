@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 // Setup DOM environment
 const dom = new JSDOM(`

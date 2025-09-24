@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InvokerManager } from '../src/index';
+import { InvokerManager } from '../src/compatible';
 
 // Use real window.location and window.history for testing
 // The URL command should work with real browser APIs

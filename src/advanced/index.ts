@@ -1,9 +1,9 @@
 // src/advanced-events.ts
 
-import { InvokerManager } from './index';
+import { InvokerManager } from '../index';
 import { EventTriggerManager } from './event-trigger-manager';
 import { interpolateString } from './interpolation';
-import { generateUid } from './utils';
+import { generateUid } from '../utils';
 
 /**
  * Enables advanced event triggering (e.g., `command-on`, `data-on-event`)
@@ -20,7 +20,7 @@ export function enableAdvancedEvents(): void {
 
   // 2. Register the interpolation utility on a global accessor (used by InvokerManager)
   if (typeof window !== 'undefined' && window.Invoker) {
-    (window as any).Invoker.getInterpolationUtility = () => interpolateString;
+    ((window as any).Invoker as any).getInterpolationUtility = () => interpolateString;
     // Expose utilities for template processing
     (window as any).Invoker.interpolateString = interpolateString;
     (window as any).Invoker.generateUid = generateUid;
