@@ -31,6 +31,8 @@
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
 
+## Features
+
 -   ✅ **Standards-First:** Built on the W3C/WHATWG `command` attribute and Interest Invokers proposals. Learn future-proof skills, not framework-specific APIs.
 -   🧩 **Polyfill & Superset:** Provides the standard APIs in all modern browsers and extends them with a rich set of custom commands.
 -   ✍️ **Declarative & Readable:** Describe *what* you want to happen in your HTML, not *how* in JavaScript. Create UIs that are self-documenting.
