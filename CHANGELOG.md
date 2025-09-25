@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.5.2](https://github.com/doeixd/invokers/compare/v1.5.1...v1.5.2) (2025-09-25)
+
+
+### Bug Fixes
+
+* resolve repeating Step 3 issue in <and-then> chaining ([e899af7](https://github.com/doeixd/invokers/commit/e899af7146d801f2432994f0b5e9d996ce42df62))
+
 ### [1.5.1](https://github.com/doeixd/invokers/compare/v1.5.0...v1.5.1) (2025-09-23)
 
 ## [1.5.0](https://github.com/doeixd/invokers/compare/v1.4.0...v1.5.0) (2025-09-22)
