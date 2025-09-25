@@ -412,10 +412,8 @@ describe('Storage Commands', () => {
     });
 
     it('should handle storage with expiration and cleanup', async () => {
-      vi.useFakeTimers({ toFake: ['Date'] });
-
       document.body.innerHTML = `
-        <button command="--storage:local:set:tempData:expires:1000:temp value" id="set-temp">Set Temp</button>
+        <button command="--storage:local:set:tempData:expires:50:temp value" id="set-temp">Set Temp</button>
         <button command="--storage:local:get:tempData" commandfor="output" id="get-temp">Get Temp</button>
         <div id="output"></div>
       `;
@@ -448,14 +446,12 @@ describe('Storage Commands', () => {
       expect(output.textContent).toBe('temp value');
 
       // Wait for expiration
-      vi.advanceTimersByTime(1100);
+      await new Promise(resolve => setTimeout(resolve, 20));
 
       // Should be expired now
       output.dispatchEvent(getCommandEvent);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(output.textContent).toBe('');
-
-      vi.useRealTimers();
     });
   });
 });
