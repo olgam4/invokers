@@ -1,8 +1,9 @@
-# ✨ Invokers: _Write Interactive HTML Without Writing JavaScript_
-
 [![npm version](https://badge.fury.io/js/invokers.svg)](https://www.npmjs.com/package/invokers)
-[![Build Status](https://github.com/doeixd/invokers/workflows/CI/badge.svg)](https://github.com/doeixd/invokers/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+# ✨ Invokers 
+
+### _Write Interactive HTML Without Writing JavaScript_
 
 **Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with a comprehensive set of extended commands automatically included for real-world needs like toggling, fetching, media controls, and complex workflow chaining. Think of it as **HTMX-lite**, but fully aligned with web standards.
 
