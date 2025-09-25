@@ -385,6 +385,60 @@ That's it! No event listeners, no DOM queries, no state management. The HTML des
 - **Simple Things Stay Simple**: Basic interactions use simple HTML attributes, complex logic uses JavaScript
 - **Standards-Based**: Uses web platform APIs instead of custom attribute syntax
 
+## 🆚 vs Stimulus
+
+**Invokers reduces JavaScript ceremony** while Stimulus organizes it. Both enhance HTML declaratively, but with fundamentally different philosophies about where behavior should live.
+
+### Stimulus: JavaScript-Organized HTML Enhancement
+```html
+<!-- Stimulus: Behavior lives in JavaScript classes -->
+<div data-controller="slideshow" data-slideshow-index-value="0">
+  <div data-slideshow-target="slide" class="current">Slide 1</div>
+  <div data-slideshow-target="slide">Slide 2</div>
+  <button data-action="slideshow#next">Next</button>
+</div>
+```
+
+```javascript
+// Required JavaScript controller class
+export default class extends Controller {
+  static targets = ["slide"]
+  static values = { index: Number }
+
+  next() {
+    this.indexValue = (this.indexValue + 1) % this.slideTargets.length
+    this.showSlide(this.indexValue)
+  }
+
+  showSlide(index) {
+    this.slideTargets.forEach((slide, i) => {
+      slide.classList.toggle("current", i === index)
+    })
+  }
+}
+```
+
+### Invokers: Declarative HTML-First Interactions
+```html
+<!-- Invokers: Simple interactions need no JavaScript -->
+<div id="slideshow">
+  <div class="slide current">Slide 1</div>
+  <div class="slide">Slide 2</div>
+  <button command="--carousel:nav:next" commandfor="slideshow">Next</button>
+</div>
+<!-- No JavaScript controller needed -->
+```
+
+**Key Differences:**
+- **JavaScript Requirements**: Stimulus requires controller classes for all interactions; Invokers keeps common patterns purely declarative
+- **Standards Alignment**: Stimulus uses custom `data-*` conventions; Invokers polyfills emerging W3C/WHATWG web standards
+- **Code Organization**: Stimulus groups behavior in JavaScript classes; Invokers describes behavior directly in HTML
+- **Bundle Size**: Stimulus ~9kB minimal; Invokers 25.8kB core + modular commands as needed
+- **Learning Curve**: Stimulus requires JavaScript class knowledge; Invokers uses HTML-like command syntax
+
+**Use Stimulus if** you prefer explicit JavaScript organization and have complex business logic.  
+**Use Invokers if** you want to minimize JavaScript for common UI patterns and prefer future-proof web standards.
+
 ## 🎯 Why Invokers?
 
 **Write interactive UIs without JavaScript.** Invokers transforms static HTML into dynamic, interactive interfaces using declarative attributes. Perfect for progressive enhancement, component libraries, and reducing JavaScript complexity.
