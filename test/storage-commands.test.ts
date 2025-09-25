@@ -446,7 +446,7 @@ describe('Storage Commands', () => {
       expect(output.textContent).toBe('temp value');
 
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Should be expired now
       output.dispatchEvent(getCommandEvent);
