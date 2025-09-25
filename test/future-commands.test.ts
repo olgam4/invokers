@@ -46,6 +46,10 @@ global.navigator = {
 // Import after setting up globals - use compatibility layer for full functionality
 import '../src/compatible';
 
+// Ensure polyfill is applied synchronously for test environment
+import { apply as applyPolyfill } from '../src/polyfill';
+applyPolyfill();
+
 describe('Future Commands', () => {
   beforeEach(async () => {
     document.body.innerHTML = '';

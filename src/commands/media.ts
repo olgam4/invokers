@@ -179,6 +179,100 @@ const mediaCommands: Record<string, CommandCallback> = {
     targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
   },
 
+  /**
+   * `--scroll:into-view`: Smoothly scrolls the target element into view.
+   */
+  "--scroll:into-view": ({ targetElement }: CommandContext) => {
+    targetElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  },
+
+  /**
+   * `--scroll:top`: Scrolls the target container to its top, or scrolls the target element into view at the top.
+   */
+  "--scroll:top": ({ targetElement }: CommandContext) => {
+    // If the target element has scrollable content, scroll it to top
+    if (targetElement.scrollHeight > targetElement.clientHeight) {
+      targetElement.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      // Otherwise scroll the element into view at the top of the viewport
+      targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  },
+
+  /**
+   * `--scroll:bottom`: Scrolls the target container to its bottom, or scrolls the target element into view at the bottom.
+   */
+  "--scroll:bottom": ({ targetElement }: CommandContext) => {
+    // If the target element has scrollable content, scroll it to bottom
+    if (targetElement.scrollHeight > targetElement.clientHeight) {
+      targetElement.scrollTo({ top: targetElement.scrollHeight - targetElement.clientHeight, behavior: "smooth" });
+    } else {
+      // Otherwise scroll the element into view at the bottom of the viewport
+      targetElement.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  },
+
+  /**
+   * `--scroll:center`: Scrolls the target element to center it in view.
+   */
+  "--scroll:center": ({ targetElement }: CommandContext) => {
+    targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+  },
+
+  /**
+   * `--scroll:start`: Alias for --scroll:top.
+   */
+  "--scroll:start": ({ targetElement }: CommandContext) => {
+    if (targetElement.scrollHeight > targetElement.clientHeight) {
+      targetElement.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  },
+
+  /**
+   * `--scroll:end`: Alias for --scroll:bottom.
+   */
+  "--scroll:end": ({ targetElement }: CommandContext) => {
+    if (targetElement.scrollHeight > targetElement.clientHeight) {
+      targetElement.scrollTo({ top: targetElement.scrollHeight - targetElement.clientHeight, behavior: "smooth" });
+    } else {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  },
+
+  /**
+   * `--scroll:page-top`: Scrolls to the top of the page.
+   */
+  "--scroll:page-top": ({ }: CommandContext) => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  },
+
+  /**
+   * `--scroll:page-bottom`: Scrolls to the bottom of the page.
+   */
+  "--scroll:page-bottom": ({ }: CommandContext) => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+  },
+
+  /**
+   * `--scroll:left`: Scrolls the target element to its left edge.
+   */
+  "--scroll:left": ({ targetElement }: CommandContext) => {
+    if (targetElement.scrollWidth > targetElement.clientWidth) {
+      targetElement.scrollTo({ left: 0, behavior: "smooth" });
+    }
+  },
+
+  /**
+   * `--scroll:right`: Scrolls the target element to its right edge.
+   */
+  "--scroll:right": ({ targetElement }: CommandContext) => {
+    if (targetElement.scrollWidth > targetElement.clientWidth) {
+      targetElement.scrollTo({ left: targetElement.scrollWidth - targetElement.clientWidth, behavior: "smooth" });
+    }
+  },
+
   // --- Clipboard Commands ---
 
   /**

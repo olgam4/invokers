@@ -349,17 +349,17 @@ const flowCommands: Record<string, CommandCallback> = {
 
   // --- Event Emission ---
 
-  /**
-   * `--emit`: Dispatches custom events for advanced interactions.
-   * The first parameter is the event type, remaining parameters form the event detail.
-   *
-   * @example
-   * ```html
-   * <button type="button" command="--emit:user-action:save-form">
-   *   Emit Save Event
-   * </button>
-   * ```
-   */
+   /**
+    * `--emit`: Dispatches custom events for advanced interactions.
+    * The first parameter is the event type, remaining parameters form the event detail.
+    *
+    * @example
+    * ```html
+    * <button type="button" command="--emit:user-action:save-form">
+    *   Emit Save Event
+    * </button>
+    * ```
+    */
       "--emit": ({ params, targetElement }: CommandContext) => {
        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
          console.log('--emit called with targetElement:', targetElement);
@@ -371,27 +371,180 @@ const flowCommands: Record<string, CommandCallback> = {
          });
        }
 
-       let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
-       // Try to parse as JSON if it looks like JSON
-       if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
-         try {
-           detail = JSON.parse(detail);
-         } catch (e) {
-           // Keep as string if not valid JSON
-         }
-       }
-        const event = new CustomEvent(eventType, {
-          bubbles: true,
-          composed: true,
-          detail
-        });
+        let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
+        // Decode HTML entities in the detail string
+        if (typeof detail === 'string') {
+          detail = detail.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&apos;/g, "'");
+        }
+        // Try to parse as JSON if it looks like JSON
+        if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
+          try {
+            detail = JSON.parse(detail);
+          } catch (e) {
+            // Keep as string if not valid JSON
+          }
+        }
+          const event = new CustomEvent(eventType, {
+            bubbles: true,
+            composed: true,
+            detail
+          });
 
         if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
           console.log('--emit dispatching event:', eventType, 'detail:', detail, 'to target:', targetElement);
         }
         // Dispatch to target element for local events, allowing bubbling for data-on-event listeners
         targetElement.dispatchEvent(event);
+     },
+
+  // --- Pipeline Commands ---
+
+  /**
+   * `--and-then:reset`: Resets the state of all <and-then> elements that are children of the specified element.
+   * If no element ID is provided, resets children of the invoker.
+   * This allows <and-then> chains to be re-executed after they have been marked as completed.
+   *
+   * @example
+   * ```html
+   * <button command="--and-then:reset:start-button">Reset And-Then States</button>
+   * ```
+   */
+  "--and-then:reset": ({ invoker, params }: CommandContext) => {
+    const targetId = params[0] || invoker.id;
+    const targetElement = targetId ? document.getElementById(targetId) : invoker;
+
+    if (!targetElement) {
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn('And-Then reset: Target element not found:', targetId);
+      }
+      return;
+    }
+
+    const andThenElements = Array.from(targetElement.children).filter(
+      child => child.tagName.toLowerCase() === 'and-then'
+    ) as HTMLElement[];
+
+    const resetStates = (element: HTMLElement) => {
+      // Only reset if not currently active (to avoid interfering with running executions)
+      if (element.dataset.state !== 'active') {
+        delete element.dataset.state;
+      }
+      // Recursively reset nested <and-then> elements
+      const nested = Array.from(element.children).filter(
+        child => child.tagName.toLowerCase() === 'and-then'
+      ) as HTMLElement[];
+      nested.forEach(resetStates);
+    };
+
+    andThenElements.forEach(resetStates);
+  },
+
+  /**
+   * `--pipeline:execute`: Executes a predefined pipeline of commands defined in a template.
+   * The pipeline is defined using <pipeline-step> elements within a <template data-pipeline="true">.
+   *
+   * @example
+   * ```html
+   * <template id="my-pipeline" data-pipeline="true">
+   *   <pipeline-step command="--text:set:Step 1" target="status" />
+   *   <pipeline-step command="--text:set:Step 2" target="status" delay="500" />
+   * </template>
+   * <button command="--pipeline:execute:my-pipeline">Run Pipeline</button>
+   * ```
+   */
+  "--pipeline:execute": async ({ invoker, params }: CommandContext) => {
+    const pipelineName = params[0];
+     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+     console.log('Pipeline: Looking for template with ID:', pipelineName);
      }
+     
+     if (!pipelineName) {
+        throw createInvokerError('Pipeline execute command requires a pipeline name parameter', ErrorSeverity.ERROR, {
+           command: '--pipeline:execute', element: invoker
+         });
+     }
+
+     const template = document.getElementById(pipelineName);
+     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('Pipeline: Found template:', template, 'with dataset:', template?.dataset);
+     }
+     
+     if (!(template instanceof HTMLTemplateElement) || template.dataset.pipeline !== 'true') {
+     throw createInvokerError(`Pipeline template "${pipelineName}" not found or not marked as pipeline`, ErrorSeverity.ERROR, {
+       command: '--pipeline:execute', element: invoker
+       });
+    }
+
+    const pipelineSteps = Array.from(template.content.querySelectorAll('pipeline-step'));
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('Pipeline: Found', pipelineSteps.length, 'pipeline steps:', pipelineSteps);
+    }
+    
+    if (pipelineSteps.length === 0) {
+      throw createInvokerError(`Pipeline "${pipelineName}" contains no steps`, ErrorSeverity.ERROR, {
+        command: '--pipeline:execute', element: invoker
+      });
+    }
+
+    // Execute steps sequentially
+    let hasError = false;
+    
+    for (let stepIndex = 0; stepIndex < pipelineSteps.length; stepIndex++) {
+      const step = pipelineSteps[stepIndex];
+      const command = step.getAttribute('command');
+      const target = step.getAttribute('target') || 'body';
+      const condition = step.getAttribute('condition') || 'success';
+      const delay = parseInt(step.getAttribute('delay') || '0');
+      const once = step.hasAttribute('once');
+
+      if (!command) {
+        continue;
+      }
+
+      // Check condition
+      if ((condition === 'success' && hasError) || (condition === 'error' && !hasError)) {
+        continue;
+      }
+
+      // Apply delay if specified
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      // Execute the command directly using InvokerManager
+      try {
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.log('Pipeline: Executing command:', command, 'on target:', target);
+        }
+
+        // Import InvokerManager and execute command directly
+        const { InvokerManager } = await import('../core');
+        const manager = InvokerManager.getInstance();
+
+        // Handle comma-separated commands with escaped comma support
+        const individualCommands = splitCommands(command);
+
+        for (const individualCommand of individualCommands) {
+          await manager.executeCommand(individualCommand, target, invoker);
+        }
+
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.log('Pipeline: Command executed successfully');
+        }
+      } catch (error) {
+        hasError = true;
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.error('Pipeline step error:', error);
+        }
+        // Continue to next step to allow error handling steps
+      }
+
+      // Handle 'once' attribute - remove step after execution
+      if (once && step.parentNode) {
+        step.parentNode.removeChild(step);
+      }
+    }
+  }
 };
 
 // --- Private Helper Functions ---
@@ -453,6 +606,40 @@ function parseHTML(html: string): DocumentFragment {
  * registerFlowCommands(invokerManager);
  * ```
  */
+// Helper function to split commands on commas, respecting escaped commas
+function splitCommands(commandString: string): string[] {
+  const commands: string[] = [];
+  let currentCommand = '';
+  let i = 0;
+
+  while (i < commandString.length) {
+    const char = commandString[i];
+
+    if (char === '\\' && i + 1 < commandString.length && commandString[i + 1] === ',') {
+      // Escaped comma - include the comma in the current command
+      currentCommand += ',';
+      i += 2; // Skip the backslash and comma
+    } else if (char === ',') {
+      // Unescaped comma - split here
+      if (currentCommand.trim().length > 0) {
+        commands.push(currentCommand.trim());
+      }
+      currentCommand = '';
+      i++;
+    } else {
+      currentCommand += char;
+      i++;
+    }
+  }
+
+  // Add the last command if any
+  if (currentCommand.trim().length > 0) {
+    commands.push(currentCommand.trim());
+  }
+
+  return commands;
+}
+
 export function registerFlowCommands(manager: InvokerManager): void {
   for (const name in flowCommands) {
     if (flowCommands.hasOwnProperty(name)) {

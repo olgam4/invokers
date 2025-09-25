@@ -47,7 +47,7 @@ import { EventTriggerManager } from './event-trigger-manager';
 export function enableEventTriggers(): void {
   const eventTriggerManager = EventTriggerManager.getInstance();
   
-  if (!(eventTriggerManager as any).isInitialized) {
+  if (!eventTriggerManager.initialized) {
     eventTriggerManager.initialize();
     
     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {

@@ -33,6 +33,9 @@ global.CustomEvent = dom.window.CustomEvent;
 // Import after setting up globals
 import '../src/index';
 import { InvokerManager } from '../src/compatible';
+import { registerBaseCommands } from '../src/commands/base';
+import { registerFormCommands } from '../src/commands/form';
+import { registerFlowCommands } from '../src/commands/flow';
 
 describe('Pipeline Functionality', () => {
   let invokerManager: InvokerManager;
@@ -43,14 +46,22 @@ describe('Pipeline Functionality', () => {
     // Get singleton InvokerManager instance
     invokerManager = InvokerManager.getInstance();
 
-    // Clear any existing custom commands for clean state
-    try {
-      (invokerManager as any).commands.clear();
-      (invokerManager as any).commandStates.clear();
-      (invokerManager as any).sortedCommandKeys = [];
-    } catch (e) {
-      // Reset method might not exist in all scenarios
+    // Ensure command event listeners are attached in test environment
+    invokerManager.ensureListenersAttached();
+
+    // Enable debug mode for troubleshooting
+    if (typeof window !== 'undefined') {
+      (window as any).Invoker = { ...(window as any).Invoker, debug: true };
     }
+
+    // Use proper reset method instead of manually clearing commands
+    // NOTE: Don't call reset() when using compatible module as it clears pre-registered commands
+    // invokerManager.reset();
+
+    // Commands are already registered in compatible module, no need to re-register
+    // registerBaseCommands(invokerManager);
+    // registerFormCommands(invokerManager);
+    // registerFlowCommands(invokerManager);
   });
 
   describe('Enhanced Attribute-Based Chaining', () => {
@@ -731,5 +742,294 @@ describe('Pipeline Functionality', () => {
       }, 300);
     });
   });
+
+  describe('--pipeline:execute command', () => {
+    it('should execute a pipeline defined in a template', async () => {
+      // First check if the command is registered
+      console.log('Registered commands:', (invokerManager as any).commands.keys());
+      const hasPipelineCommand = (invokerManager as any).commands.has('--pipeline:execute');
+      console.log('Has --pipeline:execute command:', hasPipelineCommand);
+      
+      document.body.innerHTML = `
+        <template id="test-pipeline" data-pipeline="true">
+          <pipeline-step command="--text:set:Step 1 executed" target="pipeline-output" />
+          <pipeline-step command="--text:append: → Step 2 executed" target="pipeline-output" delay="100" />
+        </template>
+
+        <button id="pipeline-btn" command="--pipeline:execute:test-pipeline" commandfor="pipeline-output">
+          Run Pipeline
+        </button>
+
+        <div id="pipeline-output">Initial</div>
+      `;
+
+      const button = document.getElementById('pipeline-btn') as HTMLButtonElement;
+      const output = document.getElementById('pipeline-output') as HTMLElement;
+
+      // Add a listener to see if any command event is fired
+      output.addEventListener('command', (event) => {
+        console.log('Command event received:', event);
+        console.log('Command:', (event as any).command);
+        console.log('Source:', (event as any).source);
+      });
+
+      button.click();
+
+      // Wait for pipeline to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(output.textContent).toBe('Step 1 executed → Step 2 executed');
+    });
+
+    it('should throw error for missing pipeline template', async () => {
+      const invoker = document.createElement('button');
+
+      await expect(invokerManager.executeCommand('--pipeline:execute:missing-pipeline', '', invoker)).rejects.toThrow('Pipeline template "missing-pipeline" not found or not marked as pipeline');
+    });
+
+    it('should throw error for template without data-pipeline', async () => {
+      document.body.innerHTML = `
+        <template id="invalid-pipeline">
+          <pipeline-step command="--text:set:Test" target="output" />
+        </template>
+      `;
+
+      const invoker = document.createElement('button');
+
+      await expect(invokerManager.executeCommand('--pipeline:execute:invalid-pipeline', '', invoker)).rejects.toThrow('Pipeline template "invalid-pipeline" not found or not marked as pipeline');
+    });
+
+    it('should handle pipeline steps with success condition', async () => {
+      document.body.innerHTML = `
+        <template id="success-pipeline" data-pipeline="true">
+          <pipeline-step command="--text:set:Success executed" target="pipeline-output" condition="success" />
+          <pipeline-step command="--text:set:Error executed" target="pipeline-output" condition="error" />
+        </template>
+
+        <button id="pipeline-btn" command="--pipeline:execute:success-pipeline" commandfor="pipeline-output">
+          Run Pipeline
+        </button>
+
+        <div id="pipeline-output">Initial</div>
+      `;
+
+      const button = document.getElementById('pipeline-btn') as HTMLButtonElement;
+      const output = document.getElementById('pipeline-output') as HTMLElement;
+
+      button.click();
+
+      // Wait for pipeline to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(output.textContent).toBe('Success executed');
+    });
+
+    it('should handle pipeline steps with error condition when error occurs', async () => {
+      // Mock a command that throws error
+      invokerManager.register('--test:error', () => {
+        throw new Error('Test error');
+      });
+
+      document.body.innerHTML = `
+        <template id="error-pipeline" data-pipeline="true">
+          <pipeline-step command="--test:error" target="pipeline-output" />
+          <pipeline-step command="--text:set:Error handled" target="pipeline-output" condition="error" />
+        </template>
+
+        <button id="pipeline-btn" command="--pipeline:execute:error-pipeline" commandfor="pipeline-output">
+          Run Pipeline
+        </button>
+
+        <div id="pipeline-output">Initial</div>
+      `;
+
+      const button = document.getElementById('pipeline-btn') as HTMLButtonElement;
+      const output = document.getElementById('pipeline-output') as HTMLElement;
+
+      button.click();
+
+      // Wait for pipeline to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(output.textContent).toBe('Error handled');
+    });
+
+    it('should handle once attribute by removing step after execution', async () => {
+      document.body.innerHTML = `
+        <template id="once-pipeline" data-pipeline="true">
+          <pipeline-step command="--text:set:Once executed" target="pipeline-output" once="true" />
+          <pipeline-step command="--text:append: → Second run" target="pipeline-output" />
+        </template>
+
+        <button id="pipeline-btn" command="--pipeline:execute:once-pipeline" commandfor="pipeline-output">
+          Run Pipeline
+        </button>
+
+        <div id="pipeline-output">Initial</div>
+      `;
+
+      const template = document.getElementById('once-pipeline') as HTMLTemplateElement;
+      const button = document.getElementById('pipeline-btn') as HTMLButtonElement;
+      const output = document.getElementById('pipeline-output') as HTMLElement;
+
+      // First execution
+      button.click();
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(output.textContent).toBe('Once executed → Second run');
+      expect(template.content.querySelectorAll('pipeline-step').length).toBe(1); // One step removed
+
+      // Reset output
+      output.textContent = 'Initial';
+
+      // Second execution - once step should be gone
+      button.click();
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(output.textContent).toBe(' → Second run'); // Only the remaining step
+    });
+
+    it('should skip steps without command attribute', async () => {
+      document.body.innerHTML = `
+        <template id="skip-pipeline" data-pipeline="true">
+          <pipeline-step target="pipeline-output" />
+          <pipeline-step command="--text:set:Valid step" target="pipeline-output" />
+        </template>
+
+        <button id="pipeline-btn" command="--pipeline:execute:skip-pipeline" commandfor="pipeline-output">
+          Run Pipeline
+        </button>
+
+        <div id="pipeline-output">Initial</div>
+      `;
+
+      const button = document.getElementById('pipeline-btn') as HTMLButtonElement;
+      const output = document.getElementById('pipeline-output') as HTMLElement;
+
+      button.click();
+
+      // Wait for pipeline to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(output.textContent).toBe('Valid step');
+    });
+
+    it('should throw error for empty pipeline', async () => {
+      document.body.innerHTML = `
+        <template id="empty-pipeline" data-pipeline="true">
+        </template>
+      `;
+
+      const invoker = document.createElement('button');
+
+      await expect(invokerManager.executeCommand('--pipeline:execute:empty-pipeline', '', invoker)).rejects.toThrow('Pipeline "empty-pipeline" contains no steps');
+    });
+  });
+
+  describe('Comma-separated commands', () => {
+    it('should execute multiple comma-separated commands on regular elements', async () => {
+      document.body.innerHTML = `
+        <button id="multi-cmd-btn" command="--text:set:First, --text:append: Second" commandfor="multi-target">
+          Multi Command
+        </button>
+        <div id="multi-target">Initial</div>
+      `;
+
+      const button = document.getElementById('multi-cmd-btn') as HTMLButtonElement;
+      const target = document.getElementById('multi-target') as HTMLElement;
+
+      button.click();
+
+      // Wait for commands to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(target.textContent).toBe('First Second');
+    });
+
+    it('should execute multiple comma-separated commands in pipeline steps', async () => {
+      document.body.innerHTML = `
+        <template id="multi-step-pipeline" data-pipeline="true">
+          <pipeline-step command="--text:set:Step 1, --text:append: executed" target="multi-pipeline-target" />
+          <pipeline-step command="--text:append: → Step 2, --text:append: done" target="multi-pipeline-target" delay="50" />
+        </template>
+
+        <button id="multi-pipeline-btn" command="--pipeline:execute:multi-step-pipeline">
+          Run Multi-Step Pipeline
+        </button>
+
+        <div id="multi-pipeline-target">Initial</div>
+      `;
+
+      const button = document.getElementById('multi-pipeline-btn') as HTMLButtonElement;
+      const target = document.getElementById('multi-pipeline-target') as HTMLElement;
+
+      button.click();
+
+      // Wait for pipeline to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(target.textContent).toBe('Step 1 executed → Step 2 done');
+    });
+
+    it('should handle mixed valid and invalid comma-separated commands gracefully', async () => {
+      document.body.innerHTML = `
+        <button id="mixed-cmd-btn" command="--text:set:Valid, invalid-command, --text:append: Also Valid" commandfor="mixed-target">
+          Mixed Commands
+        </button>
+        <div id="mixed-target">Initial</div>
+      `;
+
+      const button = document.getElementById('mixed-cmd-btn') as HTMLButtonElement;
+      const target = document.getElementById('mixed-target') as HTMLElement;
+
+      button.click();
+
+      // Wait for commands to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Should execute valid commands and skip invalid ones
+      expect(target.textContent).toBe('Valid Also Valid');
+    });
+
+    it('should handle whitespace around comma-separated commands', async () => {
+      document.body.innerHTML = `
+        <button id="whitespace-btn" command="  --text:set:Clean  ,  --text:append: Text  " commandfor="whitespace-target">
+          Whitespace Commands
+        </button>
+        <div id="whitespace-target">Initial</div>
+      `;
+
+      const button = document.getElementById('whitespace-btn') as HTMLButtonElement;
+      const target = document.getElementById('whitespace-target') as HTMLElement;
+
+      button.click();
+
+      // Wait for commands to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(target.textContent).toBe('Clean Text');
+    });
+
+    it('should handle escaped commas in command parameters', async () => {
+      document.body.innerHTML = `
+        <button id="escaped-btn" command="--text:set:Hello\\, World!, --text:append: How are you?" commandfor="escaped-target">
+          Escaped Comma Commands
+        </button>
+        <div id="escaped-target">Initial</div>
+      `;
+
+      const button = document.getElementById('escaped-btn') as HTMLButtonElement;
+      const target = document.getElementById('escaped-target') as HTMLElement;
+
+      button.click();
+
+      // Wait for commands to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(target.textContent).toBe('Hello, World! How are you?');
+    });
+  });
 });
+
+
 

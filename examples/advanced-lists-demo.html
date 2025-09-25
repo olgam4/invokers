@@ -438,19 +438,13 @@
                 <h4>Bulk Actions</h4>
                 <button class="btn"
                         command="--data:set:bulk-action:complete-all"
-                        commandfor="todo-app"
-                        data-bind-to="body"
-                        data-bind-as="data:bulk-action">Complete All Pending</button>
+                        commandfor="todo-app">Complete All Pending</button>
                 <button class="btn danger"
                         command="--data:set:bulk-action:clear-completed"
-                        commandfor="todo-app"
-                        data-bind-to="body"
-                        data-bind-as="data:bulk-action">Clear Completed</button>
+                        commandfor="todo-app">Clear Completed</button>
                 <button class="btn"
                         command="--data:set:bulk-action:export"
-                        commandfor="todo-app"
-                        data-bind-to="body"
-                        data-bind-as="data:bulk-action">Export to JSON</button>
+                        commandfor="todo-app">Export to JSON</button>
             </div>
         </div>
     </div>
@@ -461,9 +455,7 @@
             <input type="checkbox" class="todo-checkbox"
                    command-on="change"
                    command="--data:set:toggle:{{id}}"
-                   commandfor="todo-app"
-                   data-bind-to="body"
-                   data-bind-as="data:toggle-item">
+                   commandfor="todo-app">
 
             <div class="todo-content">
                 <div class="title priority-{{priority}}">{{title}}</div>
@@ -478,14 +470,10 @@
             <div class="todo-actions">
                 <button class="btn small"
                         command="--data:set:edit:{{id}}"
-                        commandfor="todo-app"
-                        data-bind-to="body"
-                        data-bind-as="data:edit-item">Edit</button>
+                        commandfor="todo-app">Edit</button>
                 <button class="btn small danger"
                         command="--data:set:delete:{{id}}"
-                        commandfor="todo-app"
-                        data-bind-to="body"
-                        data-bind-as="data:delete-item">Delete</button>
+                        commandfor="todo-app">Delete</button>
             </div>
         </div>
     </template>
@@ -528,14 +516,10 @@
             <div class="actions">
                 <button class="btn"
                         command="--data:set:cancel-edit:{{id}}"
-                        commandfor="todo-app"
-                        data-bind-to="body"
-                        data-bind-as="data:cancel-edit">Cancel</button>
+                        commandfor="todo-app">Cancel</button>
                 <button class="btn primary"
                         command="--data:set:save-edit:{{id}}"
-                        commandfor="todo-app"
-                        data-bind-to="#edit-form-{{id}}"
-                        data-bind-as="data:save-edit-json">Save</button>
+                        commandfor="todo-app">Save</button>
             </div>
         </div>
     </template>
@@ -788,6 +772,66 @@
             document.addEventListener('edit-mode-changed', () => {
                 renderTodoList();
             });
+
+            // Handle data changes on todo-app element
+            todoApp.addEventListener('data:edit', (e) => {
+                const todoId = e.detail?.value?.split(':')[1];
+                if (todoId) {
+                    todoApp.dataset.editingId = todoId;
+                    renderTodoList();
+                }
+            });
+
+            todoApp.addEventListener('data:cancel-edit', (e) => {
+                delete todoApp.dataset.editingId;
+                renderTodoList();
+            });
+
+            todoApp.addEventListener('data:saveEdit', (e) => {
+                const todoId = e.detail?.value?.split(':')[1];
+                const editForm = document.getElementById(`edit-form-${todoId}`);
+                if (editForm && todoId) {
+                    const todos = JSON.parse(todoApp.dataset.todos || '[]');
+                    const todoIndex = todos.findIndex(t => t.id === todoId);
+                    if (todoIndex !== -1) {
+                        todos[todoIndex] = {
+                            ...todos[todoIndex],
+                            title: editForm.dataset.title || todos[todoIndex].title,
+                            description: editForm.dataset.description || todos[todoIndex].description,
+                            priority: editForm.dataset.priority || todos[todoIndex].priority
+                        };
+                        todoApp.dataset.todos = JSON.stringify(todos);
+                        delete todoApp.dataset.editingId;
+                        renderTodoList();
+                        updateStats();
+                    }
+                }
+            });
+
+            todoApp.addEventListener('data:delete', (e) => {
+                const todoId = e.detail?.value?.split(':')[1];
+                if (todoId) {
+                    const todos = JSON.parse(todoApp.dataset.todos || '[]');
+                    const filteredTodos = todos.filter(t => t.id !== todoId);
+                    todoApp.dataset.todos = JSON.stringify(filteredTodos);
+                    renderTodoList();
+                    updateStats();
+                }
+            });
+
+            todoApp.addEventListener('data:toggle', (e) => {
+                const todoId = e.detail?.value?.split(':')[1];
+                if (todoId) {
+                    const todos = JSON.parse(todoApp.dataset.todos || '[]');
+                    const todoIndex = todos.findIndex(t => t.id === todoId);
+                    if (todoIndex !== -1) {
+                        todos[todoIndex].completed = !todos[todoIndex].completed;
+                        todoApp.dataset.todos = JSON.stringify(todos);
+                        renderTodoList();
+                        updateStats();
+                    }
+                }
+            });
         });
 
         function renderTodoList() {
@@ -903,14 +947,10 @@
                 <div class="todo-actions">
                     <button class="btn small"
                             command="--data:set:edit:${todo.id}"
-                            commandfor="todo-app"
-                            data-bind-to="body"
-                            data-bind-as="data:edit-item">Edit</button>
+                            commandfor="todo-app">Edit</button>
                     <button class="btn small danger"
                             command="--data:set:delete:${todo.id}"
-                            commandfor="todo-app"
-                            data-bind-to="body"
-                            data-bind-as="data:delete-item">Delete</button>
+                            commandfor="todo-app">Delete</button>
                 </div>
             `;
 
@@ -956,21 +996,18 @@
                 <div class="actions">
                     <button class="btn"
                             command="--data:set:cancel-edit:${todo.id}"
-                            commandfor="todo-app"
-                            data-bind-to="body"
-                            data-bind-as="data:cancel-edit">Cancel</button>
+                            commandfor="todo-app">Cancel</button>
                     <button class="btn primary"
-                            command="--data:set:save-edit:${todo.id}"
-                            commandfor="todo-app"
-                            data-bind-to="#edit-form-${todo.id}"
-                            data-bind-as="data:save-edit-json">Save</button>
+                            command="--data:set:saveEdit:${todo.id}"
+                            commandfor="todo-app">Save</button>
                 </div>
             `;
 
-            // Set initial dataset values
-            formDiv.dataset.title = todo.title;
-            formDiv.dataset.description = todo.description;
-            formDiv.dataset.priority = todo.priority;
+             // Set initial dataset values
+             formDiv.dataset.id = todo.id;
+             formDiv.dataset.title = todo.title;
+             formDiv.dataset.description = todo.description;
+             formDiv.dataset.priority = todo.priority;
 
             // Add event listeners to update dataset
             const titleInput = formDiv.querySelector('input[type="text"]');

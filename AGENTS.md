@@ -1025,6 +1025,12 @@ Data manipulation and reactive binding:
 - Expression evaluation is sandboxed (no global access, function calls)
 - Invalid expressions return `undefined` and log errors
 
+### JSON in Commands
+- When passing JSON to commands (e.g., `--emit:event:{"key":"value"}`), avoid HTML entity encoding
+- ❌ Wrong: `command="--emit:notify:{\"message\":\"Hello\"}"`
+- ❌ Wrong: `command="--emit:notify:{&quot;message&quot;:&quot;Hello&quot;}"`
+- ✅ Correct: `command='--emit:notify:{"message":"Hello"}'` (use single quotes around attribute)
+
 ### State Management
 - Command states: `active`, `completed`, `disabled`, `once`
 - `once` commands execute once then become `completed`
@@ -1325,6 +1331,40 @@ parseCommandString("--text:set:Hello {{name}}!");
 - **Custom Commands**: Must start with `--` (double dash)
 - **Native Commands**: No prefix (e.g., `show-modal`, `close`)
 - **Automatic Prefixing**: Commands registered without `--` are automatically prefixed
+
+#### Comma-Separated Commands
+Multiple commands can be specified in a single `command` attribute, separated by commas:
+
+```html
+<!-- Multiple commands on one element -->
+<button command="--text:set:First, --text:append: Second" commandfor="output">
+  Execute Both Commands
+</button>
+<div id="output">Initial</div>
+```
+
+**Features:**
+- **Sequential Execution**: Commands execute in the order specified
+- **Shared Target**: All commands in the list target the same element(s)
+- **Error Isolation**: Invalid commands are skipped, valid ones continue
+- **Whitespace Tolerance**: Extra spaces around commas are ignored
+
+**Escaped Commas:**
+Use backslash to include literal commas in command parameters:
+
+```html
+<!-- Escaped comma in parameter -->
+<button command="--text:set:Hello\, World!, --text:append: Welcome" commandfor="output">
+  Greeting
+</button>
+<!-- Results in: "Hello, World! Welcome" -->
+```
+
+**Parsing Rules:**
+- Commands are split on unescaped commas
+- `\` escapes the following comma: `\,` → `,`
+- `\\` produces a literal backslash: `\\` → `\`
+- Whitespace around commands and commas is trimmed
 
 ### Interpolation Engine (`{{...}}`)
 

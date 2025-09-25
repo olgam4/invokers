@@ -1,5 +1,4 @@
 import { InvokerManager } from '../src/compatible';
-import { InvokerManager } from '../src';
 import { enableAdvancedEvents } from '../src/advanced';
 import { registerBaseCommands } from '../src/commands/base';
 import { registerFormCommands } from '../src/commands/form';
@@ -13,16 +12,15 @@ describe('Advanced Integration Commands (--text, --attr, --dom)', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     invokerManager = InvokerManager.getInstance();
-    invokerManager.reset();
+    // NOTE: Don't call reset() when using compatible module as it clears pre-registered commands
+    // invokerManager.reset();
     enableAdvancedEvents();
-    registerBaseCommands(invokerManager);
-    registerFormCommands(invokerManager);
-    registerDomCommands(invokerManager);
-    registerBrowserCommands(invokerManager);
+    // Commands are already registered in compatible module, no need to re-register
   });
 
   afterEach(() => {
-    invokerManager.reset();
+    // NOTE: Don't call reset() when using compatible module as it clears pre-registered commands
+    // invokerManager.reset();
   });
 
   describe('Basic Command Integration', () => {

@@ -205,13 +205,13 @@ export function _dispatchCommandEvent(source: HTMLElement, command: string, _tar
     console.log('Invokers: _dispatchCommandEvent called with command:', command);
   }
 
-  // Ensure command listener is attached (for test environments where document changes)
-  attachCommandListener();
+  // Command listener is now handled by InvokerManager
 
   // Create the CommandEvent with the triggering event attached
   const commandEvent = new (window as any).CommandEvent("command", {
     command,
     source,
+    target: _targetElement,
     cancelable: true,
     bubbles: true,
     composed: true,
@@ -228,31 +228,7 @@ export function _dispatchCommandEvent(source: HTMLElement, command: string, _tar
 // Get the singleton instance
 const invokerInstance = InvokerManager.getInstance();
 
-// Function to attach global command event listener
-let attachedDocument: Document | null = null;
-function attachCommandListener() {
-  if (typeof document !== 'undefined' && document !== attachedDocument) {
-    if (attachedDocument) {
-      // Remove from old document if it exists
-      attachedDocument.removeEventListener('command', handleCommandEvent);
-    }
-    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-      console.log('Invokers: Attaching command event listener to document');
-    }
-    document.addEventListener('command', handleCommandEvent);
-    attachedDocument = document;
-  }
-}
-
-function handleCommandEvent(event: any) {
-  if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-    console.log('Invokers: Command event received:', event.command);
-  }
-  invokerInstance.handleCommand(event);
-}
-
-// Attach immediately if document exists
-attachCommandListener();
+// Command event listener is now handled by InvokerManager.deferListen()
 
 // Setup the global for CDN users and backward compatibility
 if (typeof window !== 'undefined') {

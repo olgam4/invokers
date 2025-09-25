@@ -58,8 +58,18 @@ describe('Interest Invokers', () => {
       <div id="link-target" popover="auto">Rich content here</div>
     `;
 
-    // Reapply polyfill after DOM setup
+    // Completely reset polyfill state for test isolation
     delete (window as any).interestForPolyfillInstalled;
+    
+    // Remove polyfill properties if they exist to simulate clean state
+    try {
+      delete (HTMLButtonElement.prototype as any).interestForElement;
+      delete (HTMLAnchorElement.prototype as any).interestForElement;
+      delete (HTMLAreaElement.prototype as any).interestForElement;
+    } catch (e) {
+      // Ignore errors if properties don't exist
+    }
+    
     applyInterestInvokers();
   });
 

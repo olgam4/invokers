@@ -45,11 +45,11 @@ describe('Enhanced Error Handling & Debugging', () => {
 
     it('should warn about command overwrites', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       invokerManager.register('--test', () => {});
       invokerManager.register('--test', () => {}); // Overwrite
-      
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', expect.any(Error));
+
+      expect(consoleSpy).toHaveBeenCalledWith('Invokers: Command "--test" is already registered and will be overwritten');
       consoleSpy.mockRestore();
     });
 

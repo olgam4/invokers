@@ -20,6 +20,7 @@ import type { InvokerManager } from '../core';
 import type { CommandCallback, CommandContext } from '../index';
 import { createInvokerError, ErrorSeverity, isInterpolationEnabled } from '../index';
 import { interpolateString } from '../advanced/interpolation';
+import { resolveTargets } from '../target-resolver';
 
 /**
  * Data manipulation commands for complex data operations and state management.
@@ -33,31 +34,83 @@ const dataCommands: Record<string, CommandCallback> = {
    * `--data:set`: Sets a data attribute on the target element.
    * @example `<button command="--data:set:userId:123" commandfor="#profile">Set User ID</button>`
    */
-  "--data:set": ({ invoker, targetElement, params }: CommandContext) => {
-    const key = params[0];
-    let value = params[1];
-    if (!key) {
-      throw createInvokerError('Data set command requires a key parameter', ErrorSeverity.ERROR, {
-        command: '--data:set', element: invoker
-      });
-    }
+   "--data:set": ({ invoker, targetElement, params }: CommandContext) => {
+     const key = params[0];
+     let value = params[1];
+     if (!key) {
+       throw createInvokerError('Data set command requires a key parameter', ErrorSeverity.ERROR, {
+         command: '--data:set', element: invoker
+       });
+     }
 
-    // Interpolate value if interpolation is enabled and contains {{...}}
-    if (isInterpolationEnabled() && value && value.includes('{{')) {
-      const context = {
-        this: {
-          ...invoker,
+      // Interpolate value if interpolation is enabled and contains {{...}}
+      if (isInterpolationEnabled() && value && value.includes('{{')) {
+        const safeInvoker = {
           dataset: { ...invoker.dataset },
           value: (invoker as any).value || '',
-        },
-        data: document.body.dataset,
-        event: (invoker as any).triggeringEvent,
-      };
-      value = interpolateString(value, context);
-    }
+        };
+        const context = {
+          this: safeInvoker,
+          data: { ...document.body.dataset, ...(invoker.parentElement?.dataset || {}) },
+          event: (invoker as any).triggeringEvent,
+        };
+        value = interpolateString(value, context);
+      }
 
-    targetElement.dataset[key] = value || '';
-  },
+     targetElement.dataset[key] = value || '';
+
+      // Dispatch custom event for reactive updates
+      const eventKey = key.split(':')[0];
+      targetElement.dispatchEvent(new CustomEvent(`data:${eventKey}`, {
+        bubbles: true,
+        detail: { value: `${key}:${value || ''}` }
+      }));
+
+     // Handle data binding if specified
+     let bindTo = invoker.dataset.bindTo;
+     let bindAs = invoker.dataset.bindAs || `data:${key}`;
+     if (bindTo) {
+        // Interpolate bindTo and bindAs if they contain expressions
+        const safeInvoker = {
+          dataset: { ...invoker.dataset },
+          value: (invoker as any).value || '',
+        };
+        if (isInterpolationEnabled() && bindTo.includes('{{')) {
+          bindTo = interpolateString(bindTo, {
+            this: safeInvoker,
+            data: { ...document.body.dataset, ...(invoker.parentElement?.dataset || {}) },
+            event: (invoker as any).triggeringEvent,
+          });
+        }
+        if (isInterpolationEnabled() && bindAs.includes('{{')) {
+          bindAs = interpolateString(bindAs, {
+            this: safeInvoker,
+            data: { ...document.body.dataset, ...(invoker.parentElement?.dataset || {}) },
+            event: (invoker as any).triggeringEvent,
+          });
+        }
+
+       const bindTargets = resolveTargets(bindTo, invoker) as HTMLElement[];
+       bindTargets.forEach(target => {
+         if (bindAs.startsWith('data:')) {
+           const dataKey = bindAs.substring(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+           target.dataset[dataKey] = value || '';
+         } else if (bindAs === 'text') {
+           target.textContent = value || '';
+         } else if (bindAs === 'value' && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+           (target as HTMLInputElement).value = value || '';
+         } else if (bindAs.startsWith('attr:')) {
+           const attrName = bindAs.substring(5);
+           target.setAttribute(attrName, value || '');
+         }
+         // Dispatch event on bound target as well
+         target.dispatchEvent(new CustomEvent(`data:${key}`, {
+           bubbles: true,
+           detail: { value: `${key}:${value}` }
+         }));
+       });
+     }
+   },
 
   /**
    * `--data:copy`: Copies a data attribute from a source element to the target.

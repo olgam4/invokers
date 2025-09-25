@@ -37,8 +37,9 @@ describe('Clean Enhanced Attribute-Based Chaining', () => {
       mockButton.setAttribute('commandfor', 'test-target');
       mockButton.setAttribute('data-and-then', '--test-chain');
 
-      // Execute command directly using executeCommand
-      await invokerManager.executeCommand('--test-primary', 'test-target', mockButton);
+       // Execute command by simulating a click
+       mockButton.click();
+       await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify both primary and chained commands executed
       expect(mockTarget.textContent).toBe('primary executed + chained executed');

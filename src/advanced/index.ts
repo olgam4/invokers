@@ -31,7 +31,9 @@ export function enableAdvancedEvents(): void {
   // 4. Initialize the EventTriggerManager
   EventTriggerManager.getInstance().initialize();
 
+  if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
   console.log("Invokers: Advanced event features (command-on, data-on-event, interpolation, templating) enabled.");
+}
 }
 
 /**

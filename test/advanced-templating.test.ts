@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InvokerManager } from '../src/compatible';
+import { registerDomCommands } from '../src/commands/dom';
 
 describe('Advanced Templating', () => {
   let container: HTMLElement;
@@ -41,13 +42,16 @@ describe('Advanced Templating', () => {
 
     // All commands are auto-registered via compatible layer
     invokerManager = InvokerManager.getInstance();
+    // Ensure DOM commands are registered
+    registerDomCommands(invokerManager);
   });
 
   afterEach(() => {
     document.body.removeChild(container);
     // Reset global state
     if (window.Invoker?.reset) {
-      window.Invoker.reset();
+      // NOTE: Don't call reset() when using compatible module as it clears pre-registered commands
+    // window.Invoker.reset();
     }
   });
 
@@ -62,8 +66,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       invoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that the template was processed and data was injected
       const newItem = target.querySelector('li');
@@ -82,8 +86,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       invoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that UID was generated
       const newItem = target.querySelector('li');
@@ -105,8 +109,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       inputInvoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that interpolation worked
       const newItem = target.querySelector('li');
@@ -124,8 +128,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       invoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that @closest selector was rewritten
       const deleteButton = target.querySelector('button[command="--dom:remove"]');
@@ -155,8 +159,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       invoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check all attributes were set
       const newDiv = target.querySelector('div');
@@ -183,8 +187,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       invoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that raw template was still appended (graceful degradation)
       const newItem = target.querySelector('li');
@@ -227,10 +231,12 @@ describe('Advanced Templating', () => {
     it('should process data-with-json even when interpolation is disabled', async () => {
       // Reset to disable interpolation
       if (window.Invoker?.reset) {
-        window.Invoker.reset();
+        // NOTE: Don't call reset() when using compatible module as it clears pre-registered commands
+    // window.Invoker.reset();
       }
 
-      // Commands already registered via compatible layer
+      // Commands are already registered in compatible module, no need to re-register
+      // registerDomCommands(invokerManager);
 
       // Set up invoker
       invoker.setAttribute('command', '--dom:append');
@@ -241,8 +247,8 @@ describe('Advanced Templating', () => {
       // Trigger the command
       invoker.click();
 
-      // Wait for DOM updates
-      await new Promise(resolve => setTimeout(resolve, 0));
+       // Wait for DOM updates
+       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check that data-with-json was still processed even without interpolation enabled
       const newItem = target.querySelector('li');

@@ -469,7 +469,7 @@ describe('Device Commands', () => {
   });
 
   describe('--device:wake-lock:release command', () => {
-    it('should release wake lock', () => {
+    it('should release wake lock', async () => {
       document.body.innerHTML = `
         <button command="--device:wake-lock:release">Release Wake Lock</button>
       `;
@@ -481,6 +481,7 @@ describe('Device Commands', () => {
       (window as any)._invokersWakeLock = { release: mockRelease };
 
       button.click();
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(mockRelease).toHaveBeenCalled();
       expect((window as any)._invokersWakeLock).toBeUndefined();

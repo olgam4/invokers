@@ -269,7 +269,7 @@ describe('Comprehensive Demo Features', () => {
     });
 
     it('should have Invokers library loaded', () => {
-      const invokerScript = document.querySelector('script[src*="dist/esm/development/index.js"]');
+      const invokerScript = document.querySelector('script[src*="dist/esm/development/compatible.js"]');
       expect(invokerScript).toBeTruthy();
     });
   });

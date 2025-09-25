@@ -300,7 +300,7 @@
     <div class="demo-box">
         <div id="andthen-basic-target" style="padding: 1rem; border: 2px solid var(--border-color); border-radius: 4px;">Ready for multi-step process</div>
         <p style="margin-top: 1rem;">This button creates a complex, multi-step workflow using nested <code>&lt;and-then&gt;</code> elements:</p>
-        <button type="button" command="--text:set:Step 1: Started" commandfor="andthen-basic-target">
+        <button type="button" id="start-multistep-button" command="--text:set:Step 1: Started" commandfor="andthen-basic-target">
             Start Multi-Step Process
             <and-then command="--class:add:processing" data-delay="500">
                 <and-then command="--text:append: → Step 2: Processing..." data-delay="800">
@@ -313,7 +313,7 @@
                 </and-then>
             </and-then>
         </button>
-        <button type="button" command="--text:set:Ready for multi-step process" commandfor="andthen-basic-target" data-and-then="--class:remove:processing,success">
+        <button type="button" command="--text:set:Ready for multi-step process" commandfor="andthen-basic-target" data-and-then="--class:remove:processing,success,--and-then:reset:start-multistep-button">
             Reset Demo
         </button>
     </div>
@@ -385,7 +385,9 @@
     import '../dist/esm/development/compatible.js';
     import '../dist/esm/development/interest.js';
 
-    console.log("✅ Invokers Core, All Commands, and Interest Invokers loaded and ready!");
+    if (window.Invoker?.debug) {
+      console.log("✅ Invokers Core, All Commands, and Interest Invokers loaded and ready!");
+    }
 
     // (Advanced) Register a project-specific command.
     if (window.Invoker) {

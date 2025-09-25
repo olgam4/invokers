@@ -1,5 +1,5 @@
 // src/commands/form.ts
-import type { InvokerManager } from '../core';
+import type { InvokerManager, CommandContext } from '../core';
 import { createInvokerError, ErrorSeverity } from '../index';
 
 /**
@@ -467,5 +467,22 @@ export function registerFormCommands(manager: InvokerManager): void {
         }
       );
     }
+  });
+
+  // --text:clear: Clear text content
+  manager.register("--text:clear", ({ targetElement }: CommandContext) => {
+    targetElement.textContent = '';
+  });
+
+  // --value:clear: Clear input value (standalone command for backward compatibility)
+  manager.register("--value:clear", ({ getTargets }: CommandContext) => {
+    const targets = getTargets();
+    targets.forEach(target => {
+      if ('value' in target) {
+        (target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value = '';
+      } else {
+        console.warn('Invokers: --value:clear command target does not support value property', target);
+      }
+    });
   });
 }

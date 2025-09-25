@@ -234,6 +234,7 @@ const observer = new MutationObserver((mutations) => {
 
 export class EventTriggerManager {
   private static instance: EventTriggerManager;
+  private isInitialized = false;
 
   public static getInstance(): EventTriggerManager {
     if (!EventTriggerManager.instance) {
@@ -242,7 +243,17 @@ export class EventTriggerManager {
     return EventTriggerManager.instance;
   }
 
+  public get initialized(): boolean {
+    return this.isInitialized;
+  }
+
   public initialize(root: Element = document.body) {
+    if (this.isInitialized) {
+      // Already initialized, just rescan for any new elements
+      this.rescanCommandOnElements(root);
+      return;
+    }
+
     // Scan existing DOM
     root.querySelectorAll<HTMLElement>('[command-on], [data-on-event]').forEach(attachListeners);
     // Observe future changes
@@ -252,6 +263,7 @@ export class EventTriggerManager {
       attributes: true,
       attributeFilter: ['command-on', 'data-on-event']
     });
+    this.isInitialized = true;
     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
       console.log('Invokers EventTriggerManager initialized.');
     }

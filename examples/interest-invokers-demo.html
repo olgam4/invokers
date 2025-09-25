@@ -162,6 +162,19 @@
       --interest-delay-end: 100ms;
     }
 
+    /* Make ALL interest invokers responsive but not too fast */
+    [interestfor] {
+      --interest-delay-start: 200ms;
+      --interest-delay-end: 100ms;
+    }
+    
+    /* Visual feedback when hovering */
+    .interest-source {
+      background-color: rgba(9, 105, 218, 0.3) !important;
+      outline: 2px solid #0969da !important;
+      outline-offset: 1px !important;
+    }
+
     /* Popovers are positioned by JavaScript in the top layer */
 
     /* Smooth transitions for popovers */
@@ -414,11 +427,22 @@
     </div>
   </div>
 
-  <!-- Load the Invokers library -->
-  <script type="module" src="../dist/esm/development/compatible.js"></script>
-
-  <!-- Load Interest Invokers separately -->
-  <script type="module" src="../dist/esm/development/interest.js"></script>
+   <script type="module">
+     // Import both modules together to ensure proper loading order
+     import '../dist/esm/development/compatible.js';
+     import '../dist/esm/development/interest.js';
+     
+     // Wait for both modules to be fully loaded before proceeding
+     await new Promise(resolve => {
+       if (document.readyState === 'complete') {
+         resolve();
+       } else {
+         window.addEventListener('load', resolve);
+       }
+     });
+     
+     console.log('Modules loaded, Interest polyfill:', window.interestForPolyfillInstalled);
+   </script>
 
    <script>
      // Check for Popover API support
@@ -455,30 +479,51 @@
 
       // Log when elements with interestfor are found
       window.addEventListener('load', () => {
-        const interestElements = document.querySelectorAll('[interestfor]');
-        console.log('Found elements with interestfor:', interestElements.length);
-        interestElements.forEach(el => {
-          const targetId = el.getAttribute('interestfor');
-          const target = document.getElementById(targetId);
-          console.log('Element:', el, 'targets:', target, 'target exists:', !!target);
-        });
-
-        if (window.Invoker) {
-          console.log('Invokers loaded successfully');
-          console.log('Available debugging methods:', Object.keys(window.Invoker));
-          console.log('Popover API supported:', popoverSupported);
-
-          // Enable debug mode to see execution details
-          window.Invoker.debug = true;
-        }
-
-        // Check if Interest Invokers polyfill is loaded
-        if (window.interestForPolyfillInstalled) {
-          console.log('Interest Invokers polyfill is installed');
-        } else {
-          console.warn('Interest Invokers polyfill not detected');
-        }
+      console.log('=== DIAGNOSTIC INFO ===');
+      console.log('Invoker library loaded:', !!window.Invoker);
+      console.log('Interest polyfill installed:', !!window.interestForPolyfillInstalled);
+      console.log('Popover API supported:', popoverSupported);
+      
+      const interestElements = document.querySelectorAll('[interestfor]');
+      console.log('Found elements with interestfor:', interestElements.length);
+         
+      let allTargetsExist = true;
+      interestElements.forEach((el, i) => {
+      const targetId = el.getAttribute('interestfor');
+      const target = document.getElementById(targetId);
+           console.log(`Element ${i+1}:`, el.tagName, 'interestfor="' + targetId + '"', 'target exists:', !!target);
+      if (!target) allTargetsExist = false;
       });
+      
+         console.log('All targets exist:', allTargetsExist);
+
+      if (window.Invoker) {
+      console.log('Invokers loaded successfully');
+        console.log('Available debugging methods:', Object.keys(window.Invoker));
+
+        // Enable debug mode to see execution details
+          window.Invoker.debug = true;
+           console.log('Debug mode enabled');
+         } else {
+           console.error('ERROR: Invokers library not loaded!');
+         }
+
+         // Check if Interest Invokers polyfill is loaded
+         if (window.interestForPolyfillInstalled) {
+           console.log('Interest Invokers polyfill is installed');
+           
+           // Test one element manually
+           const firstElement = interestElements[0];
+           if (firstElement) {
+             console.log('Testing first element manually...');
+             firstElement.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+           }
+         } else {
+           console.error('ERROR: Interest Invokers polyfill not detected!');
+         }
+         
+         console.log('=== END DIAGNOSTIC ===');
+       });
    </script>
 </body>
 </html>

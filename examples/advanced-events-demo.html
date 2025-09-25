@@ -94,7 +94,7 @@
 
     <form id="contact-form"
           command-on="submit.prevent"
-          command="--emit:notify:{\"message\":\"Form submitted successfully!\",\"type\":\"success\"}"
+          command='--emit:notify:{"message":"Form submitted successfully!","type":"success"}'
           commandfor="toast-notification">
 
       <input name="email" type="email" placeholder="Enter your email">
@@ -118,7 +118,7 @@
     <h2>4. Custom Events (data-on-event + Dynamic Data)</h2>
     <p>Click the button to emit a custom event that shows a toast notification:</p>
 
-    <button command-on="click" command="--emit:notify:{&quot;message&quot;:&quot;Item added to cart!&quot;,&quot;type&quot;:&quot;success&quot;}" commandfor="toast-notification">
+    <button command-on="click" command='--emit:notify:{"message":"Item added to cart!","type":"success"}' commandfor="toast-notification">
       Add to Cart
     </button>
 
@@ -149,19 +149,32 @@
 
     <!-- Toast notification listener -->
     <div id="toast-notification"
-         data-on-event="notify"
+         command-on="notify"
          command="--text:set:{{ detail.message }}"
          data-and-then="--attr:remove:hidden"
          commandfor="toast-notification"
          hidden
          style="position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 15px; border-radius: 4px; z-index: 10000; min-width: 250px; font-size: 18px; font-weight: bold;">
+         Toast placeholder text
     </div>
+
+    <!-- Debug: Add a simple listener to see what events are being dispatched -->
+    <script>
+      document.getElementById('toast-notification').addEventListener('notify', (e) => {
+        console.log('Toast received notify event:', e);
+        console.log('Event detail:', e.detail);
+        console.log('Event detail.message:', e.detail?.message);
+      });
+    </script>
 
     <!-- Load Invokers and enable advanced events -->
     <script type="module">
     import '../dist/esm/development/compatible.js';
 
-       // Advanced event features are automatically enabled
+    // Enable debug mode
+        window.Invoker = { debug: true };
+
+        // Advanced event features are automatically enabled
 
      // Mock API endpoint for search demo
      // In a real app, this would be a server endpoint

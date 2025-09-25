@@ -58,10 +58,17 @@ declare global {
  * Feature detection function to check if Interest Invokers are natively supported
  */
 export function isInterestInvokersSupported(): boolean {
-  return (
-    typeof HTMLButtonElement !== "undefined" &&
-    "interestForElement" in HTMLButtonElement.prototype
-  );
+  // Check for native support by looking for the actual descriptor, not just TypeScript declarations
+  try {
+    if (typeof HTMLButtonElement === "undefined") return false;
+    
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, 'interestForElement');
+    // Only consider it native support if there's an actual getter/setter implementation
+    return descriptor !== undefined && 
+           (typeof descriptor.get === 'function' || typeof descriptor.set === 'function');
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -125,8 +132,6 @@ class InterestInvokersPolyfill {
        }
       return;
     }
-
-    window.interestForPolyfillInstalled = true;
     const nativeSupported = isInterestInvokersSupported();
 
      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
@@ -146,6 +151,7 @@ class InterestInvokersPolyfill {
 
     this.setupPolyfill();
     this.initialized = true;
+    window.interestForPolyfillInstalled = true;
 
      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
        console.log(`Interest Invokers polyfill installed successfully.`);

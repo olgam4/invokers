@@ -1,5 +1,5 @@
 // src/commands/base.ts
-import type { InvokerManager } from '../core';
+import type { InvokerManager, CommandContext } from '../core';
 import { createInvokerError, ErrorSeverity, isInterpolationEnabled } from '../index';
 import { interpolateString } from '../advanced/interpolation';
 
@@ -319,15 +319,11 @@ export function registerBaseCommands(manager: InvokerManager): void {
        );
      }
 
-       try {
-        targets.forEach(target => {
-          if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-            console.log('--attr processing target:', target, 'isConnected:', target.isConnected);
-          }
-          if (!target.isConnected) {
-            console.warn('Invokers: Skipping disconnected target element', target);
-            return;
-          }
+        try {
+         targets.forEach(target => {
+           if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+             console.log('--attr processing target:', target, 'isConnected:', target.isConnected);
+           }
 
           // Interpolate attrValue if interpolation is enabled and contains {{...}}
           let finalAttrValue = attrValue || "";
@@ -349,12 +345,13 @@ export function registerBaseCommands(manager: InvokerManager): void {
             case "set":
               target.setAttribute(attrName, finalAttrValue);
               break;
-             case "remove":
+              case "remove":
                 if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
                   console.log('attr command removing', attrName, 'from target', target);
                 }
                 if (attrName === 'hidden') {
                   (target as HTMLElement).hidden = false;
+                  target.removeAttribute('hidden'); // Ensure attribute is removed in all environments
                 } else {
                   target.removeAttribute(attrName);
                 }
@@ -380,6 +377,35 @@ export function registerBaseCommands(manager: InvokerManager): void {
           recovery: 'Check that the attribute operation is valid for the target elements'
         }
       );
+    }
+  });
+
+  // --class:clear: Clear all CSS classes
+  manager.register("--class:clear", ({ targetElement }: CommandContext) => {
+    targetElement.className = '';
+  });
+
+  // --class:ternary: Ternary class application
+  manager.register("--class:ternary", ({ invoker, targetElement, params }: CommandContext) => {
+    const [classIfTrue, classIfFalse, condition] = params;
+    if (!classIfTrue || !classIfFalse || !condition) {
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.warn('Invokers: `--class:ternary` requires class-if-true, class-if-false, and condition.', invoker);
+      }
+      return;
+    }
+    let useTrue = false;
+    if (condition === "has-content") {
+      useTrue = !!(targetElement.textContent && targetElement.textContent.trim());
+    } else if (condition === "has-no-content") {
+      useTrue = !(targetElement.textContent && targetElement.textContent.trim());
+    }
+    if (useTrue) {
+      targetElement.classList.add(classIfTrue);
+      targetElement.classList.remove(classIfFalse);
+    } else {
+      targetElement.classList.remove(classIfTrue);
+      targetElement.classList.add(classIfFalse);
     }
   });
 }

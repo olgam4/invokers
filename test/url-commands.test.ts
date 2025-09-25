@@ -96,7 +96,8 @@ describe('URL Commands (--url)', () => {
 
     // Get singleton InvokerManager instance
     invokerManager = InvokerManager.getInstance();
-    invokerManager.reset();
+    // NOTE: Don't call reset() when using compatible module as it clears pre-registered commands
+    // invokerManager.reset();
   });
 
   describe('URL Parameter Commands', () => {

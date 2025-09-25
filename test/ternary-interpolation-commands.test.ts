@@ -9,11 +9,13 @@ describe('Class Ternary, Interpolation, and Built-in Commands', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     invokerManager = InvokerManager.getInstance();
-    invokerManager.reset();
+    // Note: Don't reset when using compatible module as it clears all pre-registered commands
+    // invokerManager.reset();
   });
 
   afterEach(() => {
-    invokerManager.reset();
+    // Don't reset in afterEach either - let the compatible module manage commands
+    // invokerManager.reset();
   });
 
   describe('--class:ternary', () => {

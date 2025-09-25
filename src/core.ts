@@ -267,27 +267,38 @@ class AndThenManager {
     * @param executionResult The success/failure result of the invoker's command.
     * @param primaryTarget The main target of the invoker's command.
     */
-   public async processAndThen(
-     invokerElement: HTMLButtonElement,
-     executionResult: CommandExecutionResult,
-     primaryTarget: HTMLElement
-   ): Promise<void> {
-     // Find all *top-level* and-then elements that are direct children of the invoker.
-     const topLevelAndThens = Array.from(invokerElement.children).filter(
-       child => child.tagName.toLowerCase() === 'and-then'
-     ) as HTMLElement[];
+    public async processAndThen(
+      invokerElement: HTMLButtonElement,
+      executionResult: CommandExecutionResult,
+      primaryTarget: HTMLElement
+    ): Promise<void> {
+      // Disable the invoker during <and-then> execution to prevent concurrent chains
+      const wasDisabled = invokerElement.disabled;
+      invokerElement.disabled = true;
+      invokerElement.setAttribute('aria-busy', 'true');
 
-    // Sequentially execute each top-level chain.
-    for (const andThenElement of topLevelAndThens) {
-      // The initial recursive call starts here.
-      await this.executeAndThenRecursively(
-        andThenElement,
-        invokerElement,
-        executionResult,
-        primaryTarget
-      );
-    }
-  }
+      try {
+        // Find all *top-level* and-then elements that are direct children of the invoker.
+        const topLevelAndThens = Array.from(invokerElement.children).filter(
+          child => child.tagName.toLowerCase() === 'and-then'
+        ) as HTMLElement[];
+
+       // Sequentially execute each top-level chain.
+       for (const andThenElement of topLevelAndThens) {
+         // The initial recursive call starts here.
+         await this.executeAndThenRecursively(
+           andThenElement,
+           invokerElement,
+           executionResult,
+           primaryTarget
+         );
+       }
+      } finally {
+        // Re-enable the invoker
+        invokerElement.disabled = wasDisabled;
+        invokerElement.removeAttribute('aria-busy');
+      }
+   }
 
   /**
    * Executes a command from an <and-then> element and its descendants recursively.
@@ -314,19 +325,33 @@ class AndThenManager {
        return;
      }
 
-     // 2. State Check: Skip elements that have already run or are disabled.
-     const state = andThenElement.dataset.state;
-     if (state === 'disabled' || state === 'completed') {
-       return;
-     }
+      // 2. State Check: Skip elements that have already run, are disabled, or are currently executing.
+      const state = andThenElement.dataset.state;
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.log(`<and-then> state check: element=${andThenElement.tagName}, state="${state}", command="${andThenElement.getAttribute('command')}"`);
+      }
+      if (state === 'disabled' || state === 'completed' || state === 'active') {
+        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+          console.log(`<and-then> skipping: already ${state}`);
+        }
+        return;
+      }
 
-     // 3. Conditional Check: Execute only if the condition is met.
-     const condition = andThenElement.dataset.condition || 'always';
-     if (!this.shouldExecuteCondition(condition, parentResult)) {
-       return;
-     }
+       // 3. Conditional Check: Execute only if the condition is met.
+       const condition = andThenElement.dataset.condition || 'always';
+       if (!this.shouldExecuteCondition(condition, parentResult)) {
+         return;
+       }
 
-    // 4. Get Command Details
+       // 4. Mark as active immediately to prevent concurrent executions
+       andThenElement.dataset.state = 'active';
+       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+         console.log(`<and-then> marked as active: command="${andThenElement.getAttribute('command')}"`);
+       }
+
+       // 5. Mark as completed or remove when done (moved to end of method)
+
+      // 5. Get Command Details
     const command = andThenElement.getAttribute('command');
     const targetId = andThenElement.getAttribute('commandfor') || originalInvoker.getAttribute('commandfor') || primaryTarget.id;
     const delay = parseInt(andThenElement.dataset.delay || '0', 10);
@@ -338,12 +363,12 @@ class AndThenManager {
       return;
     }
 
-    // 5. Apply Delay
-    if (delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
+     // 6. Apply Delay
+     if (delay > 0) {
+       await new Promise(resolve => setTimeout(resolve, delay));
+     }
 
-     // 6. Execute the Command
+      // 7. Execute the Command
      let currentExecutionResult: CommandExecutionResult = { success: true };
      try {
        // Use a synthetic invoker to pass context attributes like `data-*`
@@ -353,30 +378,36 @@ class AndThenManager {
      } catch (error) {
        // If the command fails, capture the result to pass to children.
        currentExecutionResult = { success: false, error: error as Error };
-     }
+      }
 
-    // 7. Update State (Post-Execution)
-    if (andThenElement.hasAttribute('data-once')) {
-      andThenElement.remove();
-    } else {
-      andThenElement.dataset.state = 'completed';
-    }
-
-    // 8. Recurse for Children
+      // 8. Recurse for Children
     const nestedAndThens = Array.from(andThenElement.children).filter(
       child => child.tagName.toLowerCase() === 'and-then'
     ) as HTMLElement[];
 
-    for (const nested of nestedAndThens) {
-      await this.executeAndThenRecursively(
-        nested,
-        originalInvoker,
-        currentExecutionResult, // Pass the result of *this* command down.
-        primaryTarget,
-        depth + 1
-      );
-    }
-  }
+     for (const nested of nestedAndThens) {
+       await this.executeAndThenRecursively(
+         nested,
+         originalInvoker,
+         currentExecutionResult, // Pass the result of *this* command down.
+         primaryTarget,
+         depth + 1
+       );
+     }
+
+     // 9. Mark as completed or remove when done
+     if (andThenElement.hasAttribute('data-once')) {
+       andThenElement.remove();
+       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+         console.log(`<and-then> removed (data-once): command="${andThenElement.getAttribute('command')}"`);
+       }
+     } else {
+       andThenElement.dataset.state = 'completed';
+       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+         console.log(`<and-then> marked as completed: command="${andThenElement.getAttribute('command')}"`);
+       }
+     }
+   }
 
   /**
    * Creates a temporary, in-memory <button> to act as the invoker for an
@@ -451,22 +482,16 @@ export class InvokerManager {
      // Suppress unused variable warnings for stub implementations
      void this._pipelineManager;
 
-     // Initialize for both browser and test environments
-     if (typeof window !== "undefined" && typeof document !== "undefined") {
-       this.registerCoreLibraryCommands();
-       // Only add listeners if they haven't been added yet
-       if (!(window as any).__invokerListenersAdded) {
-         this.listen();
-         (window as any).__invokerListenersAdded = true;
-       }
-     } else if (typeof global !== "undefined" && (global as any).window && (global as any).document) {
-       // Test environment with jsdom
-       this.registerCoreLibraryCommands();
-       if (!(global as any).__invokerListenersAdded) {
-         this.listen();
-         (global as any).__invokerListenersAdded = true;
-       }
-     }
+      // Initialize for both browser and test environments
+      if (typeof window !== "undefined" && typeof document !== "undefined") {
+        this.registerCoreLibraryCommands();
+        // Defer listener attachment until DOM is ready
+        this.deferListen();
+      } else if (typeof global !== "undefined" && (global as any).window && (global as any).document) {
+        // Test environment with jsdom
+        this.registerCoreLibraryCommands();
+        this.deferListen();
+      }
    }
 
   /**
@@ -641,9 +666,7 @@ export class InvokerManager {
    */
   public registerPlugin(plugin: InvokerPlugin): void {
     if (this.plugins.has(plugin.name)) {
-      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-        console.warn(`Invokers: Plugin "${plugin.name}" is already registered`);
-      }
+      console.warn(`Invokers: Plugin "${plugin.name}" is already registered`);
       return;
     }
 
@@ -666,9 +689,7 @@ export class InvokerManager {
           set: (target, property, value) => {
             // Allow setting internal properties (starting with _) but prevent others
             if (typeof property === 'string' && !property.startsWith('_') && !['plugins', 'middleware', 'commands'].includes(property)) {
-              if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-                console.warn(`Invokers: Plugin "${plugin.name}" attempted to modify manager property "${property}". This is not allowed for security.`);
-              }
+              console.warn(`Invokers: Plugin "${plugin.name}" attempted to modify manager property "${property}". This is not allowed for security.`);
               return false;
             }
             return Reflect.set(target, property, value);
@@ -676,9 +697,7 @@ export class InvokerManager {
         });
         plugin.onRegister(managerProxy);
       } catch (error) {
-        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-          console.error(`Invokers: Error in plugin "${plugin.name}" onRegister:`, error);
-        }
+        console.error(`Invokers: Error in plugin "${plugin.name}" onRegister:`, error);
       }
     }
 
@@ -693,9 +712,7 @@ export class InvokerManager {
   public unregisterPlugin(pluginName: string): void {
     const plugin = this.plugins.get(pluginName);
     if (!plugin) {
-      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-        console.warn(`Invokers: Plugin "${pluginName}" is not registered`);
-      }
+      console.warn(`Invokers: Plugin "${pluginName}" is not registered`);
       return;
     }
 
@@ -704,9 +721,7 @@ export class InvokerManager {
       try {
         plugin.onUnregister(this);
       } catch (error) {
-        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-          console.error(`Invokers: Error in plugin "${pluginName}" onUnregister:`, error);
-        }
+        console.error(`Invokers: Error in plugin "${pluginName}" onUnregister:`, error);
       }
     }
 
@@ -842,7 +857,7 @@ export class InvokerManager {
     if (!normalizedName.startsWith('--')) {
       normalizedName = `--${normalizedName}`;
       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-      console.warn(`Invokers: Command "${trimmedName}" registered without '--' prefix. Automatically registered as "${normalizedName}".`);
+        console.warn(`Invokers: Command "${trimmedName}" registered without '--' prefix. Automatically registered as "${normalizedName}".`);
       }
     }
 
@@ -1030,7 +1045,7 @@ export class InvokerManager {
               // Process chaining if invoker exists
               if (context.invoker) {
                 await this._andThenManager.processAndThen(context.invoker, { success: true }, dummyTarget);
-                await this.processAttributeChaining(context.invoker, { success: true }, dummyTarget);
+                await this.processAttributeChaining(context.invoker, { success: true }, dummyTarget, interpolatedCommandStr);
               }
 
               if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
@@ -1047,7 +1062,7 @@ export class InvokerManager {
                   recovery: 'Check command syntax and parameters'
                 }
               );
-              logInvokerError(invokerError);
+              throw invokerError;
             }
             return;
           }
@@ -1139,13 +1154,13 @@ export class InvokerManager {
                   console.log(`Invokers: Command "${registeredCommand}" executed successfully on target ${target.id || target}`);
                }
 
-             } catch (error) {
-               executionResult = { success: false, error: error as Error };
+              } catch (error) {
+                executionResult = { success: false, error: error as Error };
 
-               // Execute ON_ERROR middleware
-               await this.executeMiddleware(HookPoint.ON_ERROR, { ...targetContext, result: executionResult });
+                // Execute ON_ERROR middleware
+                await this.executeMiddleware(HookPoint.ON_ERROR, { ...targetContext, result: executionResult });
 
-                const invokerError = createInvokerError(
+                 const invokerError = createInvokerError(
                   `Command "${registeredCommand}" execution failed`,
                   ErrorSeverity.ERROR,
                   {
@@ -1160,13 +1175,8 @@ export class InvokerManager {
                     recovery: 'Check command syntax and ensure all required attributes are present'
                   }
                 );
-                logInvokerError(invokerError);
-
-                // Re-enable disabled buttons after command failure for graceful degradation
-                if (invoker && invoker.hasAttribute('disabled')) {
-                  invoker.removeAttribute('disabled');
-                }
-             }
+                throw invokerError;
+              }
 
              // Execute ON_COMPLETE middleware (always runs)
              await this.executeMiddleware(HookPoint.ON_COMPLETE, { ...targetContext, result: executionResult });
@@ -1174,12 +1184,13 @@ export class InvokerManager {
              // Execute AFTER_COMMAND middleware
              await this.executeMiddleware(HookPoint.AFTER_COMMAND, { ...targetContext, result: executionResult });
 
-             // Process <and-then> elements and trigger follow-up (only for the first target to avoid duplication)
-             if (context.invoker && target === targets[0]) {
-             await this._andThenManager.processAndThen(context.invoker, executionResult, target);
-               
+              // Process <and-then> elements and trigger follow-up (only for the first target to avoid duplication)
+
+              if (context.invoker && target === targets[0]) {
+              await this._processAndThenElements(context.invoker, executionResult, target);
+                
                 // Also process data-and-then attribute-based chaining
-                await this.processAttributeChaining(context.invoker, executionResult, target);
+                await this.processAttributeChaining(context.invoker, executionResult, target, interpolatedCommandStr);
               }
            }
         } catch (commandError) {
@@ -1194,6 +1205,7 @@ export class InvokerManager {
             }
           );
           logInvokerError(wrapperError);
+          throw wrapperError;
         }
 
         return; // Stop after the first, longest match
@@ -1240,6 +1252,39 @@ export class InvokerManager {
 
 
   /**
+   * Defers listener attachment until DOM is ready.
+   */
+  private deferListen(): void {
+    // Only add listeners if they haven't been added yet
+    if ((typeof window !== "undefined" && (window as any).__invokerListenersAdded) ||
+        (typeof global !== "undefined" && (global as any).__invokerListenersAdded)) {
+      return;
+    }
+
+    const attachListeners = () => {
+      if ((typeof window !== "undefined" && (window as any).__invokerListenersAdded) ||
+          (typeof global !== "undefined" && (global as any).__invokerListenersAdded)) {
+        return;
+      }
+      this.listen();
+      if (typeof window !== "undefined") {
+        (window as any).__invokerListenersAdded = true;
+      }
+      if (typeof global !== "undefined") {
+        (global as any).__invokerListenersAdded = true;
+      }
+    };
+
+    // If document is already ready, attach immediately
+    if (typeof document !== "undefined" && document.readyState !== "loading") {
+      attachListeners();
+    } else if (typeof document !== "undefined") {
+      // Wait for DOM to be ready
+      document.addEventListener("DOMContentLoaded", attachListeners);
+    }
+  }
+
+  /**
    * Attaches the global `command` event listener to the document.
    */
   private listen(): void {
@@ -1251,6 +1296,22 @@ export class InvokerManager {
   }
 
   /**
+   * Ensures command event listeners are attached. Call this after DOM setup in test environments.
+   */
+  public ensureListenersAttached(): void {
+    if ((typeof window !== "undefined" && !(window as any).__invokerListenersAdded) ||
+        (typeof global !== "undefined" && !(global as any).__invokerListenersAdded)) {
+      this.listen();
+      if (typeof window !== "undefined") {
+        (window as any).__invokerListenersAdded = true;
+      }
+      if (typeof global !== "undefined") {
+        (global as any).__invokerListenersAdded = true;
+      }
+    }
+  }
+
+  /**
     * Registers the essential set of built-in commands provided by the core library.
     */
   private registerCoreLibraryCommands(): void {
@@ -1258,10 +1319,21 @@ export class InvokerManager {
   }
 
   private createContext(event: any, fullCommand: string, params: readonly string[]): CommandContext {
-    const invoker = event.source as HTMLButtonElement;
-    const targetElement = event.target as HTMLElement;
+    // For data-on-event and command-on elements, treat them as valid invokers even if they're not buttons
+    const sourceElement = event.source as HTMLElement;
+    const invoker = sourceElement?.hasAttribute?.('command') || sourceElement?.hasAttribute?.('command-on') || sourceElement?.hasAttribute?.('data-on-event') 
+      ? sourceElement as HTMLButtonElement 
+      : event.source as HTMLButtonElement;
+    const targetElement = (event.targetElement as HTMLElement) || (event.target as HTMLElement);
+
+
 
     const getTargets = (): HTMLElement[] => {
+      // For chained commands, use the target from the event directly
+      if ((event as any).isChained) {
+        return targetElement ? [targetElement] : [];
+      }
+
       // For chained commands (null invoker), always get fresh references
       if (!invoker) {
         const freshTarget = getFreshTargetElement();
@@ -1337,7 +1409,7 @@ export class InvokerManager {
 
     const executeAfter = (command: string, target?: string, state: CommandState = 'active') => {
       if (!invoker) return;
-      this.scheduleCommand(command, target || targetElement.id, state, targetElement);
+      this.scheduleCommand(command, target || targetElement.id, state, targetElement, invoker);
     };
 
     const executeConditional = (options: ConditionalCommands) => {
@@ -1373,47 +1445,107 @@ export class InvokerManager {
    /**
     * Processes data-and-then attribute-based command chaining
     */
-   private async processAttributeChaining(
-    invokerElement: HTMLButtonElement, 
-    executionResult: CommandExecutionResult, 
-    primaryTarget: HTMLElement
+    private async processAttributeChaining(
+    invokerElement: HTMLButtonElement,
+    executionResult: CommandExecutionResult,
+    primaryTarget: HTMLElement,
+    commandStr?: string
   ): Promise<void> {
-    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-      console.log('processAttributeChaining called with success:', executionResult.success, 'invoker:', invokerElement);
+    // Only process attribute chaining for the primary command to prevent infinite loops
+    const invokerCommand = invokerElement.getAttribute('command');
+    if (commandStr && invokerCommand && commandStr !== invokerCommand) {
+      return;
     }
+
     const afterSuccessCommands = invokerElement.dataset.afterSuccess?.split(',');
     const afterErrorCommands = invokerElement.dataset.afterError?.split(',');
     const afterCompleteCommands = invokerElement.dataset.afterComplete?.split(',');
 
     // Process universal data-and-then
     const andThenCommand = invokerElement.dataset.andThen;
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('Invokers: Checking data-and-then, dataset.andThen:', andThenCommand, 'hasAttribute:', invokerElement.hasAttribute('data-and-then'), 'getAttribute:', invokerElement.getAttribute('data-and-then'));
+    }
     if (andThenCommand) {
       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
         console.log('Invokers: Processing data-and-then:', andThenCommand, 'on invoker:', invokerElement);
       }
       const targetId = invokerElement.dataset.thenTarget || invokerElement.getAttribute('commandfor') || primaryTarget.id;
-      await this.scheduleCommand(andThenCommand, targetId, 'active', primaryTarget);
+      await this.scheduleCommand(andThenCommand, targetId, 'active', primaryTarget, invokerElement);
+      // Remove data-and-then after processing to prevent infinite loops
+      invokerElement.removeAttribute('data-and-then');
     }
 
     // Process conditional chaining
     if (executionResult.success && afterSuccessCommands) {
       for (const command of afterSuccessCommands) {
         const targetId = invokerElement.dataset.thenTarget || invokerElement.getAttribute('commandfor') || primaryTarget.id;
-        await this.scheduleCommand(command.trim(), targetId, 'active', primaryTarget);
+        await this.scheduleCommand(command.trim(), targetId, 'active', primaryTarget, invokerElement);
       }
     }
 
     if (!executionResult.success && afterErrorCommands) {
       for (const command of afterErrorCommands) {
         const targetId = invokerElement.dataset.thenTarget || invokerElement.getAttribute('commandfor') || primaryTarget.id;
-        await this.scheduleCommand(command.trim(), targetId, 'active', primaryTarget);
+        await this.scheduleCommand(command.trim(), targetId, 'active', primaryTarget, invokerElement);
       }
     }
 
     if (afterCompleteCommands) {
       for (const command of afterCompleteCommands) {
         const targetId = invokerElement.dataset.thenTarget || invokerElement.getAttribute('commandfor') || primaryTarget.id;
-        await this.scheduleCommand(command.trim(), targetId, 'active', primaryTarget);
+        await this.scheduleCommand(command.trim(), targetId, 'active', primaryTarget, invokerElement);
+      }
+    }
+  }
+
+  /**
+   * Processes <and-then> elements for command chaining
+   */
+  private async _processAndThenElements(
+    invokerElement: HTMLElement,
+    executionResult: CommandExecutionResult,
+    primaryTarget: HTMLElement
+  ): Promise<void> {
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('_processAndThenElements called with success:', executionResult.success, 'invoker:', invokerElement);
+    }
+
+    // Process <and-then> elements (only direct children to avoid double-processing nested ones)
+    const andThenElements = Array.from(invokerElement.children).filter(el => el.tagName === 'AND-THEN') as HTMLElement[];
+    for (const andThen of andThenElements) {
+      const command = andThen.getAttribute('command');
+      if (!command) continue;
+
+      // Check condition
+      const condition = andThen.getAttribute('data-condition');
+      if (condition) {
+        const shouldExecute = (condition === 'success' && executionResult.success) ||
+                              (condition === 'error' && !executionResult.success) ||
+                              (condition === 'always');
+        if (!shouldExecute) continue;
+      }
+
+      const targetId = andThen.getAttribute('commandfor') || primaryTarget.id;
+      const delay = parseInt(andThen.getAttribute('data-delay') || '0', 10);
+      const isOnce = andThen.getAttribute('data-once') === 'true';
+
+      if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+        console.log('Invokers: Processing <and-then> command:', command, 'target:', targetId, 'delay:', delay, 'once:', isOnce);
+      }
+
+      const executeAndThen = async () => {
+        await this.scheduleCommand(command, targetId, 'active', primaryTarget, andThen);
+        if (isOnce) {
+          andThen.remove();
+        }
+      };
+
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        await executeAndThen();
+      } else {
+        await executeAndThen();
       }
     }
   }
@@ -1433,7 +1565,7 @@ export class InvokerManager {
   /**
    * Schedules a command for execution with optional state management.
    */
-  private async scheduleCommand(command: string, targetId: string, state: CommandState, primaryTarget?: HTMLElement): Promise<void> {
+  private async scheduleCommand(command: string, targetId: string, state: CommandState, primaryTarget?: HTMLElement, invoker?: HTMLElement): Promise<void> {
     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
       console.log('Invokers: scheduleCommand called with command:', command, 'targetId:', targetId);
     }
@@ -1450,17 +1582,25 @@ export class InvokerManager {
 
     // For chained commands, directly execute the command instead of using synthetic buttons
     // This avoids issues with event propagation in test environments
-    const targetElement = document.getElementById(targetId) || (primaryTarget && targetId === primaryTarget.id ? primaryTarget : null);
+    let targetElement: HTMLElement | null = null;
+    if (targetId) {
+      const targets = resolveTargets(targetId, document.body) as HTMLElement[];
+      targetElement = targets.length > 0 ? targets[0] : null;
+    }
+    if (!targetElement && primaryTarget && targetId === primaryTarget.id) {
+      targetElement = primaryTarget;
+    }
     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
       console.log('scheduleCommand targetElement:', targetElement, 'for targetId:', targetId);
     }
     if (targetElement) {
       const mockEvent = {
         command,
-        source: null, // No source for chained commands
+        source: invoker || null, // Use provided invoker for chained commands
         target: targetElement,
         preventDefault: () => { },
-        type: 'command'
+        type: 'command',
+        isChained: true // Flag to indicate this is a chained command execution
       } as any;
       await this.executeCustomCommand(command, mockEvent);
     }

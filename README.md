@@ -6,6 +6,30 @@
 
 **Invokers lets you write future-proof HTML interactions without custom JavaScript.** It's a polyfill for the upcoming HTML Invoker Commands API and Interest Invokers (hover cards, tooltips), with a comprehensive set of extended commands automatically included for real-world needs like toggling, fetching, media controls, and complex workflow chaining. Think of it as **HTMX-lite**, but fully aligned with web standards.
 
+## 📋 Table of Contents
+
+- [🚀 Quick Demo](#-quick-demo)
+- [🤔 How Does This Compare?](#-how-does-this-compare)
+- [🎯 Why Invokers?](#-why-invokers)
+- [🚀 Modular Architecture](#-modular-architecture)
+- [📦 Installation & Basic Usage](#-installation--basic-usage)
+- [🎛️ Command Packs](#️-command-packs)
+- [📋 Command Cheatsheet](#-command-cheatsheet)
+- [🔧 Command Syntax Guide](#-command-syntax-guide)
+- [🎯 Comprehensive Demo](#-comprehensive-demo)
+- [🏃‍♂️ Quick Start Examples](#️-quick-start-examples)
+- [📚 Progressive Learning Guide](#-progressive-learning-guide)
+- [🔌 Plugin System](#-plugin-system)
+- [🧰 Extended Commands](#-extended-commands)
+- [🎯 Advanced `commandfor` Selectors](#-advanced-commandfor-selectors)
+- [🔄 Migration Guide](#-migration-guide)
+- [📖 Documentation](#-documentation)
+- [⚡ Performance](#-performance)
+- [🛠️ Development](#️-development)
+- [🎯 Browser Support](#-browser-support)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
 -   ✅ **Standards-First:** Built on the W3C/WHATWG `command` attribute and Interest Invokers proposals. Learn future-proof skills, not framework-specific APIs.
 -   🧩 **Polyfill & Superset:** Provides the standard APIs in all modern browsers and extends them with a rich set of custom commands.
 -   ✍️ **Declarative & Readable:** Describe *what* you want to happen in your HTML, not *how* in JavaScript. Create UIs that are self-documenting.
@@ -19,6 +43,101 @@
 -   🎨 **View Transitions:** Built-in, automatic support for the [View Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API) for beautiful, animated UI changes with zero JS configuration.
 -   🔧 **Singleton Architecture:** Optimized internal architecture ensures consistent behavior and prevents duplicate registrations.
 
+## 🌐 Platform Proposals & Standards Alignment
+
+Invokers is built on emerging web platform proposals from the OpenUI Community Group and WHATWG, providing a polyfill today for features that will become native browser APIs tomorrow. This section explains the underlying standards and how Invokers extends them.
+
+### HTML Invoker Commands API
+
+The [Invoker Commands API](https://open-ui.org/components/invokers.explainer/) is a W3C/WHATWG proposal that introduces the `command` and `commandfor` attributes to HTML `<button>` elements. This allows buttons to declaratively trigger actions on other elements without JavaScript.
+
+#### Core Proposal Features
+- **`command` attribute**: Specifies the action to perform (e.g., `show-modal`, `toggle-popover`)
+- **`commandfor` attribute**: References the target element by ID
+- **`CommandEvent`**: Dispatched on the target element when the button is activated
+- **Built-in commands**: Native browser behaviors for dialogs and popovers
+
+#### Example from the Specification
+```html
+<button command="show-modal" commandfor="my-dialog">Open Dialog</button>
+<dialog id="my-dialog">Hello World</dialog>
+```
+
+#### How Invokers Extends This
+Invokers provides a complete polyfill for the Invoker Commands API while adding extensive enhancements:
+
+- **Extended Command Set**: Adds 50+ custom commands (`--toggle`, `--fetch:get`, `--media:play`, etc.) beyond the spec's basic commands
+- **Advanced Event Triggers**: Adds `command-on` attribute for any DOM event (click, input, submit, etc.)
+- **Expression Engine**: Adds `{{...}}` syntax for dynamic command parameters
+- **Command Chaining**: Adds `<and-then>` elements and `data-and-then` attributes for workflow orchestration
+- **Conditional Logic**: Adds success/error state handling with `data-after-success`/`data-after-error`
+- **Lifecycle States**: Adds `once`, `disabled`, `completed` states for sophisticated interactions
+
+### Interest Invokers (Hover Cards & Tooltips)
+
+The [Interest Invokers](https://open-ui.org/components/interest-invokers.explainer/) proposal introduces the `interestfor` attribute for creating accessible hover cards, tooltips, and preview popovers that work across all input modalities.
+
+#### Core Proposal Features
+- **`interestfor` attribute**: Connects interactive elements to hovercard/popover content
+- **Multi-modal Support**: Works with mouse hover, keyboard focus, and touchscreen long-press
+- **Automatic Accessibility**: Manages ARIA attributes and focus behavior
+- **Delay Controls**: CSS properties for customizing show/hide timing
+- **Pseudo-classes**: `:interest-source` and `:interest-target` for styling
+
+#### Example from the Specification
+```html
+<a href="/profile" interestfor="user-card">@username</a>
+<div id="user-card" popover="hint">User details...</div>
+```
+
+#### How Invokers Extends This
+Invokers includes a complete polyfill for Interest Invokers with additional enhancements:
+
+- **Extended Element Support**: Works on all `HTMLElement` types (spec currently limits to specific elements)
+- **Touchscreen Context Menu Integration**: Adds "Show Details" item to existing long-press menus
+- **Advanced Delay Controls**: Full support for `interest-delay-start`/`interest-delay-end` CSS properties
+- **Pseudo-class Support**: Implements `:interest-source` and `:interest-target` pseudo-classes
+- **Combined Usage**: Works seamlessly with Invoker Commands on the same elements
+
+### Popover API Integration
+
+Invokers has deep integration with the [Popover API](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API), automatically handling popover lifecycle and accessibility when using `popover` attributes.
+
+#### Automatic Behaviors
+- **Popover Commands**: `toggle-popover`, `show-popover`, `hide-popover` work natively
+- **ARIA Management**: Automatic `aria-expanded` and `aria-details` attributes
+- **Focus Management**: Proper focus restoration when popovers close
+- **Top Layer Integration**: Works with the browser's top layer stacking context
+
+### Standards Compliance & Future-Proofing
+
+#### Current Browser Support
+- **Chrome/Edge**: Full Invoker Commands support (v120+)
+- **Firefox**: Partial support, actively developing
+- **Safari**: Under consideration
+- **Polyfill Coverage**: Invokers provides complete fallback for all browsers
+
+#### Standards Timeline
+- **Invoker Commands**: Graduated from OpenUI, in WHATWG HTML specification
+- **Interest Invokers**: Active proposal, expected to graduate soon
+- **Popover API**: Already shipping in major browsers
+
+#### Migration Path
+As browsers implement these features natively:
+1. Invokers will automatically detect native support
+2. Polyfill behaviors will gracefully disable
+3. Your HTML markup remains unchanged
+4. Enhanced features (chaining, expressions) continue to work
+
+#### Why Invokers vs. Native-Only
+While waiting for universal browser support, Invokers provides:
+- **Immediate Availability**: Use these features today in any browser
+- **Enhanced Functionality**: Command chaining, expressions, and advanced workflows
+- **Backward Compatibility**: Works alongside native implementations
+- **Progressive Enhancement**: Adds features without breaking existing code
+
+This standards-first approach ensures your code is future-proof while providing powerful enhancements that complement the core platform proposals.
+
 ## 🚀 Quick Demo (30 seconds)
 
 See Invokers in action with this copy-paste example:
@@ -27,8 +146,8 @@ See Invokers in action with this copy-paste example:
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- Add Invokers via CDN -->
-  <script type="module" src="https://esm.sh/invokers"></script>
+  <!-- Add Invokers via CDN (includes all commands) -->
+  <script type="module" src="https://esm.sh/invokers/compatible"></script>
 </head>
 <body>
   <!-- Toggle a navigation menu with zero JavaScript -->
@@ -67,6 +186,201 @@ That's it! No event listeners, no DOM queries, no state management. The HTML des
 | Future-proof          | ❌          | ❌       | ❌         | ✅            |
 
 <br />
+
+## 🆚 vs HTMX
+
+**Invokers embraces JavaScript** while keeping simple interactions simple. Unlike HTMX's hypermedia-first approach, Invokers focuses on rich client-side interactions with clean separation between HTML structure and JavaScript logic.
+
+### HTMX: Hypermedia with Server State
+```html
+<!-- HTMX: Server handles everything, HTML becomes the API -->
+<div hx-get="/api/todos" hx-trigger="load" hx-target="#todo-list">
+  <button hx-post="/api/todos" hx-include="[name='task']" hx-target="#todo-list">
+    Add Todo
+  </button>
+  <input name="task" placeholder="New task...">
+</div>
+<ul id="todo-list"></ul>
+```
+
+### Invokers: Client-Side Interactions with JS Control
+```html
+<!-- Invokers: HTML declares intent, JavaScript handles logic -->
+<div id="todo-app">
+  <form command-on="submit.prevent" command="--add-todo">
+    <input name="task" placeholder="New task..." command-on="input" command="--update-preview">
+    <button type="submit">Add Todo</button>
+  </form>
+  <div id="preview">Preview will appear here...</div>
+  <ul id="todo-list"></ul>
+</div>
+
+<script>
+  // Clean separation: JavaScript manages data and business logic
+  const todos = [];
+  const app = document.getElementById('todo-app');
+
+  app.addEventListener('command', (e) => {
+    if (e.command === '--add-todo') {
+      const task = e.target.elements.task.value;
+      if (task.trim()) {
+        todos.push({ id: Date.now(), text: task, completed: false });
+        renderTodos();
+        e.target.reset();
+      }
+    }
+  });
+
+  function renderTodos() {
+    const list = document.getElementById('todo-list');
+    list.innerHTML = todos.map(todo => `
+      <li>
+        <input type="checkbox" ${todo.completed ? 'checked' : ''}
+               command="--toggle-todo" data-todo-id="${todo.id}">
+        <span ${todo.completed ? 'style="text-decoration: line-through"' : ''}>
+          ${todo.text}
+        </span>
+        <button command="--delete-todo" data-todo-id="${todo.id}">×</button>
+      </li>
+    `).join('');
+  }
+</script>
+```
+
+**Key Differences:**
+- **JavaScript Embrace**: Invokers doesn't hide JavaScript - it enhances it with declarative HTML
+- **Client-Side Focus**: Perfect for SPAs and rich interactions without server round-trips
+- **Clean Separation**: HTML declares *what* happens, JavaScript handles *how*
+- **Not Hypermedia**: No assumption about server APIs or HTML-over-the-wire
+
+## 🆚 vs Alpine.js
+
+**Invokers keeps control flow and data out of the DOM by default**, while Alpine.js embeds JavaScript expressions directly in HTML attributes. Invokers embraces JavaScript but maintains clean separation between structure and logic.
+
+### Alpine.js: Logic in HTML Attributes
+```html
+<!-- Alpine.js: JavaScript expressions in HTML attributes -->
+<div x-data="{
+  todos: [],
+  newTodo: '',
+  addTodo() {
+    if (this.newTodo.trim()) {
+      this.todos.push({ id: Date.now(), text: this.newTodo, completed: false });
+      this.newTodo = '';
+    }
+  },
+  toggleTodo(id) {
+    const todo = this.todos.find(t => t.id === id);
+    if (todo) todo.completed = !todo.completed;
+  }
+}">
+  <form @submit.prevent="addTodo()">
+    <input x-model="newTodo" placeholder="New task...">
+    <button type="submit">Add Todo</button>
+  </form>
+
+  <ul>
+    <template x-for="todo in todos" :key="todo.id">
+      <li>
+        <input type="checkbox" :checked="todo.completed"
+               @change="toggleTodo(todo.id)">
+        <span :class="{ 'line-through': todo.completed }" x-text="todo.text"></span>
+        <button @click="todos = todos.filter(t => t.id !== todo.id)">×</button>
+      </li>
+    </template>
+  </ul>
+</div>
+```
+
+### Invokers: Declarative HTML, Clean JavaScript
+```html
+<!-- Invokers: HTML declares intent, JavaScript manages state -->
+<div id="todo-app">
+  <form command-on="submit.prevent" command="--add-todo">
+    <input name="task" placeholder="New task...">
+    <button type="submit">Add Todo</button>
+  </form>
+
+  <ul id="todo-list">
+    <!-- Todos rendered here by JavaScript -->
+  </ul>
+</div>
+
+<script>
+  // Clean separation: All logic in JavaScript, not scattered in HTML
+  class TodoApp {
+    constructor() {
+      this.todos = [];
+      this.app = document.getElementById('todo-app');
+      this.bindEvents();
+      this.render();
+    }
+
+    bindEvents() {
+      this.app.addEventListener('command', (e) => {
+        switch (e.command) {
+          case '--add-todo':
+            this.addTodo(e.target.elements.task.value);
+            break;
+          case '--toggle-todo':
+            this.toggleTodo(parseInt(e.target.dataset.todoId));
+            break;
+          case '--delete-todo':
+            this.deleteTodo(parseInt(e.target.dataset.todoId));
+            break;
+        }
+      });
+    }
+
+    addTodo(text) {
+      if (text.trim()) {
+        this.todos.push({
+          id: Date.now(),
+          text: text.trim(),
+          completed: false
+        });
+        this.render();
+        this.app.querySelector('input[name="task"]').value = '';
+      }
+    }
+
+    toggleTodo(id) {
+      const todo = this.todos.find(t => t.id === id);
+      if (todo) {
+        todo.completed = !todo.completed;
+        this.render();
+      }
+    }
+
+    deleteTodo(id) {
+      this.todos = this.todos.filter(t => t.id !== id);
+      this.render();
+    }
+
+    render() {
+      const list = document.getElementById('todo-list');
+      list.innerHTML = this.todos.map(todo => `
+        <li class="${todo.completed ? 'completed' : ''}">
+          <input type="checkbox" ${todo.completed ? 'checked' : ''}
+                 command="--toggle-todo" data-todo-id="${todo.id}">
+          <span>${todo.text}</span>
+          <button command="--delete-todo" data-todo-id="${todo.id}">×</button>
+        </li>
+      `).join('');
+    }
+  }
+
+  // Initialize the app
+  new TodoApp();
+</script>
+```
+
+**Key Differences:**
+- **DOM Separation**: Control flow and data logic stay in JavaScript, not embedded in HTML
+- **JavaScript Embrace**: Full power of JavaScript without hiding it behind HTML attributes
+- **Maintainable**: Logic is organized in proper JavaScript classes/functions, not scattered across HTML
+- **Simple Things Stay Simple**: Basic interactions use simple HTML attributes, complex logic uses JavaScript
+- **Standards-Based**: Uses web platform APIs instead of custom attribute syntax
 
 ## 🎯 Why Invokers?
 
@@ -1909,6 +2223,12 @@ Combine expressions with command chaining for dynamic, data-driven workflows:
 - Only safe property access and arithmetic operations are allowed
 - No function calls, object creation, or global access
 - Expressions cannot modify data, only read it
+
+**JSON in HTML Attributes:**
+- When passing JSON to commands (like `--emit:event:{"key":"value"}`), avoid HTML entity encoding
+- ❌ Wrong: `command="--emit:notify:{\"message\":\"Hello\"}"`
+- ❌ Wrong: `command="--emit:notify:{&quot;message&quot;:&quot;Hello&quot;}"`
+- ✅ Correct: `command='--emit:notify:{"message":"Hello"}'` (use single quotes around attribute)
 
 **Browser Support:**
 - Advanced events require a modern browser with Proxy support

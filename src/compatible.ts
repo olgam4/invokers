@@ -20,7 +20,7 @@
  */
 
 // Import the core system
-import { InvokerManager } from './core';
+import { InvokerManager, HookPoint } from './core';
 
 // Import all command packs
 import { registerBaseCommands } from './commands/base';
@@ -41,6 +41,7 @@ import { enableAdvancedEvents } from './advanced/index';
 
 // Re-export everything from the main index for full compatibility
 export * from './index';
+export { HookPoint } from './core';
 
 // Ensure polyfill is applied to browsers
 import { apply as applyPolyfill } from './polyfill';
@@ -67,6 +68,8 @@ registerDeviceCommands(invokerInstance);
 registerAccessibilityCommands(invokerInstance);
 registerStorageCommands(invokerInstance);
 
+
+
 // Setup the global for CDN users and backward compatibility FIRST (same as index.ts but with all commands)
 if (typeof window !== 'undefined') {
   (window as any).Invoker = {
@@ -74,6 +77,15 @@ if (typeof window !== 'undefined') {
     register: invokerInstance.register.bind(invokerInstance),
     executeCommand: invokerInstance.executeCommand.bind(invokerInstance),
     reset: invokerInstance.reset.bind(invokerInstance),
+    
+    // Middleware and Plugin APIs
+    registerMiddleware: invokerInstance.registerMiddleware.bind(invokerInstance),
+    unregisterMiddleware: invokerInstance.unregisterMiddleware.bind(invokerInstance),
+    registerPlugin: invokerInstance.registerPlugin.bind(invokerInstance),
+    unregisterPlugin: invokerInstance.unregisterPlugin.bind(invokerInstance),
+    hasPlugin: invokerInstance.hasPlugin.bind(invokerInstance),
+    HookPoint: HookPoint,
+    
     // Add compatibility methods
     getRegisteredCommands: () => Array.from((invokerInstance as any).commands.keys()),
     getStats: () => invokerInstance.getStats(),

@@ -121,7 +121,7 @@ const domCommands: Record<string, CommandCallback> = {
    * @example `<button command="--dom:append" commandfor="item-list" data-template-id="new-item">Add</button>`
    * @example `<button command="--dom:append:outer" commandfor="#item-1" data-template-id="item-2">Load Next</button>`
    */
-  "--dom:append": ({ invoker, targetElement, params }: CommandContext) => {
+  "--dom:append": async ({ invoker, targetElement, params }: CommandContext) => {
     const style = params[0] || 'inner';
     let fragment = getSourceNode(invoker, 'append').cloneNode(true) as DocumentFragment;
 
@@ -137,7 +137,11 @@ const domCommands: Record<string, CommandCallback> = {
       }
     };
 
-    document.startViewTransition ? document.startViewTransition(updateDOM) : updateDOM();
+    if (document.startViewTransition) {
+      await document.startViewTransition(updateDOM).finished;
+    } else {
+      updateDOM();
+    }
   },
 
   /**

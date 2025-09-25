@@ -15,17 +15,167 @@
                 return;
             }
 
-            // Register the --demo:echo command used in the demo
+            // Counter state
+            let counter = 0;
+
+            // Register basic demo commands
             window.Invoker.register("--demo:echo", ({ targetElement }) => {
                 targetElement.textContent = `Echo: ${new Date().toISOString()}`;
             });
 
-            // Register --demo:clear command
             window.Invoker.register("--demo:clear", ({ targetElement }) => {
                 targetElement.textContent = '';
             });
 
-            console.log('Demo commands registered successfully');
+            // Counter commands
+            window.Invoker.register("--demo:counter:increment", ({ targetElement }) => {
+                counter++;
+                targetElement.textContent = counter.toString();
+            });
+
+            window.Invoker.register("--demo:counter:reset", ({ targetElement }) => {
+                counter = 0;
+                targetElement.textContent = counter.toString();
+            });
+
+            // Fetch/API commands
+            window.Invoker.register("--demo:fetch:api", ({ targetElement }) => {
+                targetElement.textContent = 'Loading...';
+                setTimeout(() => {
+                    targetElement.innerHTML = `<div style="color: green;">✓ API data fetched successfully at ${new Date().toLocaleTimeString()}</div>`;
+                }, 1000);
+            });
+
+            window.Invoker.register("--demo:fetch:simulate-error", ({ targetElement }) => {
+                targetElement.textContent = 'Loading...';
+                setTimeout(() => {
+                    targetElement.innerHTML = `<div style="color: red;">✗ Network error simulated at ${new Date().toLocaleTimeString()}</div>`;
+                }, 1000);
+            });
+
+            // Chain commands
+            window.Invoker.register("--demo:chain:start", ({ targetElement }) => {
+                targetElement.innerHTML = 'Step 1: Started chain execution...<br>';
+            });
+
+            window.Invoker.register("--demo:chain:step2", ({ targetElement }) => {
+                targetElement.innerHTML += 'Step 2: Chain step 2 completed...<br>';
+            });
+
+            // Event commands
+            window.Invoker.register("--demo:event:publish", ({ targetElement }) => {
+                targetElement.innerHTML = `Event published at ${new Date().toLocaleTimeString()}<br>`;
+                // Dispatch custom event
+                document.dispatchEvent(new CustomEvent('demo:event', { detail: { message: 'Hello from event!' } }));
+            });
+
+            // Chart commands (simplified)
+            window.Invoker.register("--demo:chart:add-point", ({ targetElement, invoker }) => {
+                const input = invoker.previousElementSibling;
+                const value = input ? input.value || Math.floor(Math.random() * 100) : Math.floor(Math.random() * 100);
+                targetElement.innerHTML = `Chart updated: Added point ${value} at ${new Date().toLocaleTimeString()}<br>`;
+            });
+
+            window.Invoker.register("--demo:chart:clear", ({ targetElement }) => {
+                targetElement.innerHTML = 'Chart cleared<br>';
+            });
+
+            // API commands
+            window.Invoker.register("--demo:api:github-user", ({ targetElement }) => {
+                targetElement.textContent = 'Loading GitHub user...';
+                // Simulate API call
+                setTimeout(() => {
+                    targetElement.innerHTML = `
+                        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                            <strong>Demo User</strong><br>
+                            <small>Fetched at ${new Date().toLocaleTimeString()}</small>
+                        </div>
+                    `;
+                }, 800);
+            });
+
+            // Template commands
+            window.Invoker.register("--demo:template:load-list", ({ targetElement }) => {
+                targetElement.innerHTML = `
+                    <div class="template-item">
+                        <h4>Item 1</h4>
+                        <p>Description for item 1</p>
+                        <span class="tag">demo</span>
+                    </div>
+                    <div class="template-item">
+                        <h4>Item 2</h4>
+                        <p>Description for item 2</p>
+                        <span class="tag">example</span>
+                    </div>
+                `;
+            });
+
+            // Condition commands
+            window.Invoker.register("--demo:condition:update", ({ targetElement, invoker }) => {
+                const select = invoker.previousElementSibling;
+                const condition = select ? select.value : 'loading';
+                
+                const messages = {
+                    loading: 'Loading content...',
+                    success: '✓ Content loaded successfully!',
+                    error: '✗ Error loading content'
+                };
+                
+                targetElement.textContent = messages[condition] || messages.loading;
+            });
+
+            // Programmatic commands
+            window.Invoker.register("--demo:programmatic", ({ targetElement }) => {
+                targetElement.innerHTML = `Programmatic command executed at ${new Date().toLocaleTimeString()}<br>`;
+            });
+
+            window.Invoker.register("--demo:with-data", ({ targetElement }) => {
+                targetElement.innerHTML += `Command with custom data executed<br>`;
+            });
+
+            window.Invoker.register("--demo:delayed", ({ targetElement }) => {
+                targetElement.innerHTML += `Delayed command executed at ${new Date().toLocaleTimeString()}<br>`;
+            });
+
+            // Queue commands
+            window.Invoker.register("--demo:queue:start", ({ targetElement }) => {
+                targetElement.innerHTML = 'Queue started...<br>';
+                setTimeout(() => {
+                    targetElement.innerHTML += 'Queue step 1 completed<br>';
+                    setTimeout(() => {
+                        targetElement.innerHTML += 'Queue step 2 completed<br>';
+                        setTimeout(() => {
+                            targetElement.innerHTML += 'Queue finished<br>';
+                        }, 500);
+                    }, 500);
+                }, 500);
+            });
+
+            // Error commands
+            window.Invoker.register("--demo:error:network", ({ targetElement }) => {
+                targetElement.innerHTML = `<div style="color: red;">Network Error: Connection failed</div>`;
+            });
+
+            window.Invoker.register("--demo:error:validation", ({ targetElement }) => {
+                targetElement.innerHTML = `<div style="color: red;">Validation Error: Invalid input data</div>`;
+            });
+
+            window.Invoker.register("--demo:error:timeout", ({ targetElement }) => {
+                targetElement.innerHTML = `<div style="color: red;">Timeout Error: Request timed out</div>`;
+            });
+
+            // Debug commands
+            window.Invoker.register("--demo:debug:toggle", ({ targetElement }) => {
+                window.Invoker.debug = !window.Invoker.debug;
+                targetElement.innerHTML = `Debug mode: ${window.Invoker.debug ? 'ON' : 'OFF'}`;
+            });
+
+            window.Invoker.register("--demo:debug:execute", ({ targetElement }) => {
+                targetElement.innerHTML = `Debug execution completed at ${new Date().toLocaleTimeString()}`;
+                console.log('Debug command executed');
+            });
+
+            console.log('All demo commands registered successfully');
         }
 
         if (window.Invoker) {

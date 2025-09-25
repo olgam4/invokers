@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popover Menu with Anchor Positioning - Invokers Demo</title>
+    <script type="module" src="https://esm.sh/invokers"></script>
+    <style>
+        /* Reset popover styles */
+        [popover] {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Anchor positioning styles */
+        #menu-button {
+            anchor-name: --menu-anchor;
+        }
+
+        #main-menu {
+            position-anchor: --menu-anchor;
+            inset-block-start: anchor(--menu-anchor bottom);
+            inset-inline-start: anchor(--menu-anchor left);
+            margin-top: 8px;
+        }
+
+        /* Menu styles */
+        .menu {
+            list-style: none;
+            margin: 0;
+            padding: 8px;
+            min-width: 200px;
+        }
+
+        .menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .menu-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .menu-item[popovertarget] {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .menu-item[popovertarget]::after {
+            content: "▶";
+            font-size: 0.8em;
+            margin-left: auto;
+        }
+
+        /* Submenu positioning */
+        .submenu-trigger {
+            anchor-name: --submenu-anchor;
+        }
+
+        .submenu {
+            position-anchor: --submenu-anchor;
+            inset-block-start: anchor(--submenu-anchor top);
+            inset-inline-start: anchor(--submenu-anchor right);
+            margin-left: 8px;
+        }
+
+        /* Animations */
+        [popover] {
+            display: none;
+            opacity: 0;
+            transition:
+                opacity 300ms,
+                display 300ms allow-discrete,
+                overlay 300ms allow-discrete;
+        }
+
+        [popover]:popover-open {
+            display: block;
+            opacity: 1;
+        }
+
+        [popover]:popover-open {
+            @starting-style {
+                opacity: 0;
+            }
+        }
+
+        /* Demo styles */
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 2rem;
+            line-height: 1.6;
+        }
+
+        .demo-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .demo-description {
+            margin-bottom: 1rem;
+            color: #666;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: inherit;
+        }
+
+        button:hover {
+            background: #f0f0f0;
+        }
+
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .note strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>Popover Menu with Anchor Positioning - Invokers Demo</h1>
+
+    <div class="demo-section">
+        <h2>Navigation Menu with Nested Submenus</h2>
+        <p class="demo-description">
+            This demo shows how to create a fully accessible navigation menu with nested submenus using the Popover API and CSS Anchor Positioning. No JavaScript required!
+        </p>
+
+        <nav>
+            <button id="menu-button" popovertarget="main-menu">Menu</button>
+
+            <menu popover id="main-menu" class="menu">
+                <li><button class="menu-item" command="--text:set:Home selected" commandfor="page-content">Home</button></li>
+                <li><button class="menu-item submenu-trigger" popovertarget="products-submenu">Products ▶</button></li>
+                <li><button class="menu-item" command="--text:set:About selected" commandfor="page-content">About</button></li>
+                <li><button class="menu-item" command="--text:set:Contact selected" commandfor="page-content">Contact</button></li>
+            </menu>
+
+            <menu popover id="products-submenu" class="menu submenu">
+                <li><button class="menu-item" command="--text:set:Product A selected" commandfor="page-content">Product A</button></li>
+                <li><button class="menu-item" command="--text:set:Product B selected" commandfor="page-content">Product B</button></li>
+                <li><button class="menu-item submenu-trigger" popovertarget="tools-submenu">Tools ▶</button></li>
+            </menu>
+
+            <menu popover id="tools-submenu" class="menu submenu">
+                <li><button class="menu-item" command="--text:set:Hammer selected" commandfor="page-content">Hammer</button></li>
+                <li><button class="menu-item" command="--text:set:Screwdriver selected" commandfor="page-content">Screwdriver</button></li>
+                <li><button class="menu-item" command="--text:set:Wrench selected" commandfor="page-content">Wrench</button></li>
+            </menu>
+        </nav>
+
+        <div id="page-content" style="margin-top: 1rem; padding: 1rem; background: #f9f9f9; border-radius: 4px;">
+            Select a menu item to see content here...
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>Simple Tooltip with Anchor Positioning</h2>
+        <p class="demo-description">
+            A simple tooltip example using anchor positioning and popovers.
+        </p>
+
+        <button id="tooltip-button" popovertarget="tooltip">Hover for info</button>
+        <div popover id="tooltip" style="padding: 8px 12px; background: #333; color: white; border-radius: 4px; font-size: 14px;">
+            This is a tooltip positioned with CSS anchor positioning!
+        </div>
+
+        <style>
+            #tooltip-button {
+                anchor-name: --tooltip-anchor;
+            }
+
+            #tooltip {
+                position-anchor: --tooltip-anchor;
+                inset-block-start: anchor(--tooltip-anchor bottom);
+                inset-inline-start: anchor(--tooltip-anchor center);
+                transform: translateX(-50%);
+                margin-top: 4px;
+            }
+        </style>
+    </div>
+
+    <div class="note">
+        <strong>Note:</strong> Anchor positioning is currently experimental and only supported in Chrome with experimental web platform features enabled. This demo will work best in supporting browsers. Invokers provides the command functionality for enhanced interactions.
+    </div>
+
+    <script>
+        // Optional: Enable advanced events for more complex interactions
+        // import { enableAdvancedEvents } from 'https://esm.sh/invokers/advanced';
+        // enableAdvancedEvents();
+    </script>
+</body>
+</html>
