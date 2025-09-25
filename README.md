@@ -46,6 +46,42 @@
 -   🎨 **View Transitions:** Built-in, automatic support for the [View Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API) for beautiful, animated UI changes with zero JS configuration.
 -   🔧 **Singleton Architecture:** Optimized internal architecture ensures consistent behavior and prevents duplicate registrations.
 
+## 🚀 Quick Demo (30 seconds)
+
+See Invokers in action with this copy-paste example:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Add Invokers via CDN (includes all commands) -->
+  <script type="module" src="https://esm.sh/invokers/compatible"></script>
+</head>
+<body>
+  <!-- Toggle a navigation menu with zero JavaScript -->
+  <button type="button" command="--toggle" commandfor="nav-menu" aria-expanded="false">
+    Menu
+  </button>
+  <nav id="nav-menu" hidden>
+    <a href="/home">Home</a>
+    <a href="/about">About</a>
+    <!-- Dismiss button that hides itself -->
+    <button type="button" command="--hide" commandfor="nav-menu">✕</button>
+  </nav>
+
+  <!-- Hover cards work automatically with Interest Invokers -->
+  <a href="/profile" interestfor="profile-hint">@username</a>
+  <div id="profile-hint" popover="hint">
+    <strong>John Doe</strong><br>
+    Software Developer<br>
+    📍 San Francisco
+  </div>
+</body>
+</html>
+```
+
+That's it! No event listeners, no DOM queries, no state management. The HTML describes the behavior, and Invokers makes it work.
+
 ## 🌐 Platform Proposals & Standards Alignment
 
 Invokers is built on emerging web platform proposals from the OpenUI Community Group and WHATWG, providing a polyfill today for features that will become native browser APIs tomorrow. This section explains the underlying standards and how Invokers extends them.
@@ -140,42 +176,6 @@ While waiting for universal browser support, Invokers provides:
 - **Progressive Enhancement**: Adds features without breaking existing code
 
 This standards-first approach ensures your code is future-proof while providing powerful enhancements that complement the core platform proposals.
-
-## 🚀 Quick Demo (30 seconds)
-
-See Invokers in action with this copy-paste example:
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <!-- Add Invokers via CDN (includes all commands) -->
-  <script type="module" src="https://esm.sh/invokers/compatible"></script>
-</head>
-<body>
-  <!-- Toggle a navigation menu with zero JavaScript -->
-  <button type="button" command="--toggle" commandfor="nav-menu" aria-expanded="false">
-    Menu
-  </button>
-  <nav id="nav-menu" hidden>
-    <a href="/home">Home</a>
-    <a href="/about">About</a>
-    <!-- Dismiss button that hides itself -->
-    <button type="button" command="--hide" commandfor="nav-menu">✕</button>
-  </nav>
-
-  <!-- Hover cards work automatically with Interest Invokers -->
-  <a href="/profile" interestfor="profile-hint">@username</a>
-  <div id="profile-hint" popover="hint">
-    <strong>John Doe</strong><br>
-    Software Developer<br>
-    📍 San Francisco
-  </div>
-</body>
-</html>
-```
-
-That's it! No event listeners, no DOM queries, no state management. The HTML describes the behavior, and Invokers makes it work.
 
 ## 🤔 How Does This Compare?
 
