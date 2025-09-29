@@ -9,7 +9,7 @@
 
 ## 📋 Table of Contents
 
-- [🚀 Quick Demo](#-quick-demo)
+- [🚀 Quick Demo](#quick-demo)
 - [🤔 How Does This Compare?](#-how-does-this-compare)
 - [🎯 Why Invokers?](#-why-invokers)
 - [🚀 Modular Architecture](#-modular-architecture)
@@ -46,7 +46,7 @@
 -   🎨 **View Transitions:** Built-in, automatic support for the [View Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API) for beautiful, animated UI changes with zero JS configuration.
 -   🔧 **Singleton Architecture:** Optimized internal architecture ensures consistent behavior and prevents duplicate registrations.
 
-## 🚀 Quick Demo (30 seconds)
+## Quick Demo
 
 See Invokers in action with this copy-paste example:
 
@@ -179,265 +179,201 @@ This standards-first approach ensures your code is future-proof while providing 
 
 ## 🤔 How Does This Compare?
 
-| Feature               | Vanilla JS | HTMX    | Alpine.js | **Invokers** |
-| --------------------- | ---------- | ------- | --------- | ------------ |
-| Declarative in HTML   | ❌          | ✅       | ✅         | ✅            |
-| Standards-aligned     | ❌          | ❌       | ❌         | ✅            |
-| Extended commands     | ❌          | ❌       | ❌         | ✅ (Auto)     |
-| Workflow chaining     | ❌          | Limited | Limited   | ✅            |
-| Accessible by default | ❌          | ❌       | ❌         | ✅            |
-| Future-proof          | ❌          | ❌       | ❌         | ✅            |
+Invokers is designed to feel like a natural extension of HTML, focusing on client-side interactions and aligning with future web standards. Here’s how its philosophy and approach differ from other popular libraries.
+
+| Feature                 | Vanilla JS | HTMX                        | Alpine.js                   | Stimulus                    | **Invokers**                                          |
+| ----------------------- | ---------- | --------------------------- | --------------------------- | --------------------------- | ----------------------------------------------------- |
+| **Philosophy**          | Imperative | Hypermedia (Server-centric) | JS in HTML (Component-like) | JS Organization (MVC-like)  | **Declarative HTML (Browser-centric)**                |
+| **Standards-Aligned**   | ✅          | ❌                           | ❌                           | ❌                           | ✅ **(Core Mission)**                                   |
+| **Primary Use Case**    | Anything   | Server-rendered partials    | Self-contained UI components | Organizing complex JS       | **JS-free UI patterns & progressive enhancement**     |
+| **JS Required for UI**  | Always     | For server comms            | For component logic         | Always (in controllers)     | **Often none for common patterns**                    |
+| **Accessibility**       | Manual     | Manual                      | Manual                      | Manual                      | ✅ **(Automatic ARIA management)**                      |
+| **Learning Curve**      | High       | Medium (Hypermedia concepts) | Low (Vue-like syntax)       | Medium (Controller concepts) | **Very Low (HTML attributes)**                        |
 
 <br />
 
 ## 🆚 vs HTMX
 
-**Invokers embraces JavaScript** while keeping simple interactions simple. Unlike HTMX's hypermedia-first approach, Invokers focuses on rich client-side interactions with clean separation between HTML structure and JavaScript logic.
+**HTMX makes your server the star; Invokers makes your browser the star.**
 
-### HTMX: Hypermedia with Server State
+HTMX is a hypermedia-driven library where interactions typically involve a network request to a server, which returns HTML. Invokers is client-centric, designed to create rich UI interactions directly in the browser, often without any network requests or custom JavaScript.
+
+### Use Case: Inline Editing
+
+A user clicks "Edit" to change a name, then "Save" or "Cancel".
+
+**HTMX: Server-Driven Swapping**
+HTMX replaces a `div` with a `form` fragment fetched from the server. The entire state transition is managed by server responses.
+
 ```html
-<!-- HTMX: Server handles everything, HTML becomes the API -->
-<div hx-get="/api/todos" hx-trigger="load" hx-target="#todo-list">
-  <button hx-post="/api/todos" hx-include="[name='task']" hx-target="#todo-list">
-    Add Todo
+<!-- HTMX requires a server to serve the edit-form fragment -->
+<div id="user-1" hx-target="this" hx-swap="outerHTML">
+  <strong>Jane Doe</strong>
+  <button hx-get="/edit-form/1" class="btn">
+    Edit
   </button>
-  <input name="task" placeholder="New task...">
 </div>
-<ul id="todo-list"></ul>
+
+<!-- On click, the server returns this HTML fragment: -->
+<!-- <form hx-put="/user/1">
+       <input name="name" value="Jane Doe">
+       <button type="submit">Save</button>
+       <button hx-get="/user/1">Cancel</button>
+     </form> -->
 ```
 
-### Invokers: Client-Side Interactions with JS Control
+**Invokers: Client-Side State Toggling (No JS, No Server)**
+Invokers handles this by toggling the visibility of two `divs` that already exist on the page. It's instantaneous and requires zero network latency or server-side logic for the UI change.
+
 ```html
-<!-- Invokers: HTML declares intent, JavaScript handles logic -->
-<div id="todo-app">
-  <form command-on="submit.prevent" command="--add-todo">
-    <input name="task" placeholder="New task..." command-on="input" command="--update-preview">
-    <button type="submit">Add Todo</button>
-  </form>
-  <div id="preview">Preview will appear here...</div>
-  <ul id="todo-list"></ul>
+<!-- Invokers handles this entirely on the client, no server needed -->
+<div class="user-profile">
+  <!-- 1. The view state (visible by default) -->
+  <div id="user-view">
+    <strong>Jane Doe</strong>
+    <button type="button" class="btn"
+            command="--hide" commandfor="user-view"
+            data-and-then="--show" data-and-then-commandfor="user-edit">
+      Edit
+    </button>
+  </div>
+
+  <!-- 2. The edit state (hidden by default) -->
+  <div id="user-edit" hidden>
+    <input type="text" value="Jane Doe">
+    <button type="button" class="btn-primary" command="--emit:save-user:1">Save</button>
+    <button type="button" class="btn"
+            command="--hide" commandfor="user-edit"
+            data-and-then="--show" data-and-then-commandfor="user-view">
+      Cancel
+    </button>
+  </div>
 </div>
-
-<script>
-  // Clean separation: JavaScript manages data and business logic
-  const todos = [];
-  const app = document.getElementById('todo-app');
-
-  app.addEventListener('command', (e) => {
-    if (e.command === '--add-todo') {
-      const task = e.target.elements.task.value;
-      if (task.trim()) {
-        todos.push({ id: Date.now(), text: task, completed: false });
-        renderTodos();
-        e.target.reset();
-      }
-    }
-  });
-
-  function renderTodos() {
-    const list = document.getElementById('todo-list');
-    list.innerHTML = todos.map(todo => `
-      <li>
-        <input type="checkbox" ${todo.completed ? 'checked' : ''}
-               command="--toggle-todo" data-todo-id="${todo.id}">
-        <span ${todo.completed ? 'style="text-decoration: line-through"' : ''}>
-          ${todo.text}
-        </span>
-        <button command="--delete-todo" data-todo-id="${todo.id}">×</button>
-      </li>
-    `).join('');
-  }
-</script>
 ```
 
 **Key Differences:**
-- **JavaScript Embrace**: Invokers doesn't hide JavaScript - it enhances it with declarative HTML
-- **Client-Side Focus**: Perfect for SPAs and rich interactions without server round-trips
-- **Clean Separation**: HTML declares *what* happens, JavaScript handles *how*
-- **Not Hypermedia**: No assumption about server APIs or HTML-over-the-wire
+-   **Philosophy**: HTMX extends HTML as a hypermedia control. Invokers extends HTML for rich, client-side UI interactions.
+-   **Network**: HTMX is chatty by design. Invokers is silent unless you explicitly use `--fetch`.
+-   **State**: With HTMX, UI state often lives on the server. With Invokers, UI state lives in the DOM.
+-   **Use Case**: HTMX is excellent for server-rendered apps (Rails, Django, PHP). Invokers excels at enhancing static sites, design systems, and front-end frameworks.
+
+
 
 ## 🆚 vs Alpine.js
 
-**Invokers keeps control flow and data out of the DOM by default**, while Alpine.js embeds JavaScript expressions directly in HTML attributes. Invokers embraces JavaScript but maintains clean separation between structure and logic.
+**Alpine puts JavaScript logic *in* your HTML; Invokers keeps it *out*.**
 
-### Alpine.js: Logic in HTML Attributes
+Alpine.js gives you framework-like reactivity and state management by embedding JavaScript expressions in `x-` attributes. Invokers achieves similar results using a predefined set of commands, keeping your markup free of raw JavaScript and closer to standard HTML.
+
+### Use Case: Textarea Character Counter
+
+Show a live character count as a user types in a `textarea`.
+
+**Alpine.js: State and Logic in `x-data`**
+Alpine creates a small, self-contained component with its own state (`message`) and uses JS properties (`message.length`) directly in the markup.
+
 ```html
-<!-- Alpine.js: JavaScript expressions in HTML attributes -->
-<div x-data="{
-  todos: [],
-  newTodo: '',
-  addTodo() {
-    if (this.newTodo.trim()) {
-      this.todos.push({ id: Date.now(), text: this.newTodo, completed: false });
-      this.newTodo = '';
-    }
-  },
-  toggleTodo(id) {
-    const todo = this.todos.find(t => t.id === id);
-    if (todo) todo.completed = !todo.completed;
-  }
-}">
-  <form @submit.prevent="addTodo()">
-    <input x-model="newTodo" placeholder="New task...">
-    <button type="submit">Add Todo</button>
-  </form>
-
-  <ul>
-    <template x-for="todo in todos" :key="todo.id">
-      <li>
-        <input type="checkbox" :checked="todo.completed"
-               @change="toggleTodo(todo.id)">
-        <span :class="{ 'line-through': todo.completed }" x-text="todo.text"></span>
-        <button @click="todos = todos.filter(t => t.id !== todo.id)">×</button>
-      </li>
-    </template>
-  </ul>
+<!-- Alpine puts a "sprinkle" of JavaScript directly in the HTML -->
+<div x-data="{ message: '', limit: 140 }">
+  <textarea x-model="message" :maxlength="limit" class="input"></textarea>
+  <p class="char-count">
+    <span x-text="message.length">0</span> / <span x-text="limit">140</span>
+  </p>
 </div>
 ```
 
-### Invokers: Declarative HTML, Clean JavaScript
+**Invokers: Declarative Commands and Expressions**
+Invokers uses the `command-on` attribute to listen for the `input` event and the `{{...}}` expression engine to update the target's text content. It describes the *relationship* between elements, not component logic.
+
 ```html
-<!-- Invokers: HTML declares intent, JavaScript manages state -->
-<div id="todo-app">
-  <form command-on="submit.prevent" command="--add-todo">
-    <input name="task" placeholder="New task...">
-    <button type="submit">Add Todo</button>
-  </form>
-
-  <ul id="todo-list">
-    <!-- Todos rendered here by JavaScript -->
-  </ul>
+<!-- Invokers describes the event and action, no JS logic in the HTML -->
+<div>
+  <textarea id="message-input" maxlength="140" class="input"
+            command-on="input"
+            command="--text:set:{{this.value.length}}"
+            commandfor="char-count"></textarea>
+  <p class="char-count">
+    <span id="char-count">0</span> / 140
+  </p>
 </div>
-
-<script>
-  // Clean separation: All logic in JavaScript, not scattered in HTML
-  class TodoApp {
-    constructor() {
-      this.todos = [];
-      this.app = document.getElementById('todo-app');
-      this.bindEvents();
-      this.render();
-    }
-
-    bindEvents() {
-      this.app.addEventListener('command', (e) => {
-        switch (e.command) {
-          case '--add-todo':
-            this.addTodo(e.target.elements.task.value);
-            break;
-          case '--toggle-todo':
-            this.toggleTodo(parseInt(e.target.dataset.todoId));
-            break;
-          case '--delete-todo':
-            this.deleteTodo(parseInt(e.target.dataset.todoId));
-            break;
-        }
-      });
-    }
-
-    addTodo(text) {
-      if (text.trim()) {
-        this.todos.push({
-          id: Date.now(),
-          text: text.trim(),
-          completed: false
-        });
-        this.render();
-        this.app.querySelector('input[name="task"]').value = '';
-      }
-    }
-
-    toggleTodo(id) {
-      const todo = this.todos.find(t => t.id === id);
-      if (todo) {
-        todo.completed = !todo.completed;
-        this.render();
-      }
-    }
-
-    deleteTodo(id) {
-      this.todos = this.todos.filter(t => t.id !== id);
-      this.render();
-    }
-
-    render() {
-      const list = document.getElementById('todo-list');
-      list.innerHTML = this.todos.map(todo => `
-        <li class="${todo.completed ? 'completed' : ''}">
-          <input type="checkbox" ${todo.completed ? 'checked' : ''}
-                 command="--toggle-todo" data-todo-id="${todo.id}">
-          <span>${todo.text}</span>
-          <button command="--delete-todo" data-todo-id="${todo.id}">×</button>
-        </li>
-      `).join('');
-    }
-  }
-
-  // Initialize the app
-  new TodoApp();
-</script>
 ```
 
 **Key Differences:**
-- **DOM Separation**: Control flow and data logic stay in JavaScript, not embedded in HTML
-- **JavaScript Embrace**: Full power of JavaScript without hiding it behind HTML attributes
-- **Maintainable**: Logic is organized in proper JavaScript classes/functions, not scattered across HTML
-- **Simple Things Stay Simple**: Basic interactions use simple HTML attributes, complex logic uses JavaScript
-- **Standards-Based**: Uses web platform APIs instead of custom attribute syntax
+-   **Syntax**: Alpine uses custom JS-like attributes (`x-data`, `x-text`). Invokers uses standard-proposal attributes (`command`, `commandfor`) and CSS-like command names (`--text:set`).
+-   **State**: Alpine encourages creating explicit state (`x-data`). Invokers derives state directly from the DOM (e.g., `this.value.length`).
+-   **Paradigm**: Alpine creates "mini-apps" in your DOM. Invokers creates declarative "event-action" bindings between elements.
+-   **Future**: The `command` attribute is on a standards track. Alpine's syntax is specific to the library.
+
+
 
 ## 🆚 vs Stimulus
 
-**Invokers reduces JavaScript ceremony** while Stimulus organizes it. Both enhance HTML declaratively, but with fundamentally different philosophies about where behavior should live.
+**Stimulus organizes your JavaScript; Invokers helps you eliminate it.**
 
-### Stimulus: JavaScript-Organized HTML Enhancement
+Stimulus is a modest JavaScript framework that connects HTML to JavaScript objects (controllers). It’s designed for applications with significant custom JavaScript logic. Invokers is designed to handle common UI patterns with *no* custom JavaScript at all.
+
+### Use Case: Copy to Clipboard with Feedback
+
+A user clicks a button to copy a URL to their clipboard, and the button provides feedback by changing its text to "Copied!" for a moment.
+
+**Stimulus: HTML Connected to a JS Controller**
+Stimulus requires a JavaScript `controller` to hold the logic for interacting with the clipboard API and managing the button's state (text change and timeout). The HTML contains `data-*` attributes to connect elements to this controller.
+
 ```html
-<!-- Stimulus: Behavior lives in JavaScript classes -->
-<div data-controller="slideshow" data-slideshow-index-value="0">
-  <div data-slideshow-target="slide" class="current">Slide 1</div>
-  <div data-slideshow-target="slide">Slide 2</div>
-  <button data-action="slideshow#next">Next</button>
+<!-- Stimulus connects HTML elements to a required JS controller -->
+<div data-controller="clipboard">
+  <input data-clipboard-target="source" type="text"
+         value="https://example.com" readonly>
+
+  <button data-action="clipboard#copy" class="btn">
+    Copy Link
+  </button>
 </div>
 ```
-
 ```javascript
-// Required JavaScript controller class
+// A "clipboard_controller.js" file is required
+import { Controller } from "@hotwired/stimulus"
+
 export default class extends Controller {
-  static targets = ["slide"]
-  static values = { index: Number }
+  static targets = ["source"]
 
-  next() {
-    this.indexValue = (this.indexValue + 1) % this.slideTargets.length
-    this.showSlide(this.indexValue)
-  }
+  copy(event) {
+    // Logic to interact with the browser API
+    navigator.clipboard.writeText(this.sourceTarget.value)
 
-  showSlide(index) {
-    this.slideTargets.forEach((slide, i) => {
-      slide.classList.toggle("current", i === index)
-    })
+    // Custom logic for UI feedback
+    const originalText = event.currentTarget.textContent
+    event.currentTarget.textContent = "Copied!"
+
+    setTimeout(() => {
+      event.currentTarget.textContent = originalText
+    }, 2000)
   }
 }
 ```
 
-### Invokers: Declarative HTML-First Interactions
+**Invokers: Declarative Behavior with Command Chaining**
+Invokers has a built-in `--clipboard:copy` command. The UI feedback is handled declaratively by chaining commands in the `data-and-then` attribute. The entire workflow is defined in a single, readable line with no separate JavaScript file needed.
+
 ```html
-<!-- Invokers: Simple interactions need no JavaScript -->
-<div id="slideshow">
-  <div class="slide current">Slide 1</div>
-  <div class="slide">Slide 2</div>
-  <button command="--carousel:nav:next" commandfor="slideshow">Next</button>
+<!-- Invokers handles this with a single line of chained commands -->
+<div>
+  <input id="share-url" type="text" value="https://example.com" readonly>
+  <button type="button" class="btn"
+          command="--clipboard:copy"
+          commandfor="share-url"
+          data-and-then="--text:set:Copied!, --command:delay:2000, --text:set:Copy Link">
+    Copy Link
+  </button>
 </div>
-<!-- No JavaScript controller needed -->
 ```
+*(Note: For more robust error handling, you could use `data-after-success` instead of `data-and-then` to ensure the feedback only runs if the copy action succeeds.)*
 
 **Key Differences:**
-- **JavaScript Requirements**: Stimulus requires controller classes for all interactions; Invokers keeps common patterns purely declarative
-- **Standards Alignment**: Stimulus uses custom `data-*` conventions; Invokers polyfills emerging W3C/WHATWG web standards
-- **Code Organization**: Stimulus groups behavior in JavaScript classes; Invokers describes behavior directly in HTML
-- **Bundle Size**: Stimulus ~9kB minimal; Invokers 25.8kB core + modular commands as needed
-- **Learning Curve**: Stimulus requires JavaScript class knowledge; Invokers uses HTML-like command syntax
-
-**Use Stimulus if** you prefer explicit JavaScript organization and have complex business logic.  
-**Use Invokers if** you want to minimize JavaScript for common UI patterns and prefer future-proof web standards.
+-   **Ceremony**: Stimulus requires a specific file structure and JS classes for every distinct piece of functionality. Invokers requires only HTML attributes for most tasks.
+-   **Source of Truth**: In Stimulus, the behavior logic lives in the JS controller. In Invokers, the entire workflow is declared directly in the HTML.
+-   **Goal**: Stimulus aims to give structure to complex applications that will inevitably have a lot of custom JS. Invokers aims to prevent you from needing to write JS in the first place for common UI patterns.
+-   **When to Choose**: Use Stimulus when you have complex, stateful client-side logic that needs organization. Use Invokers when you want to build interactive UIs quickly with minimal or no JavaScript boilerplate.
 
 ## 🎯 Why Invokers?
 
