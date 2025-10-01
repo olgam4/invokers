@@ -82,8 +82,8 @@ const flowCommands: Record<string, CommandCallback> = {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
       const response = await fetch(url, {
-        method: "GET", 
-        headers: { Accept: "text/html", ...getHeadersFromAttributes(invoker) }, 
+        method: "GET",
+        headers: { Accept: "text/html", ...getHeadersFromAttributes(invoker) },
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -123,6 +123,7 @@ const flowCommands: Record<string, CommandCallback> = {
    *   command="--fetch:send"
    *   commandfor="my-form"
    *   data-response-target="#response-area"
+   *   data-replace-strategy="#response-area"
    * >
    *   Submit via Fetch
    * </button>
@@ -150,8 +151,8 @@ const flowCommands: Record<string, CommandCallback> = {
 
     try {
       const response = await fetch(form.action, {
-        method: form.method || "POST", 
-        body: new FormData(form), 
+        method: form.method || "POST",
+        body: new FormData(form),
         headers: getHeadersFromAttributes(invoker),
       });
 
@@ -159,7 +160,19 @@ const flowCommands: Record<string, CommandCallback> = {
 
       const html = await response.text();
       const newContent = parseHTML(html);
-      const updateDOM = () => responseTarget.replaceChildren(newContent);
+      const updateDOM = () => {
+        const strategy = invoker.dataset.replaceStrategy || "innerHTML";
+        if (strategy === "innerHTML")
+          responseTarget.replaceChildren(newContent);
+        else if (strategy === "outerHTML")
+          responseTarget.replaceWith(newContent);
+        else if (/(before|after)(begin|end)/.test(strategy)) {
+          const fragment = new DOMParser().parseFromString(html, "text/html").body.children[0];
+          responseTarget.insertAdjacentElement(strategy as InsertPosition, fragment)
+        }
+        else throw strategy;
+      };
+
       await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
     } catch (error) {
       showFeedbackState(invoker, responseTarget, "data-error-template");
@@ -349,53 +362,53 @@ const flowCommands: Record<string, CommandCallback> = {
 
   // --- Event Emission ---
 
-   /**
-    * `--emit`: Dispatches custom events for advanced interactions.
-    * The first parameter is the event type, remaining parameters form the event detail.
-    *
-    * @example
-    * ```html
-    * <button type="button" command="--emit:user-action:save-form">
-    *   Emit Save Event
-    * </button>
-    * ```
-    */
-      "--emit": ({ params, targetElement }: CommandContext) => {
-       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-         console.log('--emit called with targetElement:', targetElement);
-       }
-       const [eventType, ...detailParts] = params;
-       if (!eventType) {
-         throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
-           command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
-         });
-       }
+  /**
+   * `--emit`: Dispatches custom events for advanced interactions.
+   * The first parameter is the event type, remaining parameters form the event detail.
+   *
+   * @example
+   * ```html
+   * <button type="button" command="--emit:user-action:save-form">
+   *   Emit Save Event
+   * </button>
+   * ```
+   */
+  "--emit": ({ params, targetElement }: CommandContext) => {
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('--emit called with targetElement:', targetElement);
+    }
+    const [eventType, ...detailParts] = params;
+    if (!eventType) {
+      throw createInvokerError('Emit command requires an event type parameter', ErrorSeverity.ERROR, {
+        command: '--emit', recovery: 'Use format: --emit:event-type or --emit:event-type:detail'
+      });
+    }
 
-        let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
-        // Decode HTML entities in the detail string
-        if (typeof detail === 'string') {
-          detail = detail.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&apos;/g, "'");
-        }
-        // Try to parse as JSON if it looks like JSON
-        if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
-          try {
-            detail = JSON.parse(detail);
-          } catch (e) {
-            // Keep as string if not valid JSON
-          }
-        }
-          const event = new CustomEvent(eventType, {
-            bubbles: true,
-            composed: true,
-            detail
-          });
+    let detail = detailParts.length > 0 ? detailParts.join(':') : undefined;
+    // Decode HTML entities in the detail string
+    if (typeof detail === 'string') {
+      detail = detail.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&apos;/g, "'");
+    }
+    // Try to parse as JSON if it looks like JSON
+    if (typeof detail === 'string' && (detail.startsWith('{') || detail.startsWith('['))) {
+      try {
+        detail = JSON.parse(detail);
+      } catch (e) {
+        // Keep as string if not valid JSON
+      }
+    }
+    const event = new CustomEvent(eventType, {
+      bubbles: true,
+      composed: true,
+      detail
+    });
 
-        if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-          console.log('--emit dispatching event:', eventType, 'detail:', detail, 'to target:', targetElement);
-        }
-        // Dispatch to target element for local events, allowing bubbling for data-on-event listeners
-        targetElement.dispatchEvent(event);
-     },
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('--emit dispatching event:', eventType, 'detail:', detail, 'to target:', targetElement);
+    }
+    // Dispatch to target element for local events, allowing bubbling for data-on-event listeners
+    targetElement.dispatchEvent(event);
+  },
 
   // --- Pipeline Commands ---
 
@@ -454,32 +467,32 @@ const flowCommands: Record<string, CommandCallback> = {
    */
   "--pipeline:execute": async ({ invoker, params }: CommandContext) => {
     const pipelineName = params[0];
-     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
-     console.log('Pipeline: Looking for template with ID:', pipelineName);
-     }
-     
-     if (!pipelineName) {
-        throw createInvokerError('Pipeline execute command requires a pipeline name parameter', ErrorSeverity.ERROR, {
-           command: '--pipeline:execute', element: invoker
-         });
-     }
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+      console.log('Pipeline: Looking for template with ID:', pipelineName);
+    }
 
-     const template = document.getElementById(pipelineName);
-     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
+    if (!pipelineName) {
+      throw createInvokerError('Pipeline execute command requires a pipeline name parameter', ErrorSeverity.ERROR, {
+        command: '--pipeline:execute', element: invoker
+      });
+    }
+
+    const template = document.getElementById(pipelineName);
+    if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
       console.log('Pipeline: Found template:', template, 'with dataset:', template?.dataset);
-     }
-     
-     if (!(template instanceof HTMLTemplateElement) || template.dataset.pipeline !== 'true') {
-     throw createInvokerError(`Pipeline template "${pipelineName}" not found or not marked as pipeline`, ErrorSeverity.ERROR, {
-       command: '--pipeline:execute', element: invoker
-       });
+    }
+
+    if (!(template instanceof HTMLTemplateElement) || template.dataset.pipeline !== 'true') {
+      throw createInvokerError(`Pipeline template "${pipelineName}" not found or not marked as pipeline`, ErrorSeverity.ERROR, {
+        command: '--pipeline:execute', element: invoker
+      });
     }
 
     const pipelineSteps = Array.from(template.content.querySelectorAll('pipeline-step'));
     if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
       console.log('Pipeline: Found', pipelineSteps.length, 'pipeline steps:', pipelineSteps);
     }
-    
+
     if (pipelineSteps.length === 0) {
       throw createInvokerError(`Pipeline "${pipelineName}" contains no steps`, ErrorSeverity.ERROR, {
         command: '--pipeline:execute', element: invoker
@@ -488,7 +501,7 @@ const flowCommands: Record<string, CommandCallback> = {
 
     // Execute steps sequentially
     let hasError = false;
-    
+
     for (let stepIndex = 0; stepIndex < pipelineSteps.length; stepIndex++) {
       const step = pipelineSteps[stepIndex];
       const command = step.getAttribute('command');
@@ -575,7 +588,7 @@ function showFeedbackState(invoker: HTMLElement, target: HTMLElement, templateAt
 
 function getHeadersFromAttributes(element: HTMLElement): HeadersInit {
   const headers: HeadersInit = {};
-  
+
   // Look for data-header-* attributes
   for (const [key, value] of Object.entries(element.dataset)) {
     if (key.startsWith('header') && key !== 'header' && value) {
@@ -583,7 +596,7 @@ function getHeadersFromAttributes(element: HTMLElement): HeadersInit {
       headers[headerName] = value;
     }
   }
-  
+
   return headers;
 }
 
