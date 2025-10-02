@@ -55,9 +55,9 @@ describe('Enhanced Error Handling & Debugging', () => {
 
     it('should prevent registration of native command conflicts', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
-      invokerManager.register('--show-modal', () => {}); // Conflicts with native
-      
+
+      invokerManager.register('show-modal', () => {}); // Conflicts with native (no -- prefix)
+
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
