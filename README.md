@@ -251,6 +251,67 @@ Invokers handles this by toggling the visibility of two `divs` that already exis
 </div>
 ```
 
+### Use Case: Dynamic Content Swapping & Fetching
+
+Replace page sections with new content, either from templates or remote APIs, with precise control over insertion strategy.
+
+**HTMX: Server-Driven Content Swapping**
+HTMX fetches HTML fragments from the server and swaps them into the DOM using `hx-swap` strategies.
+
+```html
+<!-- HTMX requires server endpoints for each content type -->
+<div id="content-area">
+  <button hx-get="/api/widget-a" hx-swap="innerHTML">Load Widget A</button>
+  <button hx-get="/api/widget-b" hx-swap="outerHTML" hx-target="#content-area">Replace Container</button>
+</div>
+
+<!-- Server must return complete HTML fragments -->
+```
+
+**Invokers: Client-Side DOM Swapping & Fetching**
+Invokers can swap content from local templates or fetch from APIs, with granular control over insertion strategies.
+
+```html
+<!-- Templates defined in the same HTML document -->
+<template id="widget-a-template">
+  <div class="widget widget-a">
+    <h3>Widget A</h3>
+    <p>This content comes from a local template.</p>
+  </div>
+</template>
+
+<template id="widget-b-template">
+  <div class="widget widget-b">
+    <h3>Widget B</h3>
+    <p>This replaces the entire container.</p>
+  </div>
+</template>
+
+<div id="content-area">
+  <!-- Swap with local templates using different strategies -->
+  <button command="--dom:swap" data-template-id="widget-a-template"
+          commandfor="#content-area" data-replace-strategy="innerHTML">
+    Load Widget A (Inner)
+  </button>
+
+  <button command="--dom:swap" data-template-id="widget-b-template"
+          commandfor="#content-area" data-replace-strategy="outerHTML">
+    Load Widget B (Replace Container)
+  </button>
+
+  <!-- Fetch remote content with precise insertion control -->
+  <button command="--fetch:get" data-url="/api/sidebar"
+          commandfor="#content-area" data-replace-strategy="beforeend">
+    Add Sidebar
+  </button>
+
+  <button command="--fetch:get" data-url="/api/header"
+          commandfor="#content-area" data-replace-strategy="afterbegin">
+    Prepend Header
+  </button>
+</div>
+```
+
 **Key Differences:**
 -   **Philosophy**: HTMX extends HTML as a hypermedia control. Invokers extends HTML for rich, client-side UI interactions.
 -   **Network**: HTMX is chatty by design. Invokers is silent unless you explicitly use `--fetch`.
