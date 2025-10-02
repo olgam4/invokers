@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Number Input Controls Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .demo-box {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e1e4e8;
+      border-radius: 8px;
+      background: #fafbfc;
+    }
+
+    button {
+      background: #0969da;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #0860ca;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .step-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 16px 0;
+    }
+
+    .step-buttons button {
+      min-width: 40px;
+      padding: 8px 12px;
+    }
+
+    .number-display {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0969da;
+      text-align: center;
+      padding: 16px;
+      background: #f1f8ff;
+      border-radius: 8px;
+      margin: 16px 0;
+      border: 2px solid #c7e4f7;
+    }
+
+    .form-group {
+      margin: 16px 0;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d9e0;
+      border-radius: 6px;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #0969da;
+      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 16px 0;
+      font-weight: 500;
+    }
+
+    .success {
+      background: #d1e7dd;
+      color: #0f5132;
+      border: 1px solid #badbcc;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c2c7;
+    }
+
+    .info {
+      background: #cff4fc;
+      color: #055160;
+      border: 1px solid #b6effb;
+    }
+
+    .highlight {
+      background: #fff3cd;
+      padding: 8px;
+      border-radius: 4px;
+      margin: 8px 0;
+    }
+
+    code {
+      background: #f6f8fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+
+    .comparison-table {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .comparison-item {
+      padding: 16px;
+      border-radius: 8px;
+      border: 2px solid #e1e4e8;
+    }
+
+    .native-commands {
+      background: #f0f9ff;
+      border-color: #0ea5e9;
+    }
+
+    .custom-commands {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    .comparison-item h4 {
+      margin-top: 0;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔢 Number Input Controls Demo</h1>
+  <p>This page demonstrates the native <code>step-up</code> and <code>step-down</code> commands for number inputs, which work without the <code>--</code> prefix.</p>
+
+  <div class="demo-section">
+    <h2>Native vs Custom Commands</h2>
+    <p>Invokers supports both native browser commands (no prefix) and custom commands (with <code>--</code> prefix).</p>
+
+    <div class="comparison-table">
+      <div class="comparison-item native-commands">
+        <h4>🌐 Native Commands</h4>
+        <p>Built into the browser specification. No <code>--</code> prefix needed.</p>
+        <ul>
+          <li><code>step-up</code> - Increment number input</li>
+          <li><code>step-down</code> - Decrement number input</li>
+          <li><code>show-modal</code> - Open dialogs</li>
+          <li><code>toggle-popover</code> - Toggle popovers</li>
+        </ul>
+      </div>
+
+      <div class="comparison-item custom-commands">
+        <h4>⚡ Custom Commands</h4>
+        <p>Extended functionality with <code>--</code> prefix.</p>
+        <ul>
+          <li><code>--input:step:1</code> - Custom stepping</li>
+          <li><code>--value:set:42</code> - Set values</li>
+          <li><code>--focus</code> - Focus elements</li>
+          <li><code>--toggle</code> - Show/hide elements</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Basic Number Input Stepping</h2>
+    <p>Use <code>step-up</code> and <code>step-down</code> commands to increment/decrement number inputs by their step value.</p>
+
+    <div class="demo-box">
+      <h3>Simple Counter</h3>
+      <div class="form-group">
+        <label for="basic-counter">Counter (step: 1):</label>
+        <input type="number" id="basic-counter" value="0" min="0" max="10" step="1">
+      </div>
+
+      <div class="step-buttons">
+        <button type="button" command="step-down" commandfor="basic-counter">−</button>
+        <div class="number-display" id="basic-display">0</div>
+        <button type="button" command="step-up" commandfor="basic-counter">+</button>
+      </div>
+
+      <p class="info">Click the + and − buttons to increment/decrement the counter.</p>
+    </div>
+
+    <div class="demo-box">
+      <h3>Decimal Values</h3>
+      <div class="form-group">
+        <label for="decimal-input">Price (step: 0.25):</label>
+        <input type="number" id="decimal-input" value="10.00" min="0" max="100" step="0.25">
+      </div>
+
+      <div class="step-buttons">
+        <button type="button" command="step-down" commandfor="decimal-input">−</button>
+        <div class="number-display" id="decimal-display">$10.00</div>
+        <button type="button" command="step-up" commandfor="decimal-input">+</button>
+      </div>
+
+      <p class="info">This input steps by 0.25 (quarter dollars).</p>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Advanced Number Input Features</h2>
+    <p>Number inputs with constraints and visual feedback.</p>
+
+    <div class="demo-box">
+      <h3>Constrained Range</h3>
+      <div class="form-group">
+        <label for="constrained-input">Rating (1-5, step: 1):</label>
+        <input type="number" id="constrained-input" value="3" min="1" max="5" step="1">
+      </div>
+
+      <div class="step-buttons">
+        <button type="button" command="step-down" commandfor="constrained-input">−</button>
+        <div class="number-display" id="constrained-display">⭐⭐⭐</div>
+        <button type="button" command="step-up" commandfor="constrained-input">+</button>
+      </div>
+
+      <p class="info">This input is constrained between 1 and 5. Try going beyond the limits!</p>
+    </div>
+
+    <div class="demo-box">
+      <h3>Large Steps</h3>
+      <div class="form-group">
+        <label for="large-step-input">Large Number (step: 100):</label>
+        <input type="number" id="large-step-input" value="1000" min="0" max="10000" step="100">
+      </div>
+
+      <div class="step-buttons">
+        <button type="button" command="step-down" commandfor="large-step-input">−100</button>
+        <div class="number-display" id="large-display">1,000</div>
+        <button type="button" command="step-up" commandfor="large-step-input">+100</button>
+      </div>
+
+      <p class="info">This input steps by 100 each time.</p>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Comparison: Native vs Custom Commands</h2>
+    <p>See the difference between native <code>step-up</code>/<code>step-down</code> and custom <code>--input:step</code> commands.</p>
+
+    <div class="demo-box">
+      <h3>Native Commands (No Prefix)</h3>
+      <div class="form-group">
+        <label for="native-input">Native Input:</label>
+        <input type="number" id="native-input" value="5" min="0" max="10" step="1">
+      </div>
+
+      <div class="step-buttons">
+        <button type="button" command="step-down" commandfor="native-input">↓ Native</button>
+        <div class="number-display" id="native-display">5</div>
+        <button type="button" command="step-up" commandfor="native-input">↑ Native</button>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <h3>Custom Commands (With -- Prefix)</h3>
+      <div class="form-group">
+        <label for="custom-input">Custom Input:</label>
+        <input type="number" id="custom-input" value="5" min="0" max="10" step="1">
+      </div>
+
+      <div class="step-buttons">
+        <button type="button" command="--input:step:-1" commandfor="custom-input">↓ Custom</button>
+        <div class="number-display" id="custom-display">5</div>
+        <button type="button" command="--input:step:1" commandfor="custom-input">↑ Custom</button>
+      </div>
+    </div>
+
+    <div class="highlight">
+      <strong>Note:</strong> Both approaches work, but native commands are more concise and follow browser standards.
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Practical Examples</h2>
+    <p>Real-world scenarios where number input stepping is useful.</p>
+
+    <div class="demo-box">
+      <h3>Shopping Cart Quantity</h3>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span>🛒 Item Quantity:</span>
+        <div class="step-buttons">
+          <button type="button" command="step-down" commandfor="quantity-input">−</button>
+          <input type="number" id="quantity-input" value="1" min="1" max="99" step="1" style="width: 60px; text-align: center;">
+          <button type="button" command="step-up" commandfor="quantity-input">+</button>
+        </div>
+        <span id="quantity-total">Total: $19.99</span>
+      </div>
+    </div>
+
+    <div class="demo-box">
+      <h3>Temperature Control</h3>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span>🌡️ Temperature:</span>
+        <div class="step-buttons">
+          <button type="button" command="step-down" commandfor="temp-input">−</button>
+          <input type="number" id="temp-input" value="72" min="50" max="90" step="1" style="width: 60px; text-align: center;">
+          <button type="button" command="step-up" commandfor="temp-input">+</button>
+        </div>
+        <span id="temp-display">72°F</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the Invokers library -->
+  <script type="module" src="../dist/esm/development/compatible.js"></script>
+
+  <script>
+    // Update displays when inputs change
+    function updateDisplays() {
+      // Basic counter
+      const basicInput = document.getElementById('basic-counter');
+      const basicDisplay = document.getElementById('basic-display');
+      basicDisplay.textContent = basicInput.value;
+
+      // Decimal input
+      const decimalInput = document.getElementById('decimal-input');
+      const decimalDisplay = document.getElementById('decimal-display');
+      decimalDisplay.textContent = '$' + parseFloat(decimalInput.value).toFixed(2);
+
+      // Constrained input
+      const constrainedInput = document.getElementById('constrained-input');
+      const constrainedDisplay = document.getElementById('constrained-display');
+      const rating = parseInt(constrainedInput.value);
+      constrainedDisplay.textContent = '⭐'.repeat(rating);
+
+      // Large step input
+      const largeInput = document.getElementById('large-step-input');
+      const largeDisplay = document.getElementById('large-display');
+      largeDisplay.textContent = parseInt(largeInput.value).toLocaleString();
+
+      // Native input
+      const nativeInput = document.getElementById('native-input');
+      const nativeDisplay = document.getElementById('native-display');
+      nativeDisplay.textContent = nativeInput.value;
+
+      // Custom input
+      const customInput = document.getElementById('custom-input');
+      const customDisplay = document.getElementById('custom-display');
+      customDisplay.textContent = customInput.value;
+
+      // Quantity total
+      const quantityInput = document.getElementById('quantity-input');
+      const quantityTotal = document.getElementById('quantity-total');
+      const price = 19.99;
+      const quantity = parseInt(quantityInput.value);
+      quantityTotal.textContent = `Total: $${(price * quantity).toFixed(2)}`;
+
+      // Temperature display
+      const tempInput = document.getElementById('temp-input');
+      const tempDisplay = document.getElementById('temp-display');
+      tempDisplay.textContent = `${tempInput.value}°F`;
+    }
+
+    // Listen for input changes
+    document.addEventListener('input', updateDisplays);
+    document.addEventListener('change', updateDisplays);
+
+    // Initial update
+    updateDisplays();
+
+    // Add command event logging
+    document.addEventListener('command', (e) => {
+      console.log('Command executed:', e.command, 'on target:', e.target?.id || e.target);
+    });
+
+    // Show success message when commands work
+    document.addEventListener('command', (e) => {
+      if (e.command === 'step-up' || e.command === 'step-down') {
+        const status = document.createElement('div');
+        status.className = 'status-message success';
+        status.textContent = `Successfully executed ${e.command} on ${e.target?.id || 'input'}`;
+        status.style.position = 'fixed';
+        status.style.top = '20px';
+        status.style.right = '20px';
+        status.style.zIndex = '1000';
+        document.body.appendChild(status);
+
+        setTimeout(() => {
+          if (status.parentNode) {
+            status.parentNode.removeChild(status);
+          }
+        }, 2000);
+      }
+    });
+  </script>
+</body>
+</html>

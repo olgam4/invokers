@@ -57,3 +57,51 @@ The demo showcases:
 - Progressive enhancement principles
 
 All functionality works without custom JavaScript - everything is declarative HTML with the Invokers library handling the interactions.
+
+## Number Input Controls Demo
+
+**File:** `number-input-demo.html`
+
+A demonstration of native browser commands for number input controls, specifically the `step-up` and `step-down` commands that work without the `--` prefix.
+
+### Features Demonstrated
+
+1. **Native Commands**
+   - `step-up` - Increment number input values
+   - `step-down` - Decrement number input values
+   - No `--` prefix required (unlike custom commands)
+
+2. **Number Input Features**
+   - Different step values (1, 0.25, 100)
+   - Min/max constraints
+   - Visual feedback and displays
+   - Real-world examples (shopping cart, temperature control)
+
+3. **Comparison with Custom Commands**
+   - Native `step-up`/`step-down` vs custom `--input:step` commands
+   - Performance and simplicity benefits of native commands
+
+4. **Practical Applications**
+   - Shopping cart quantity controls
+   - Temperature/setting adjustments
+   - Form input stepping with constraints
+
+### Running the Demo
+
+1. Clone this repository
+2. Open `examples/number-input-demo.html` in a modern browser
+3. Use the + and − buttons to step number inputs
+4. Try different step values and constraints
+5. Compare native vs custom command approaches
+
+### Technical Implementation
+
+The demo showcases:
+- Native browser commands without `--` prefix
+- Proper HTML number input attributes (`min`, `max`, `step`)
+- Visual feedback with JavaScript event listeners
+- Comparison between native and custom command approaches
+- Real-world usage patterns
+
+This demonstrates how Invokers extends native browser functionality while maintaining standards compliance.
+

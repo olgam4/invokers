@@ -243,9 +243,15 @@ class PerformanceMonitor {
 
 // Stub imports that will be resolved properly later
 const NATIVE_COMMAND_KEYWORDS = new Set([
-  'show-modal', 'close', 'toggle-popover', 
+  'show-modal', 'close', 'request-close',
+  'toggle-popover', 'hide-popover', 'show-popover',
+  'toggle-openable', 'close-openable', 'open-openable',
+  'toggle', 'open',
   'play-pause', 'play', 'pause', 'toggle-muted',
-  'show-picker'
+  'show-picker',
+  'step-up', 'step-down',
+  'copy-text', 'share',
+  'toggle-fullscreen', 'request-fullscreen', 'exit-fullscreen'
 ]);
 
 let isDebugMode = false;
