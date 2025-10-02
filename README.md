@@ -590,6 +590,24 @@ registerAccessibilityCommands(invokers);
 
 ## 📋 Command Cheatsheet
 
+### Native Browser Commands (No `--` Prefix)
+
+These commands are built into modern browsers and work without any JavaScript framework. Invokers provides full polyfill support for cross-browser compatibility.
+
+| Command                | Purpose                           | Example                                      |
+| ---------------------- | --------------------------------- | -------------------------------------------- |
+| `step-up`              | Increment number input by step    | `command="step-up" commandfor="counter"`    |
+| `step-down`            | Decrement number input by step    | `command="step-down" commandfor="counter"`  |
+| `show-modal`           | Open modal dialog                 | `command="show-modal" commandfor="dialog"`  |
+| `close`                | Close dialog/popover              | `command="close" commandfor="dialog"`       |
+| `toggle-popover`       | Toggle popover visibility         | `command="toggle-popover" commandfor="menu"`|
+| `show-picker`          | Show input picker (date, color)   | `command="show-picker" commandfor="date"`   |
+| `play-pause`           | Toggle media play/pause           | `command="play-pause" commandfor="video"`   |
+| `toggle-muted`         | Toggle media mute state           | `command="toggle-muted" commandfor="video"` |
+| `toggle-fullscreen`    | Toggle fullscreen mode            | `command="toggle-fullscreen"`               |
+| `copy-text`            | Copy text to clipboard            | `command="copy-text" commandfor="source"`   |
+| `share`                | Share content via Web Share API   | `command="share" commandfor="content"`      |
+
 ### Core Commands (Available Now)
 | Command                | Purpose                           | Example                                      |
 | ---------------------- | --------------------------------- | -------------------------------------------- |
