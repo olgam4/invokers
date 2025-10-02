@@ -507,10 +507,24 @@ registerFlowCommands(invokers);
 **Commands:** `--fetch:*`, `--navigate:*`, `--emit:*`, `--command:*`, `--bind:*`
 
 ```html
-<button command="--fetch:get" data-url="/api/users" commandfor="user-list">Load Users</button>
+<!-- Basic fetch with replace strategies -->
+<button command="--fetch:get" data-url="/api/users" commandfor="user-list"
+        data-replace-strategy="innerHTML">Load Users</button>
+
+<!-- Form submission with custom replace strategy -->
+<form id="contact-form" action="/api/contact" method="post"></form>
+<button command="--fetch:send" commandfor="contact-form"
+        data-response-target="#response"
+        data-replace-strategy="outerHTML">Send Message</button>
+
 <button command="--navigate:to:/dashboard">Go to Dashboard</button>
 <input command-on="input" command="--bind:value" data-bind-to="#output" data-bind-as="text">
 ```
+
+**Replace Strategies:**
+- `innerHTML` (default): Replace target element's content
+- `outerHTML`: Replace entire target element
+- `beforebegin/afterbegin/beforeend/afterend`: Insert adjacent to target
 
 #### Media & Animation (`invokers/commands/media`) - 27.7 kB  
 Rich media controls and interactions.

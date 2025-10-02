@@ -31,22 +31,31 @@ const flowCommands: Record<string, CommandCallback> = {
   // --- Fetch Commands ---
 
   /**
-   * `--fetch:get`: Performs a GET request and swaps the response HTML into the target.
-   * Supports loading/error states via templates.
-   *
-   * @example
-   * ```html
-   * <button type="button"
-   *   command="--fetch:get"
-   *   data-url="/api/content"
-   *   commandfor="content-area"
-   *   data-loading-template="spinner-template"
-   *   data-after-error="--class:add:load-error"
-   * >
-   *   Load Content
-   * </button>
-   * ```
-   */
+    * `--fetch:get`: Performs a GET request and swaps the response HTML into the target.
+    * Supports loading/error states via templates and configurable replace strategies.
+    *
+    * Replace Strategies:
+    * - `"innerHTML"` (default): Replace the target's inner content
+    * - `"outerHTML"`: Replace the entire target element
+    * - `"beforebegin"`: Insert before the target element
+    * - `"afterbegin"`: Insert at the beginning of the target element
+    * - `"beforeend"`: Insert at the end of the target element
+    * - `"afterend"`: Insert after the target element
+    *
+    * @example
+    * ```html
+    * <button type="button"
+    *   command="--fetch:get"
+    *   data-url="/api/content"
+    *   commandfor="content-area"
+    *   data-replace-strategy="innerHTML"
+    *   data-loading-template="spinner-template"
+    *   data-after-error="--class:add:load-error"
+    * >
+    *   Load Content
+    * </button>
+    * ```
+    */
   "--fetch:get": async ({ invoker, targetElement }: CommandContext) => {
     let url = invoker.dataset.url;
     if (!url) {
@@ -96,7 +105,21 @@ const flowCommands: Record<string, CommandCallback> = {
 
       const html = await response.text();
       const newContent = parseHTML(html);
-      const updateDOM = () => targetElement.replaceChildren(newContent);
+      const updateDOM = () => {
+        const strategy = invoker.dataset.replaceStrategy || "innerHTML";
+        if (strategy === "innerHTML")
+          targetElement.replaceChildren(newContent);
+        else if (strategy === "outerHTML")
+          targetElement.replaceWith(newContent);
+        else if (/(before|after)(begin|end)/.test(strategy)) {
+          const fragment = new DOMParser().parseFromString(html, "text/html").body.children[0];
+          targetElement.insertAdjacentElement(strategy as InsertPosition, fragment)
+        }
+        else throw createInvokerError(`Invalid replace strategy: ${strategy}`, ErrorSeverity.ERROR, {
+          command: '--fetch:get', element: invoker,
+          recovery: 'Use "innerHTML", "outerHTML", or "beforebegin"/"afterbegin"/"beforeend"/"afterend"'
+        });
+      };
       await (document.startViewTransition ? document.startViewTransition(updateDOM).finished : Promise.resolve(updateDOM()));
     } catch (error) {
       showFeedbackState(invoker, targetElement, "data-error-template");

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' blob: data: gap:; style-src * 'self' 'unsafe-inline' blob: data: gap:; script-src * 'self' 'unsafe-eval' 'unsafe-inline' blob: data: gap:; object-src * 'self' blob: data: gap:; img-src * 'self' 'unsafe-inline' blob: data: gap:; connect-src * 'self' 'unsafe-inline' blob: data: gap:; frame-src * 'self' blob: data: gap:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Fetch Replace Strategy Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .demo-section {
+      margin: 40px 0;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .demo-box {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e1e4e8;
+      border-radius: 8px;
+      background: #fafbfc;
+    }
+
+    .strategy-comparison {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .strategy-item {
+      padding: 16px;
+      border-radius: 8px;
+      border: 2px solid #e1e4e8;
+      background: white;
+    }
+
+    .innerHTML { border-color: #0969da; background: #f0f9ff; }
+    .outerHTML { border-color: #8250df; background: #faf5ff; }
+    .adjacent { border-color: #f59e0b; background: #fffbeb; }
+
+    button {
+      background: #0969da;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #0860ca;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .content-area {
+      min-height: 100px;
+      padding: 16px;
+      background: #f6f8fa;
+      border-radius: 6px;
+      margin: 16px 0;
+      border: 2px dashed #d1d9e0;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 16px 0;
+      font-weight: 500;
+    }
+
+    .success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c2c7; }
+    .info { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+
+    .highlight {
+      background: #fff3cd;
+      padding: 8px;
+      border-radius: 4px;
+      margin: 8px 0;
+    }
+
+    code {
+      background: #f6f8fa;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .loading::after {
+      content: " ⏳";
+    }
+  </style>
+</head>
+<body>
+  <h1>🔄 Fetch Replace Strategy Demo</h1>
+  <p>This page demonstrates the different replace strategies available for <code>--fetch:get</code> and <code>--fetch:send</code> commands.</p>
+
+  <div class="demo-section">
+    <h2>Replace Strategy Overview</h2>
+    <p>The <code>data-replace-strategy</code> attribute controls how fetched content is inserted into the DOM:</p>
+
+    <div class="strategy-comparison">
+      <div class="strategy-item innerHTML">
+        <h4>innerHTML (Default)</h4>
+        <p>Replaces the <strong>inner content</strong> of the target element</p>
+        <code>data-replace-strategy="innerHTML"</code>
+      </div>
+
+      <div class="strategy-item outerHTML">
+        <h4>outerHTML</h4>
+        <p>Replaces the <strong>entire target element</strong></p>
+        <code>data-replace-strategy="outerHTML"</code>
+      </div>
+
+      <div class="strategy-item adjacent">
+        <h4>Adjacent Positions</h4>
+        <p>Inserts content <strong>relative to</strong> the target element</p>
+        <code>data-replace-strategy="beforebegin"</code><br>
+        <code>data-replace-strategy="afterbegin"</code><br>
+        <code>data-replace-strategy="beforeend"</code><br>
+        <code>data-replace-strategy="afterend"</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>innerHTML Strategy (Default)</h2>
+    <p>This strategy replaces the inner content of the target element while preserving the element itself.</p>
+
+    <div class="demo-box">
+      <h3>Content Area</h3>
+      <div id="innerHTML-target" class="content-area">
+        <p>Original content will be replaced with fetched content.</p>
+        <button type="button" disabled>Original Button</button>
+      </div>
+
+      <button type="button"
+              command="--fetch:get"
+              data-url="/api/demo-content"
+              commandfor="#innerHTML-target"
+              data-replace-strategy="innerHTML">
+        Fetch with innerHTML
+      </button>
+
+      <p class="info">Notice how the container element remains, but its content is replaced.</p>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>outerHTML Strategy</h2>
+    <p>This strategy replaces the entire target element with the fetched content.</p>
+
+    <div class="demo-box">
+      <h3>Content Area</h3>
+      <div id="outerHTML-target" class="content-area">
+        <p>The entire container will be replaced.</p>
+        <button type="button" disabled>Original Button</button>
+      </div>
+
+      <button type="button"
+              command="--fetch:get"
+              data-url="/api/demo-replacement"
+              commandfor="#outerHTML-target"
+              data-replace-strategy="outerHTML">
+        Fetch with outerHTML
+      </button>
+
+      <p class="info">The entire target element will be replaced with the fetched content.</p>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Adjacent Insert Strategies</h2>
+    <p>These strategies insert content relative to the target element without replacing it.</p>
+
+    <div class="demo-box">
+      <h3>Target Element</h3>
+      <div id="adjacent-target" class="content-area" style="border-color: #f59e0b;">
+        <p>This target element will remain unchanged.</p>
+        <button type="button" disabled>Target Button</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/demo-before"
+                commandfor="#adjacent-target"
+                data-replace-strategy="beforebegin">
+          Insert Before
+        </button>
+
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/demo-inside-start"
+                commandfor="#adjacent-target"
+                data-replace-strategy="afterbegin">
+          Insert Inside Start
+        </button>
+
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/demo-inside-end"
+                commandfor="#adjacent-target"
+                data-replace-strategy="beforeend">
+          Insert Inside End
+        </button>
+
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/demo-after"
+                commandfor="#adjacent-target"
+                data-replace-strategy="afterend">
+          Insert After
+        </button>
+      </div>
+
+      <p class="info">Each button inserts content at a different position relative to the target element.</p>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Form Submission with Replace Strategy</h2>
+    <p>Use <code>--fetch:send</code> with forms and custom replace strategies.</p>
+
+    <div class="demo-box">
+      <h3>Contact Form</h3>
+      <form id="contact-form" action="/api/contact" method="post">
+        <div style="margin: 16px 0;">
+          <label for="name">Name:</label><br>
+          <input type="text" id="name" name="name" value="John Doe" style="width: 100%; padding: 8px; margin: 4px 0;">
+        </div>
+
+        <div style="margin: 16px 0;">
+          <label for="message">Message:</label><br>
+          <textarea id="message" name="message" style="width: 100%; padding: 8px; margin: 4px 0; min-height: 80px;">Hello, this is a test message!</textarea>
+        </div>
+      </form>
+
+      <div id="form-response" class="content-area">
+        <p>Form response will appear here...</p>
+      </div>
+
+      <button type="button"
+              command="--fetch:send"
+              commandfor="#contact-form"
+              data-response-target="#form-response"
+              data-replace-strategy="innerHTML">
+        Submit Form (innerHTML)
+      </button>
+
+      <button type="button"
+              command="--fetch:send"
+              commandfor="#contact-form"
+              data-response-target="#form-response"
+              data-replace-strategy="outerHTML">
+        Submit Form (outerHTML)
+      </button>
+    </div>
+  </div>
+
+  <div class="demo-section">
+    <h2>Advanced Example: Dynamic List Management</h2>
+    <p>Combine replace strategies with dynamic content updates.</p>
+
+    <div class="demo-box">
+      <h3>Todo List</h3>
+      <div id="todo-list" class="content-area">
+        <div class="todo-item">
+          <span>Buy groceries</span>
+          <button type="button" disabled>✓</button>
+        </div>
+        <div class="todo-item">
+          <span>Walk the dog</span>
+          <button type="button" disabled>✓</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin: 16px 0;">
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/todo/1"
+                commandfor="#todo-list"
+                data-replace-strategy="innerHTML">
+          Load Todo #1
+        </button>
+
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/todo/completed"
+                commandfor="#todo-list"
+                data-replace-strategy="beforeend">
+          Add Completed Items
+        </button>
+
+        <button type="button"
+                command="--fetch:get"
+                data-url="/api/todo/stats"
+                commandfor="#todo-list"
+                data-replace-strategy="afterend">
+          Show Stats Below
+        </button>
+      </div>
+
+      <p class="info">Try different buttons to see how replace strategies affect the todo list.</p>
+    </div>
+  </div>
+
+  <!-- Mock API responses for demo purposes -->
+  <script>
+    // Mock fetch responses for demo
+    const mockResponses = {
+      '/api/demo-content': '<div style="background: #e1f5fe; padding: 16px; border-radius: 6px;"><h4>📄 Fetched Content</h4><p>This content replaced the inner HTML of the target element.</p><button type="button">New Button</button></div>',
+      '/api/demo-replacement': '<section style="background: #f3e5f5; padding: 20px; border-radius: 8px; border: 2px solid #9c27b0;"><h3>🔄 Complete Replacement</h3><p>The entire target element was replaced with this new content.</p><div style="margin: 16px 0;"><button type="button">Action Button</button></div></section>',
+      '/api/demo-before': '<div style="background: #fff3e0; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #ff9800;"><strong>⬅️ Inserted Before Target</strong><br><small>This content was inserted before the target element.</small></div>',
+      '/api/demo-inside-start': '<div style="background: #e8f5e8; padding: 8px; margin: 4px 0; border-radius: 4px;"><em>↗️ Inserted at Start</em><br><small>Added to the beginning of the target element.</small></div>',
+      '/api/demo-inside-end': '<div style="background: #fce4ec; padding: 8px; margin: 4px 0; border-radius: 4px;"><em>↙️ Inserted at End</em><br><small>Added to the end of the target element.</small></div>',
+      '/api/demo-after': '<div style="background: #f1f8e9; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #4caf50;"><strong>➡️ Inserted After Target</strong><br><small>This content was inserted after the target element.</small></div>',
+      '/api/contact': '<div style="background: #e3f2fd; padding: 16px; border-radius: 8px;"><h4>✅ Form Submitted Successfully!</h4><p>Thank you for your message. We will get back to you soon.</p><div style="margin: 12px 0;"><strong>Submitted Data:</strong></div><ul><li><strong>Name:</strong> John Doe</li><li><strong>Message:</strong> Hello, this is a test message!</li></ul></div>',
+      '/api/todo/1': '<div class="todo-item" style="background: #fff; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #e0e0e0;"><span style="text-decoration: line-through; color: #666;">Buy groceries (completed)</span><button type="button" style="float: right;">✓</button></div><div class="todo-item" style="background: #fff; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #e0e0e0;"><span>Walk the dog</span><button type="button" style="float: right;">○</button></div>',
+      '/api/todo/completed': '<div style="background: #c8e6c9; padding: 12px; margin: 8px 0; border-radius: 6px;"><strong>✅ Completed Items:</strong><br>• Buy groceries<br>• Clean room<br>• Call mom</div>',
+      '/api/todo/stats': '<div style="background: #bbdefb; padding: 12px; margin: 8px 0; border-radius: 6px;"><strong>📊 Todo Stats:</strong><br>Total: 5 | Completed: 3 | Pending: 2<br>Completion Rate: 60%</div>'
+    };
+
+    // Intercept fetch calls for demo
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+      const urlString = typeof url === 'string' ? url : url.toString();
+
+      if (mockResponses[urlString]) {
+        // Show loading state
+        const buttons = document.querySelectorAll('button[command*="--fetch"]');
+        buttons.forEach(btn => {
+          if (btn.textContent.includes('Loading')) return;
+          btn.disabled = true;
+          btn.classList.add('loading');
+          btn.dataset.originalText = btn.textContent;
+          btn.textContent = 'Loading...';
+        });
+
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            // Reset button states
+            buttons.forEach(btn => {
+              btn.disabled = false;
+              btn.classList.remove('loading');
+              if (btn.dataset.originalText) {
+                btn.textContent = btn.dataset.originalText;
+                delete btn.dataset.originalText;
+              }
+            });
+
+            resolve({
+              ok: true,
+              text: () => Promise.resolve(mockResponses[urlString])
+            });
+          }, 800); // Simulate network delay
+        });
+      }
+
+      return originalFetch.call(this, url, options);
+    };
+
+    // Add command event logging
+    document.addEventListener('command', (e) => {
+      console.log('Command executed:', e.command, 'on target:', e.target?.id || e.target);
+
+      // Show success message
+      if (e.command.startsWith('--fetch:')) {
+        const status = document.createElement('div');
+        status.className = 'status-message success';
+        status.textContent = `Successfully executed ${e.command}`;
+        status.style.position = 'fixed';
+        status.style.top = '20px';
+        status.style.right = '20px';
+        status.style.zIndex = '1000';
+        document.body.appendChild(status);
+
+        setTimeout(() => {
+          if (status.parentNode) {
+            status.parentNode.removeChild(status);
+          }
+        }, 3000);
+      }
+    });
+  </script>
+
+  <!-- Load the Invokers library -->
+  <script type="module" src="../dist/esm/development/compatible.js"></script>
+</body>
+</html>
