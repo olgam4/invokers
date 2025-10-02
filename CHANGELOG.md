@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.7.0](https://github.com/doeixd/invokers/compare/v1.6.0...v1.7.0) (2025-10-02)
+
+
+### Features
+
+* Add native browser command support and comprehensive demo ([62cdeab](https://github.com/doeixd/invokers/commit/62cdeabfadf8ab0c54049a59383f80d6a4780e11))
+
 ## [1.6.0](https://github.com/doeixd/invokers/compare/v1.5.2...v1.6.0) (2025-10-02)
 
 
