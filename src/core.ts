@@ -860,6 +860,7 @@ export class InvokerManager {
 
     // Handle prefix normalization
     let normalizedName = trimmedName;
+    const wasOriginallyWithoutPrefix = !normalizedName.startsWith('--');
     if (!normalizedName.startsWith('--')) {
       normalizedName = `--${normalizedName}`;
       if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
@@ -867,14 +868,14 @@ export class InvokerManager {
       }
     }
 
-    // Validate against reserved native commands
-    if (NATIVE_COMMAND_KEYWORDS.has(normalizedName.slice(2))) {
+    // Validate against reserved native commands - only when originally registered without prefix
+    if (wasOriginallyWithoutPrefix && NATIVE_COMMAND_KEYWORDS.has(trimmedName)) {
       const error = createInvokerError(
-        `Cannot register custom command "${normalizedName}" - conflicts with native command "${normalizedName.slice(2)}"`,
+        `Cannot register command "${trimmedName}" - conflicts with native command "${trimmedName}"`,
         ErrorSeverity.ERROR,
         {
-          command: normalizedName,
-          recovery: 'Choose a different command name that doesn\'t conflict with native commands'
+          command: trimmedName,
+          recovery: 'Choose a different command name that doesn\'t conflict with native commands, or use the -- prefix for custom commands'
         }
       );
       logInvokerError(error);
