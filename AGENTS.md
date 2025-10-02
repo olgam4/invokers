@@ -2104,4 +2104,116 @@ if (typeof window !== 'undefined' && (window as any).Invoker?.debug) {
 
 **Environment**: We are on Windows, use PowerShell.
 
+## 🔄 Command Comparisons: Native vs Custom
+
+Understanding the differences between native browser commands and custom Invokers commands is crucial for effective usage. This section compares commonly confused commands.
+
+### `toggle` (Native) vs `--toggle` (Custom)
+
+The `toggle` and `--toggle` commands serve similar purposes but have fundamentally different implementations and use cases.
+
+#### **Native `toggle` Command**
+- **Purpose**: Specifically designed for `<details>` elements
+- **Action**: Toggles the `open` attribute on `<details>` elements
+- **Scope**: Very narrow - only works with details/summary elements
+- **Syntax**: `<button command="toggle" commandfor="details-id">`
+- **No Prefix**: Uses bare `toggle` (no `--`)
+
+**Example:**
+```html
+<details id="faq">
+  <summary>What is Invokers?</summary>
+  <p>Invokers is a library for declarative UI interactions...</p>
+</details>
+<button command="toggle" commandfor="faq">Toggle FAQ</button>
+```
+
+#### **Custom `--toggle` Command**
+- **Purpose**: General-purpose element visibility toggling
+- **Action**: Toggles the `hidden` attribute on any HTML element
+- **Scope**: Broad - works with any element type
+- **Syntax**: `<button command="--toggle" commandfor="any-element-id">`
+- **Features**:
+  - **ARIA Management**: Automatically updates `aria-expanded` and `aria-pressed` attributes
+  - **View Transitions**: Uses `document.startViewTransition()` for smooth animations
+  - **Multiple Targets**: Can toggle multiple elements simultaneously
+  - **Error Handling**: Comprehensive validation with recovery suggestions
+  - **Debug Support**: Detailed logging in debug mode
+
+**Example:**
+```html
+<div id="panel" hidden>
+  <h3>Settings Panel</h3>
+  <p>Configuration options...</p>
+</div>
+<button command="--toggle" commandfor="panel">Toggle Settings</button>
+```
+
+#### **Key Differences**
+
+| Aspect | `toggle` (Native) | `--toggle` (Custom) |
+|--------|------------------|-------------------|
+| **Target Elements** | `<details>` only | Any HTML element |
+| **Attribute Modified** | `open` | `hidden` |
+| **ARIA Updates** | None | `aria-expanded`, `aria-pressed` |
+| **Animations** | None | View Transitions support |
+| **Multiple Targets** | Single target | Multiple targets supported |
+| **Error Handling** | Basic browser behavior | Comprehensive with recovery |
+| **Debug Logging** | None | Detailed debug output |
+| **Accessibility** | Basic | Enhanced with ARIA management |
+
+#### **When to Use Each**
+
+- **Use `toggle`**: When working specifically with `<details>` elements for collapsible content
+- **Use `--toggle`**: For general show/hide functionality with better accessibility and user experience
+
+#### **Advanced `--toggle` Features**
+
+The `--toggle` command includes sophisticated state management:
+
+```html
+<!-- Multiple targets -->
+<button command="--toggle" commandfor="panel1,panel2,panel3">Toggle All Panels</button>
+
+<!-- With ARIA state management -->
+<button command="--toggle" commandfor="menu" aria-expanded="false">
+  Menu
+</button>
+
+<!-- Works with view transitions -->
+<style>
+  .panel {
+    transition: opacity 0.3s ease;
+  }
+  .panel[hidden] {
+    opacity: 0;
+  }
+</style>
+```
+
+#### **Migration Guide**
+
+**From native `toggle`:**
+```html
+<!-- Old: Only works with details -->
+<details id="item">
+  <summary>Item</summary>
+  <div>Content</div>
+</details>
+<button command="toggle" commandfor="item">Toggle</button>
+```
+
+**To custom `--toggle`:**
+```html
+<!-- New: Works with any element -->
+<div id="item-content" hidden>
+  <div>Content</div>
+</div>
+<button command="--toggle" commandfor="item-content" aria-expanded="false">
+  Toggle Item
+</button>
+```
+
+The custom `--toggle` command provides a more robust, accessible, and feature-rich alternative to the native `toggle` command while maintaining backward compatibility.
+
 This guide should provide everything needed to effectively work with the modularized Invokers library. For specific implementation details, refer to the source code and the examples directory.
