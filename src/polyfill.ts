@@ -843,8 +843,12 @@ function handleInvokerActivation(event: MouseEvent | KeyboardEvent) {
         const input = invokee as HTMLInputElement;
         if (normalizedCommand === "step-up") {
           input.stepUp();
+          // Dispatch input event for reactive updates
+          input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
         } else if (normalizedCommand === "step-down") {
           input.stepDown();
+          // Dispatch input event for reactive updates
+          input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
         }
     }
   }

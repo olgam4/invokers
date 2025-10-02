@@ -401,13 +401,13 @@
     document.addEventListener('input', updateDisplays);
     document.addEventListener('change', updateDisplays);
 
-    // Initial update
-    updateDisplays();
-
     // Add command event logging
     document.addEventListener('command', (e) => {
       console.log('Command executed:', e.command, 'on target:', e.target?.id || e.target);
     });
+
+    // Initial update
+    updateDisplays();
 
     // Show success message when commands work
     document.addEventListener('command', (e) => {
